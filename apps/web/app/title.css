@@ -1,0 +1,271 @@
+/* ============================================================
+   Écran titre PRESS HIRE : structure commune + 7 habillages.
+   Tailles en unités de conteneur (cqw/cqh) : le même rendu
+   en plein écran et en vignette de galerie.
+   ============================================================ */
+
+.ph-title {
+  position: relative;
+  overflow: hidden;
+  container-type: size;
+  background: var(--bg, #000);
+  color: var(--ink, #fff);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  z-index: 0; /* chaque écran titre isole ses calques */
+}
+.ph-title.full { position: fixed; inset: 0; z-index: 100; }
+.ph-title.card { width: 100%; aspect-ratio: 16 / 9; border: 3px solid #000; box-shadow: 5px 5px 0 #000; }
+
+.ph-title canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.ph-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7cqh 5cqw 7cqh;
+  text-align: center;
+  pointer-events: none;
+  z-index: 2;
+}
+.ph-head { display: flex; flex-direction: column; align-items: center; gap: 2cqh; max-width: 100%; }
+
+.ph-logo {
+  position: relative;
+  margin: 0;
+  font-weight: 400;
+  line-height: 1.05;
+  font-size: clamp(14px, min(8.5cqw, 15cqh), 96px);
+  letter-spacing: 0.04em;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.ph-logo .w { display: inline-block; white-space: nowrap; }
+.ph-logo .l { display: inline-block; animation-fill-mode: both; animation-delay: calc(var(--i) * 65ms); }
+.ph-logo .sp { display: inline-block; width: 0.45em; }
+
+.ph-tagline { margin: 0; font-size: clamp(9px, min(2.6cqw, 4.4cqh), 26px); line-height: 1.5; }
+
+.ph-prompt {
+  pointer-events: auto;
+  font: inherit;
+  font-size: clamp(9px, min(2.4cqw, 4.2cqh), 22px);
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  padding: 0.6em 1.1em;
+}
+
+.ph-lang {
+  position: absolute;
+  top: 2.4cqh;
+  right: 2.4cqw;
+  z-index: 3;
+  font: inherit;
+  font-size: clamp(8px, min(1.7cqw, 3cqh), 14px);
+  padding: 0.5em 0.7em;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  border: 2px solid currentColor;
+}
+
+.ph-fx { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+
+/* ---------- animations du logo (choisies par la cartouche) ---------- */
+@keyframes ph-drop { 0% { transform: translateY(-2em); opacity: 0; } 60% { transform: translateY(0.12em); opacity: 1; } 100% { transform: none; opacity: 1; } }
+@keyframes ph-zoom { 0% { transform: scale(3.2); opacity: 0; } 70% { transform: scale(0.9); opacity: 1; } 100% { transform: none; opacity: 1; } }
+@keyframes ph-wave { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-0.14em); } }
+@keyframes ph-type { 0%, 99% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes ph-glitch {
+  0%, 12%, 100% { transform: none; clip-path: none; }
+  2% { transform: translate(-0.06em, 0.02em); clip-path: inset(10% 0 55% 0); }
+  4% { transform: translate(0.08em, -0.02em); clip-path: inset(60% 0 8% 0); }
+  6% { transform: translate(-0.03em, 0); clip-path: inset(35% 0 35% 0); }
+  8% { transform: translate(0.05em, 0.02em); clip-path: none; }
+}
+@keyframes ph-blink { 50% { opacity: 0; } }
+@keyframes ph-shine { 0% { transform: translateX(-120%) skewX(-20deg); } 45%, 100% { transform: translateX(260%) skewX(-20deg); } }
+@keyframes ph-flicker { 0%, 100% { opacity: 1; } 47% { opacity: 0.94; } 50% { opacity: 0.86; } 53% { opacity: 0.97; } }
+@keyframes ph-float { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-0.08em) rotate(-3deg); } }
+
+.anim-drop .ph-logo .l { animation-name: ph-drop; animation-duration: 0.75s; animation-timing-function: cubic-bezier(0.2, 1.5, 0.5, 1); }
+.anim-zoom .ph-logo .l { animation-name: ph-zoom; animation-duration: 0.6s; animation-timing-function: ease-out; }
+.anim-wave .ph-logo .l { animation: ph-wave 1.6s ease-in-out infinite; animation-delay: calc(var(--i) * 90ms); }
+.anim-glitch .ph-logo { animation: ph-glitch 4s steps(1) infinite 0.4s; }
+
+.ph-logo.shine::after {
+  content: "";
+  position: absolute;
+  top: -10%;
+  bottom: -10%;
+  left: 0;
+  width: 18%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
+  mix-blend-mode: overlay;
+  animation: ph-shine 4.5s ease-in-out infinite 1.2s;
+  pointer-events: none;
+}
+
+/* ============================================================
+   1. ARCADE : borne, lettres multicolores en relief
+   ============================================================ */
+.skin-arcade { font-family: "Press Start 2P", monospace; }
+.skin-arcade .ph-logo .l { color: var(--lc); text-shadow: 0.06em 0.06em 0 #000, 0.11em 0.11em 0 rgba(0, 0, 0, 0.45); }
+.skin-arcade .ph-tagline { color: #fff; text-shadow: 2px 2px 0 #000; }
+.skin-arcade .ph-prompt { color: #ffe04a; text-shadow: 2px 2px 0 #000; animation: ph-blink 1s steps(1) infinite; }
+.skin-arcade .ph-fx { background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.55) 100%), repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0 2px, transparent 2px 4px); }
+
+/* ============================================================
+   2. FAMICOM : boîte de jeu des années 80, bandeau rouge et crème
+   ============================================================ */
+.skin-famicom { font-family: "Silkscreen", "Press Start 2P", monospace; }
+.skin-famicom .ph-overlay { justify-content: space-between; }
+.skin-famicom .ph-logo {
+  font-weight: 700;
+  font-size: clamp(16px, min(8cqw, 14cqh), 88px);
+  color: #fff;
+  background: #d8201c;
+  padding: 0.12em 0.45em 0.18em;
+  transform: skewX(-10deg);
+  border-top: 0.09em solid #f6edd2;
+  border-bottom: 0.09em solid #f6edd2;
+  box-shadow: 0 0 0 0.05em #000, 0.12em 0.14em 0 #000;
+  text-shadow: 0.05em 0.05em 0 #000, -0.02em -0.02em 0 #000, 0.02em -0.02em 0 #000, -0.02em 0.02em 0 #000;
+}
+.skin-famicom .ph-tagline {
+  background: #f6edd2;
+  color: #1a1a1a;
+  padding: 0.35em 0.9em;
+  transform: skewX(-10deg);
+  box-shadow: 0.2em 0.2em 0 #000;
+  font-weight: 700;
+}
+.skin-famicom .ph-prompt { background: #fff; color: #000; border: 3px solid #000; border-radius: 999px; box-shadow: 0 4px 0 #000; font-weight: 700; animation: ph-blink 1.2s steps(1) infinite; }
+.skin-famicom .ph-fx { background: linear-gradient(180deg, transparent 0 82%, rgba(0, 0, 0, 0.35) 100%); }
+.skin-famicom .ph-badge {
+  position: absolute;
+  top: 2.4cqh;
+  left: 2.4cqw;
+  z-index: 3;
+  font-family: "Silkscreen", monospace;
+  font-weight: 700;
+  font-size: clamp(8px, min(1.8cqw, 3.2cqh), 15px);
+  background: #000;
+  color: #f6edd2;
+  padding: 0.4em 0.7em;
+  border: 2px solid #f6edd2;
+  transform: rotate(-3deg);
+}
+
+/* ============================================================
+   3. GAME BOY : quatre verts, écran à cadre
+   ============================================================ */
+.skin-gameboy { font-family: "Press Start 2P", monospace; background: #9bbc0f; }
+.skin-gameboy .ph-fx { box-shadow: inset 0 0 0 0.9cqw #306230, inset 0 0 0 1.6cqw #0f380f; }
+.skin-gameboy .ph-logo {
+  color: #0f380f;
+  background: #9bbc0f;
+  padding: 0.35em 0.55em;
+  border: 0.12em solid #0f380f;
+  box-shadow: 0 0 0 0.08em #8bac0f, 0 0 0 0.16em #0f380f;
+  font-size: clamp(12px, min(6.8cqw, 13cqh), 72px);
+}
+.skin-gameboy .ph-tagline { color: #0f380f; background: #8bac0f; padding: 0.3em 0.8em; border: 2px solid #0f380f; }
+.skin-gameboy .ph-prompt { color: #0f380f; background: #9bbc0f; border: 3px solid #0f380f; animation: ph-blink 1s steps(1) infinite; }
+.skin-gameboy .ph-lang { background: #0f380f; color: #9bbc0f; }
+
+/* ============================================================
+   4. TERMINAL : phosphore vert, frappe au clavier
+   ============================================================ */
+.skin-terminal { font-family: "VT323", monospace; background: #020a04; }
+.skin-terminal .ph-overlay { align-items: flex-start; text-align: left; padding-left: 7cqw; }
+.skin-terminal .ph-head { align-items: flex-start; }
+.skin-terminal .ph-logo {
+  font-size: clamp(22px, min(13cqw, 24cqh), 150px);
+  color: #b4ffc4;
+  text-shadow: 0 0 0.08em #33d65a, 0 0 0.3em #1a8a34;
+  letter-spacing: 0.02em;
+  background: rgba(2, 10, 4, 0.72);
+  padding: 0 0.2em;
+}
+.skin-terminal .ph-logo::before { content: "> "; color: #33d65a; }
+.skin-terminal .ph-logo .l { animation: ph-type 0.01s both; animation-delay: calc(var(--i) * 110ms + 0.3s); }
+.skin-terminal .ph-logo .cursor { display: inline-block; width: 0.5em; height: 0.8em; background: #9effb0; margin-left: 0.08em; vertical-align: -0.05em; animation: ph-blink 1s steps(1) infinite; }
+.skin-terminal .ph-tagline { color: #33d65a; font-size: clamp(12px, min(3.6cqw, 6cqh), 34px); background: rgba(2, 10, 4, 0.72); padding: 0 0.3em; }
+.skin-terminal .ph-tagline::before { content: "// "; opacity: 0.6; }
+.skin-terminal .ph-prompt { color: #9effb0; font-size: clamp(12px, min(3.2cqw, 5.4cqh), 30px); padding-left: 0; background: rgba(2, 10, 4, 0.72); animation: ph-blink 1.1s steps(1) infinite; }
+.skin-terminal .ph-fx { background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.7) 100%), repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.32) 0 1px, transparent 1px 3px); animation: ph-flicker 3s infinite; }
+.skin-terminal .ph-lang { background: #020a04; color: #33d65a; }
+
+/* ============================================================
+   5. SYNTH : néon chromé, années 80 futuristes
+   ============================================================ */
+.skin-synth { font-family: "Sixtyfour", "Press Start 2P", monospace; }
+.skin-synth .ph-logo { font-size: clamp(14px, min(7cqw, 13cqh), 84px); transform: skewX(-8deg); filter: drop-shadow(0 0 0.12em #ff3cd0) drop-shadow(0.05em 0.06em 0 #2a0a4a); }
+.skin-synth .ph-logo .l {
+  color: transparent;
+  background: linear-gradient(180deg, #ffffff 0%, #b8f4ff 30%, #3a7ae0 48%, #ff5ad8 52%, #ffd0f4 78%, #ffffff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.skin-synth .ph-tagline { color: #ffd0f4; text-shadow: 0 0 6px #ff3cd0, 0 0 14px #ff3cd0; letter-spacing: 0.08em; }
+.skin-synth .ph-prompt { color: #9ff4ff; border: 2px solid #9ff4ff; box-shadow: 0 0 8px #3ad0ff, inset 0 0 8px #3ad0ff; text-shadow: 0 0 6px #3ad0ff; animation: ph-blink 1.4s steps(1) infinite; }
+.skin-synth .ph-fx { background: linear-gradient(180deg, rgba(40, 0, 60, 0.25), transparent 40%, rgba(255, 60, 208, 0.12) 75%, rgba(20, 0, 40, 0.4)); }
+
+/* ============================================================
+   6. CORPORATE : pixel sobre, carte blanche, ton formel
+   ============================================================ */
+.skin-corporate { font-family: "Pixelify Sans", "Press Start 2P", sans-serif; }
+.skin-corporate .ph-overlay { align-items: flex-start; justify-content: flex-end; text-align: left; padding: 6cqh 6cqw 9cqh; }
+.skin-corporate .ph-head {
+  align-items: flex-start;
+  gap: 1.4cqh;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 3.4cqh 3.6cqw 3.6cqh;
+  border-left: 1.1cqw solid var(--accent);
+  box-shadow: 0.6cqw 0.6cqw 0 rgba(10, 20, 40, 0.35);
+  max-width: min(92%, 70cqw);
+}
+.skin-corporate .ph-logo { color: #14213d; font-size: clamp(14px, min(6.6cqw, 12cqh), 72px); letter-spacing: 0.01em; }
+.skin-corporate .ph-tagline { color: #4a5568; }
+.skin-corporate .ph-prompt { margin-top: 2.6cqh; background: var(--accent); color: #fff; border-radius: 4px; box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35); }
+.skin-corporate .ph-lang { background: #fff; color: #14213d; border-color: #14213d; }
+
+/* ============================================================
+   7. COMIC : bande dessinée, contour épais, trame de points
+   ============================================================ */
+.skin-comic { font-family: "Jersey 10", "Press Start 2P", sans-serif; }
+.skin-comic .ph-logo {
+  font-size: clamp(22px, min(14cqw, 25cqh), 170px);
+  color: #ffd800;
+  -webkit-text-stroke: 0.045em #000;
+  paint-order: stroke fill;
+  text-shadow: 0.07em 0.07em 0 #000;
+  letter-spacing: 0.02em;
+  animation: ph-float 3s ease-in-out infinite;
+}
+.skin-comic .ph-tagline { background: #fff; color: #000; border: 3px solid #000; padding: 0.3em 0.8em; box-shadow: 4px 4px 0 #000; font-size: clamp(12px, min(3.4cqw, 5.8cqh), 34px); transform: rotate(1.5deg); }
+.skin-comic .ph-prompt {
+  position: relative;
+  background: #fff;
+  color: #e0201c;
+  border: 3px solid #000;
+  border-radius: 1.2em;
+  box-shadow: 4px 4px 0 #000;
+  font-size: clamp(12px, min(3.4cqw, 5.8cqh), 34px);
+  animation: ph-wave 1.2s ease-in-out infinite;
+}
+.skin-comic .ph-fx { background-image: radial-gradient(rgba(0, 0, 0, 0.22) 22%, transparent 24%); background-size: 6px 6px; mix-blend-mode: multiply; }

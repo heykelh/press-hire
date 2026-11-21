@@ -40,6 +40,7 @@
     ]
   },
   "design": {
+    "skin": "famicom",
     "title": { "fr": "FUEL FIGHTER", "en": "FUEL FIGHTER" },
     "tagline": { "fr": "Chaque kilo compte.", "en": "Every kilo counts." },
     "palette": {

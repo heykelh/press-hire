@@ -9,7 +9,8 @@ Chaque jeu est une **cartouche** : un fichier JSON qui décrit tout le jeu en do
 | Phase | Contenu | État |
 | --- | --- | --- |
 | 0 · Socle | Monorepo, format de cartouche v0.2, contrôles, app qui lit Neon, scripts | ✅ ce dépôt |
-| 1 · Moteur | Écran titre animé, mécaniques `wheel` / `slider` / `triage`, juice, audio, écran de fin | à faire |
+| 1a · Écran titre | 7 décors pixel animés, 7 habillages, météo, heures du jour, galerie `/gallery` | ✅ |
+| 1b · Niveaux | Mécaniques `wheel` / `slider` / `triage` / `quiz`, juice, audio, écran de fin | à faire |
 | 2 · Publier | Image d'aperçu, `/api/track`, notifications ntfy, `/studio` | à faire |
 | 3 · Agent | Graphe LangGraph.js sur GitHub Actions : offre → cartouche → URL | à faire |
 
@@ -17,7 +18,8 @@ Chaque jeu est une **cartouche** : un fichier JSON qui décrit tout le jeu en do
 
 ```
 press-hire/
-  apps/web/                 Next.js : route /[slug], /api/health
+  apps/web/                 Next.js : route /[slug], /gallery, /api/health
+  packages/engine/          moteur pixel : décors, acteurs, météo, habillages
   packages/cartridge/       format de cartouche (Zod), règles de contrôle, slugs, tests
   fixtures/cartridges/      cartouches de démo (air-france-fuel-demo.json)
   config/candidate.json     ton profil : nom, liens, preuves (à remplir une fois)
@@ -84,6 +86,22 @@ La publication refuse toute cartouche qui contient encore un emplacement `<...>`
 ```powershell
 pnpm publish:cartridge fixtures\cartridges\air-france-fuel-demo.json --slug af-demo-test --force
 ```
+
+## Écrans titre
+
+Chaque cartouche choisit un décor (`titleScreen.scene`), une heure, une météo, 2 à 5 éléments animés et un **habillage** (`design.skin`) :
+
+| Habillage | Rendu | Pour |
+| --- | --- | --- |
+| `arcade` | lettres multicolores en relief, vignettage CRT | grand public, retail |
+| `famicom` | bandeau rouge et crème façon boîte de jeu 80's | transport, industrie, énergie |
+| `gameboy` | 4 verts, toute l'image filtrée | startups, produit, mobile |
+| `terminal` | phosphore vert, titre tapé au clavier | finance, cybersécurité, infra |
+| `synth` | chrome et néon rose | IA, cloud, innovation |
+| `corporate` | carte blanche sobre, bouton plein | banque, assurance, santé, public |
+| `comic` | contour épais, trame de points, bulles | logistique, agences |
+
+Galerie des 8 exemples : `/gallery`.
 
 ## Contrôles d'une cartouche
 

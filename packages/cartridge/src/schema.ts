@@ -308,6 +308,8 @@ export const Cartridge = z.object({
       .default([]),
   }),
   design: z.object({
+    /** habillage complet (police, logo, cadres, filtre d'image) : chaque jeu doit avoir sa propre identité */
+    skin: z.enum(["arcade", "famicom", "gameboy", "terminal", "synth", "corporate", "comic"]).default("arcade"),
     title: I18n,
     tagline: I18n,
     palette: z.object({
