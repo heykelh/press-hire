@@ -6,3 +6,6 @@ export * from "./title/palettes";
 export type { ActorCfg, SceneCtx, SceneDef, Weather } from "./title/context";
 export { SCENES } from "./title/scenes";
 export * from "./skins";
+export * from "./game/wheel";
+export * from "./game/audio";
+export * from "./game/score";

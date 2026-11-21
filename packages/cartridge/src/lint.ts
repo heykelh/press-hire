@@ -4,6 +4,7 @@
  * Le mode strict (publication) ajoute les règles « prêt à envoyer ».
  */
 import type { Cartridge, Effect, I18n, Mechanic } from "./schema";
+import { simulateBestRun } from "./rules";
 
 export type Severity = "error" | "warning";
 export interface Issue {
@@ -36,6 +37,8 @@ function mechanicEffects(m: Mechanic): Array<{ path: string; e: Effect }> {
     m.onCorrect.forEach((e, j) => out.push({ path: `onCorrect[${j}]`, e }));
     m.onWrong.forEach((e, j) => out.push({ path: `onWrong[${j}]`, e }));
   }
+  if (m.type === "dialogue")
+    m.nodes.forEach((n, i) => n.choices.forEach((ch, k) => ch.effects.forEach((e, j) => out.push({ path: `nodes[${i}].choices[${k}].effects[${j}]`, e }))));
   return out;
 }
 
@@ -86,6 +89,8 @@ export function lintCartridge(c: Cartridge, opts: { strict?: boolean } = {}): Is
     const p = `levels[${i}]`;
     if (!reqIds.has(l.requirementId)) add("level-requirement", "error", `${p}.requirementId`, `exigence inconnue : ${l.requirementId}`);
     if (l.characterId && !charIds.has(l.characterId)) add("character-ref", "error", `${p}.characterId`, `personnage inconnu : ${l.characterId}`);
+    if (l.mechanic.type === "dialogue" && l.mechanic.characterId && !charIds.has(l.mechanic.characterId))
+      add("character-ref", "error", `${p}.mechanic.characterId`, `personnage inconnu : ${l.mechanic.characterId}`);
     for (const t of texts(l.intro))
       if (t.length > MAX_INTRO) add("intro-length", "error", `${p}.intro`, `intro trop longue (${t.length} > ${MAX_INTRO} caractères)`);
     l.win.forEach((w, j) => checkVar(w.var, `${p}.win[${j}]`));
@@ -155,6 +160,18 @@ export function lintCartridge(c: Cartridge, opts: { strict?: boolean } = {}): Is
   if (c.analysis.tone.formality === 5 && c.analysis.tone.humorLevel > 1)
     add("tone", "warning", "analysis.tone", "entreprise très formelle : humour 0 ou 1 recommandé");
 
+  /* équilibrage : chaque niveau doit être gagnable, et pas gagné d'avance */
+  if (!issues.some((i) => i.severity === "error"))
+    for (const r of simulateBestRun(c)) {
+      const i = c.levels.findIndex((l) => l.id === r.levelId);
+      if (!r.winnable) add("balance-unwinnable", "error", `levels[${i}]`, `${r.levelId} : impossible à gagner, même en jouant parfaitement`);
+      else if (r.wonAtStart) add("balance-trivial", "error", `levels[${i}]`, `${r.levelId} : déjà gagné avant de jouer (utiliser une variable propre au niveau ou scope "level")`);
+      else if (r.winRate !== undefined && r.winRate < 0.3)
+        add("balance-luck", "warning", `levels[${i}]`, `${r.levelId} : roue trop punitive, un joueur moyen gagne ${Math.round(r.winRate * 100)} % du temps (viser 30 à 80 %)`);
+      else if (r.winRate !== undefined && r.winRate > 0.95)
+        add("balance-luck", "warning", `levels[${i}]`, `${r.levelId} : roue sans enjeu, un joueur moyen gagne ${Math.round(r.winRate * 100)} % du temps`);
+    }
+
   /* emplacements non remplis */
   const strings: Array<{ path: string; s: string }> = [];
   walkStrings(c, "", strings);
@@ -198,6 +215,8 @@ function checkMechanic(
         add("triage-balance", "error", `${p}.items`, "il faut au moins un élément à accepter et un à rejeter");
       break;
     }
+    case "dialogue":
+      break;
     case "quiz": {
       m.questions.forEach((q, i) => {
         if (q.correctIndex >= q.options.length)

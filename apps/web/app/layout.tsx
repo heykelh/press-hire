@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./title.css";
+import "./game.css";
 
 export const metadata: Metadata = {
   title: "PRESS HIRE",

@@ -55,6 +55,8 @@ export const Condition = z.object({
   var: Id,
   op: z.enum([">=", "<=", ">", "<", "=="]),
   value: z.number(),
+  /** total : valeur de la variable ; level : variation pendant le niveau en cours */
+  scope: z.enum(["total", "level"]).default("total"),
 });
 export type Condition = z.infer<typeof Condition>;
 
@@ -138,11 +140,30 @@ export const QuizMechanic = z.object({
   onWrong: z.array(Effect).default([]),
 });
 
+/** Échange avec un personnage : à chaque réplique, le joueur choisit sa réponse. */
+export const DialogueMechanic = z.object({
+  type: z.literal("dialogue"),
+  characterId: Id.optional(),
+  nodes: z
+    .array(
+      z.object({
+        text: I18n, // ce que dit le personnage
+        choices: z
+          .array(z.object({ text: I18n, reply: I18n, effects: z.array(Effect).default([]) }))
+          .min(2)
+          .max(3),
+      }),
+    )
+    .min(1)
+    .max(6),
+});
+
 export const Mechanic = z.discriminatedUnion("type", [
   WheelMechanic,
   SliderMechanic,
   TriageMechanic,
   QuizMechanic,
+  DialogueMechanic,
 ]);
 export type Mechanic = z.infer<typeof Mechanic>;
 export type MechanicType = Mechanic["type"];
@@ -223,6 +244,7 @@ export const Character = z.object({
   palette: z.object({ hair: Hex, skin: Hex, body: Hex, accent: Hex }),
   lines: z.array(I18n).default([]),
 });
+export type Character = z.infer<typeof Character>;
 
 export const GameEvent = z.object({
   id: Id,
@@ -258,6 +280,7 @@ export const Boss = z.object({
   taunts: z.array(I18n).min(1).max(6),
   defeatLine: I18n,
 });
+export type Boss = z.infer<typeof Boss>;
 
 /* ---------- cartouche ---------- */
 

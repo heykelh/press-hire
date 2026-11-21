@@ -1,196 +1,1091 @@
 {
-  "meta": { "id": "test-data-scientist-genai", "schemaVersion": "0.2", "createdAt": "2026-11-21T18:00:00Z", "languages": ["fr", "en"], "defaultLang": "fr" },
+  "meta": {
+    "id": "test-data-scientist-genai",
+    "schemaVersion": "0.2",
+    "createdAt": "2026-11-21T18:00:00Z",
+    "languages": [
+      "fr",
+      "en"
+    ],
+    "defaultLang": "fr"
+  },
   "target": {
-    "company": { "name": "Gnomon Digital", "sector": "ESN spécialisée IA" },
-    "job": { "title": "Data Scientist F/H", "url": "https://www.apec.fr/candidat/recherche-emploi.html/emploi/detail-offre/179849846W", "location": "Paris 1er", "contract": "CDI" },
-    "sourcesConsulted": [{ "label": "Offre APEC 179849846W", "url": "https://www.apec.fr/candidat/recherche-emploi.html/emploi/detail-offre/179849846W", "usedFor": "analysis" }]
+    "company": {
+      "name": "Gnomon Digital",
+      "sector": "ESN spécialisée IA"
+    },
+    "job": {
+      "title": "Data Scientist F/H",
+      "url": "https://www.apec.fr/candidat/recherche-emploi.html/emploi/detail-offre/179849846W",
+      "location": "Paris 1er",
+      "contract": "CDI"
+    },
+    "sourcesConsulted": [
+      {
+        "label": "Offre APEC 179849846W",
+        "url": "https://www.apec.fr/candidat/recherche-emploi.html/emploi/detail-offre/179849846W",
+        "usedFor": "analysis"
+      }
+    ]
   },
   "analysis": {
     "requirements": [
-      { "id": "req_eval", "label": { "fr": "Évaluer biais et hallucinations", "en": "Evaluating bias and hallucinations" }, "kind": "hard", "priority": "must", "offerQuote": "métriques, biais, hallucinations, robustesse" },
-      { "id": "req_ml", "label": { "fr": "Machine learning, deep learning, LLM", "en": "Machine learning, deep learning, LLMs" }, "kind": "hard", "priority": "must", "offerQuote": "Concevoir et entraîner des modèles de machine learning, deep learning ou LLM" },
-      { "id": "req_mlops", "label": { "fr": "MLOps sur Azure", "en": "MLOps on Azure" }, "kind": "hard", "priority": "must", "offerQuote": "MLOps sur Azure : Azure ML, MLflow, CI/CD, GitHub Actions, Azure DevOps" },
-      { "id": "req_scope", "label": { "fr": "Cadrage des cas d'usage", "en": "Use case scoping" }, "kind": "soft", "priority": "must", "offerQuote": "Cadrer les cas d'usage avec les métiers" },
-      { "id": "req_python", "label": { "fr": "Python et SQL", "en": "Python and SQL" }, "kind": "hard", "priority": "must", "offerQuote": "Python (pandas, scikit-learn, PyTorch, LangChain) et SQL" }
+      {
+        "id": "req_eval",
+        "label": {
+          "fr": "Évaluer biais et hallucinations",
+          "en": "Evaluating bias and hallucinations"
+        },
+        "kind": "hard",
+        "priority": "must",
+        "offerQuote": "métriques, biais, hallucinations, robustesse"
+      },
+      {
+        "id": "req_ml",
+        "label": {
+          "fr": "Machine learning, deep learning, LLM",
+          "en": "Machine learning, deep learning, LLMs"
+        },
+        "kind": "hard",
+        "priority": "must",
+        "offerQuote": "Concevoir et entraîner des modèles de machine learning, deep learning ou LLM"
+      },
+      {
+        "id": "req_mlops",
+        "label": {
+          "fr": "MLOps sur Azure",
+          "en": "MLOps on Azure"
+        },
+        "kind": "hard",
+        "priority": "must",
+        "offerQuote": "MLOps sur Azure : Azure ML, MLflow, CI/CD, GitHub Actions, Azure DevOps"
+      },
+      {
+        "id": "req_scope",
+        "label": {
+          "fr": "Cadrage des cas d'usage",
+          "en": "Use case scoping"
+        },
+        "kind": "soft",
+        "priority": "must",
+        "offerQuote": "Cadrer les cas d'usage avec les métiers"
+      },
+      {
+        "id": "req_python",
+        "label": {
+          "fr": "Python et SQL",
+          "en": "Python and SQL"
+        },
+        "kind": "hard",
+        "priority": "must",
+        "offerQuote": "Python (pandas, scikit-learn, PyTorch, LangChain) et SQL"
+      }
     ],
     "painPoints": [
-      { "id": "pp_quality", "label": { "fr": "Maîtriser la qualité des réponses de l'IA dans le temps", "en": "Keeping AI answer quality under control over time" }, "source": "offer" }
+      {
+        "id": "pp_quality",
+        "label": {
+          "fr": "Maîtriser la qualité des réponses de l'IA dans le temps",
+          "en": "Keeping AI answer quality under control over time"
+        },
+        "source": "offer"
+      }
     ],
-    "tone": { "formality": 2, "humorLevel": 2, "retroNes": true, "rationale": "ESN spécialisée IA, équipe d'AI Lab : ton tech et complice, humour sur les hallucinations et les notebooks, jamais sur l'ESN ou son client." }
+    "tone": {
+      "formality": 2,
+      "humorLevel": 2,
+      "retroNes": true,
+      "rationale": "ESN spécialisée IA, équipe d'AI Lab : ton tech et complice, humour sur les hallucinations et les notebooks, jamais sur l'ESN ou son client."
+    }
   },
   "candidate": {
     "name": "<NOM>",
-    "headline": { "fr": "Data Scientist", "en": "Data Scientist" },
-    "links": { "cv": "<URL_CV>", "portfolio": "https://heykelhachiche.com", "email": "<EMAIL>" },
+    "headline": {
+      "fr": "Data Scientist",
+      "en": "Data Scientist"
+    },
+    "links": {
+      "cv": "<URL_CV>",
+      "portfolio": "https://heykelhachiche.com",
+      "email": "<EMAIL>"
+    },
     "proofs": [
-      { "id": "proof_palier", "label": "PALIER", "url": "https://palier-sncf.vercel.app", "requirementIds": ["req_python"] },
-      { "id": "proof_portfolio", "label": "Portfolio", "url": "https://heykelhachiche.com", "requirementIds": ["req_ml"] }
+      {
+        "id": "proof_palier",
+        "label": "PALIER",
+        "url": "https://palier-sncf.vercel.app",
+        "requirementIds": [
+          "req_python"
+        ]
+      },
+      {
+        "id": "proof_portfolio",
+        "label": "Portfolio",
+        "url": "https://heykelhachiche.com",
+        "requirementIds": [
+          "req_ml"
+        ]
+      }
     ]
   },
   "design": {
     "skin": "synth",
-    "title": { "fr": "HALLU HUNTER", "en": "HALLU HUNTER" },
-    "tagline": { "fr": "Les réponses fausses ont l'air si sûres d'elles.", "en": "Wrong answers always sound so sure." },
-    "palette": { "bg": "#08001a", "panel": "#140a2a", "ink": "#ffffff", "accent": "#3ad0ff", "colors": ["#3ad0ff", "#ff5ad8", "#3ad46a"] },
-    "music": { "preset": "tense", "bpm": 140 },
+    "title": {
+      "fr": "HALLU HUNTER",
+      "en": "HALLU HUNTER"
+    },
+    "tagline": {
+      "fr": "Les réponses fausses ont l'air si sûres d'elles.",
+      "en": "Wrong answers always sound so sure."
+    },
+    "palette": {
+      "bg": "#08001a",
+      "panel": "#140a2a",
+      "ink": "#ffffff",
+      "accent": "#3ad0ff",
+      "colors": [
+        "#3ad0ff",
+        "#ff5ad8",
+        "#3ad46a"
+      ]
+    },
+    "music": {
+      "preset": "tense",
+      "bpm": 140
+    },
     "juice": 2,
     "targetMinutes": 6
   },
   "titleScreen": {
-    "scene": "lab", "time": "night", "weather": "clear",
-    "actors": [{ "type": "drone", "speed": 0.6, "lane": 1 }, { "type": "server_lights", "speed": 1, "lane": 1 }],
-    "logo": { "animation": "glitch", "shine": true }
+    "scene": "lab",
+    "time": "night",
+    "weather": "clear",
+    "actors": [
+      {
+        "type": "drone",
+        "speed": 0.6,
+        "lane": 1
+      },
+      {
+        "type": "server_lights",
+        "speed": 1,
+        "lane": 1
+      }
+    ],
+    "logo": {
+      "animation": "glitch",
+      "shine": true
+    }
   },
   "state": {
     "vars": [
-      { "id": "quality", "label": { "fr": "Qualité des réponses", "en": "Answer quality" }, "start": 50, "min": 0, "max": 100, "unit": "%", "display": "bar" },
-      { "id": "precision", "label": { "fr": "Précision", "en": "Precision" }, "start": 40, "min": 0, "max": 100, "unit": "%", "display": "bar" },
-      { "id": "recall", "label": { "fr": "Rappel", "en": "Recall" }, "start": 40, "min": 0, "max": 100, "unit": "%", "display": "bar" },
-      { "id": "stability", "label": { "fr": "Stabilité en production", "en": "Production stability" }, "start": 70, "min": 0, "max": 100, "unit": "%", "display": "bar" }
+      {
+        "id": "quality",
+        "label": {
+          "fr": "Qualité des réponses",
+          "en": "Answer quality"
+        },
+        "start": 50,
+        "min": 0,
+        "max": 100,
+        "unit": "%",
+        "display": "bar"
+      },
+      {
+        "id": "precision",
+        "label": {
+          "fr": "Précision",
+          "en": "Precision"
+        },
+        "start": 40,
+        "min": 0,
+        "max": 100,
+        "unit": "%",
+        "display": "bar"
+      },
+      {
+        "id": "recall",
+        "label": {
+          "fr": "Rappel",
+          "en": "Recall"
+        },
+        "start": 40,
+        "min": 0,
+        "max": 100,
+        "unit": "%",
+        "display": "bar"
+      },
+      {
+        "id": "stability",
+        "label": {
+          "fr": "Stabilité en production",
+          "en": "Production stability"
+        },
+        "start": 70,
+        "min": 0,
+        "max": 100,
+        "unit": "%",
+        "display": "bar"
+      },
+      {
+        "id": "alignment",
+        "label": {
+          "fr": "Alignement avec le métier",
+          "en": "Business alignment"
+        },
+        "start": 0,
+        "min": 0,
+        "max": 30,
+        "display": "bar"
+      }
     ]
   },
   "characters": [
-    { "id": "lead", "name": "Sam", "role": { "fr": "Lead Data Scientist", "en": "Lead Data Scientist" },
-      "palette": { "hair": "#2a1a10", "skin": "#d8a880", "body": "#2a2a3a", "accent": "#3ad0ff" },
-      "lines": [{ "fr": "Ça marche sur ton notebook ? Super. Et en prod ?", "en": "Works on your notebook? Great. And in prod?" }] }
+    {
+      "id": "lead",
+      "name": "Sam",
+      "role": {
+        "fr": "Lead Data Scientist",
+        "en": "Lead Data Scientist"
+      },
+      "palette": {
+        "hair": "#2a1a10",
+        "skin": "#d8a880",
+        "body": "#2a2a3a",
+        "accent": "#3ad0ff"
+      },
+      "lines": [
+        {
+          "fr": "Ça marche sur ton notebook ? Super. Et en prod ?",
+          "en": "Works on your notebook? Great. And in prod?"
+        }
+      ]
+    },
+    {
+      "id": "client_dir",
+      "name": "Mme Ferrand",
+      "role": {
+        "fr": "Directrice de l'audit, côté client",
+        "en": "Head of audit, client side"
+      },
+      "palette": {
+        "hair": "#8a8a96",
+        "skin": "#f0c8a8",
+        "body": "#3a2a5a",
+        "accent": "#ff5ad8"
+      },
+      "lines": [
+        {
+          "fr": "Je veux une IA qui fait tout.",
+          "en": "I want an AI that does everything."
+        }
+      ]
+    }
   ],
   "events": [
-    { "id": "ev_drift", "text": { "fr": "Les documents ont changé de format en silence. Qualité −6.", "en": "Documents silently changed format. Quality −6." }, "effects": [{ "var": "quality", "op": "add", "value": -6 }] }
+    {
+      "id": "ev_drift",
+      "text": {
+        "fr": "Les documents ont changé de format en silence. Qualité −6.",
+        "en": "Documents silently changed format. Quality −6."
+      },
+      "effects": [
+        {
+          "var": "quality",
+          "op": "add",
+          "value": -6
+        }
+      ]
+    }
   ],
   "data": [],
   "levels": [
     {
-      "id": "lvl_hallu", "order": 1, "requirementId": "req_eval",
-      "title": { "fr": "Vrai ou halluciné ?", "en": "True or hallucinated?" },
-      "intro": { "fr": "L'IA a lu le contrat. Vérifie ce qu'elle en dit.", "en": "The AI read the contract. Check what it says." },
+      "id": "lvl_hallu",
+      "order": 1,
+      "requirementId": "req_eval",
+      "title": {
+        "fr": "Vrai ou halluciné ?",
+        "en": "True or hallucinated?"
+      },
+      "intro": {
+        "fr": "L'IA a lu le contrat. Vérifie ce qu'elle en dit.",
+        "en": "The AI read the contract. Check what it says."
+      },
       "mechanic": {
         "type": "triage",
-        "rule": { "fr": "Contrat : 3 audits par an, paiement à 45 jours, résiliation avec 3 mois de préavis. Accepte les réponses fidèles, rejette les hallucinations.", "en": "Contract: 3 audits a year, payment within 45 days, termination with 3 months' notice. Accept faithful answers, reject hallucinations." },
+        "rule": {
+          "fr": "Contrat : 3 audits par an, paiement à 45 jours, résiliation avec 3 mois de préavis. Accepte les réponses fidèles, rejette les hallucinations.",
+          "en": "Contract: 3 audits a year, payment within 45 days, termination with 3 months' notice. Accept faithful answers, reject hallucinations."
+        },
         "items": [
-          { "id": "a1", "label": { "fr": "« Il y a 3 audits par an. »", "en": "'There are 3 audits a year.'" }, "correct": "accept", "why": { "fr": "Conforme au contrat.", "en": "Matches the contract." } },
-          { "id": "a2", "label": { "fr": "« Le paiement est à 60 jours. »", "en": "'Payment is due in 60 days.'" }, "correct": "reject", "why": { "fr": "Le contrat dit 45 jours.", "en": "The contract says 45 days." } },
-          { "id": "a3", "label": { "fr": "« Le préavis est de 3 mois. »", "en": "'Notice is 3 months.'" }, "correct": "accept", "why": { "fr": "Conforme.", "en": "Correct." } },
-          { "id": "a4", "label": { "fr": "« 4 audits, dont 1 surprise. »", "en": "'4 audits, 1 of them unannounced.'" }, "correct": "reject", "why": { "fr": "Inventé de toutes pièces.", "en": "Made up entirely." } },
-          { "id": "a5", "label": { "fr": "« Selon l'article 12, pénalités de 5 %. »", "en": "'Per article 12, 5% penalties.'" }, "correct": "reject", "why": { "fr": "Source inventée : la pire hallucination, car elle a l'air vérifiable.", "en": "Invented source: the worst kind, because it looks checkable." } },
-          { "id": "a6", "label": { "fr": "« Paiement sous 45 jours. »", "en": "'Payment within 45 days.'" }, "correct": "accept", "why": { "fr": "Conforme.", "en": "Correct." } },
-          { "id": "a7", "label": { "fr": "« Le montant n'est pas précisé. »", "en": "'The amount isn't specified.'" }, "correct": "accept", "why": { "fr": "Bonne abstention : l'IA dit ce qu'elle ne sait pas.", "en": "Good abstention: the AI says what it doesn't know." } },
-          { "id": "a8", "label": { "fr": "« Signé par le PDG le 3 mars. »", "en": "'Signed by the CEO on 3 March.'" }, "correct": "reject", "why": { "fr": "Aucune signature dans le document.", "en": "No signature in the document." } }
+          {
+            "id": "a1",
+            "label": {
+              "fr": "« Il y a 3 audits par an. »",
+              "en": "'There are 3 audits a year.'"
+            },
+            "correct": "accept",
+            "why": {
+              "fr": "Conforme au contrat.",
+              "en": "Matches the contract."
+            }
+          },
+          {
+            "id": "a2",
+            "label": {
+              "fr": "« Le paiement est à 60 jours. »",
+              "en": "'Payment is due in 60 days.'"
+            },
+            "correct": "reject",
+            "why": {
+              "fr": "Le contrat dit 45 jours.",
+              "en": "The contract says 45 days."
+            }
+          },
+          {
+            "id": "a3",
+            "label": {
+              "fr": "« Le préavis est de 3 mois. »",
+              "en": "'Notice is 3 months.'"
+            },
+            "correct": "accept",
+            "why": {
+              "fr": "Conforme.",
+              "en": "Correct."
+            }
+          },
+          {
+            "id": "a4",
+            "label": {
+              "fr": "« 4 audits, dont 1 surprise. »",
+              "en": "'4 audits, 1 of them unannounced.'"
+            },
+            "correct": "reject",
+            "why": {
+              "fr": "Inventé de toutes pièces.",
+              "en": "Made up entirely."
+            }
+          },
+          {
+            "id": "a5",
+            "label": {
+              "fr": "« Selon l'article 12, pénalités de 5 %. »",
+              "en": "'Per article 12, 5% penalties.'"
+            },
+            "correct": "reject",
+            "why": {
+              "fr": "Source inventée : la pire hallucination, car elle a l'air vérifiable.",
+              "en": "Invented source: the worst kind, because it looks checkable."
+            }
+          },
+          {
+            "id": "a6",
+            "label": {
+              "fr": "« Paiement sous 45 jours. »",
+              "en": "'Payment within 45 days.'"
+            },
+            "correct": "accept",
+            "why": {
+              "fr": "Conforme.",
+              "en": "Correct."
+            }
+          },
+          {
+            "id": "a7",
+            "label": {
+              "fr": "« Le montant n'est pas précisé. »",
+              "en": "'The amount isn't specified.'"
+            },
+            "correct": "accept",
+            "why": {
+              "fr": "Bonne abstention : l'IA dit ce qu'elle ne sait pas.",
+              "en": "Good abstention: the AI says what it doesn't know."
+            }
+          },
+          {
+            "id": "a8",
+            "label": {
+              "fr": "« Signé par le PDG le 3 mars. »",
+              "en": "'Signed by the CEO on 3 March.'"
+            },
+            "correct": "reject",
+            "why": {
+              "fr": "Aucune signature dans le document.",
+              "en": "No signature in the document."
+            }
+          }
         ],
-        "onCorrect": [{ "var": "quality", "op": "add", "value": 8 }],
-        "onWrong": [{ "var": "quality", "op": "add", "value": -12 }],
+        "onCorrect": [
+          {
+            "var": "quality",
+            "op": "add",
+            "value": 8
+          }
+        ],
+        "onWrong": [
+          {
+            "var": "quality",
+            "op": "add",
+            "value": -12
+          }
+        ],
         "timeLimitSec": 75
       },
-      "win": [{ "var": "quality", "op": ">=", "value": 70 }],
-      "winLine": { "fr": "Zéro hallucination ne passe. L'audit peut dormir.", "en": "Not one hallucination got through. Audit can relax." },
-      "failJokes": [{ "fr": "Le modèle est sûr à 97 %. Il a tort à 100 %.", "en": "The model is 97% sure. And 100% wrong." }],
+      "win": [
+        {
+          "var": "quality",
+          "op": ">=",
+          "value": 70
+        }
+      ],
+      "winLine": {
+        "fr": "Zéro hallucination ne passe. L'audit peut dormir.",
+        "en": "Not one hallucination got through. Audit can relax."
+      },
+      "failJokes": [
+        {
+          "fr": "Le modèle est sûr à 97 %. Il a tort à 100 %.",
+          "en": "The model is 97% sure. And 100% wrong."
+        }
+      ],
       "hintAfterFails": 2,
-      "hint": { "fr": "Une réponse qui cite un article absent du contrat est inventée.", "en": "An answer citing an article not in the contract is made up." },
+      "hint": {
+        "fr": "Une réponse qui cite un article absent du contrat est inventée.",
+        "en": "An answer citing an article not in the contract is made up."
+      },
       "characterId": "lead"
     },
     {
-      "id": "lvl_threshold", "order": 2, "requirementId": "req_ml",
-      "title": { "fr": "Le seuil de décision", "en": "The decision threshold" },
-      "intro": { "fr": "Le classifieur trie les documents. Règle son seuil.", "en": "The classifier sorts documents. Set its threshold." },
+      "id": "lvl_threshold",
+      "order": 2,
+      "requirementId": "req_ml",
+      "title": {
+        "fr": "Le seuil de décision",
+        "en": "The decision threshold"
+      },
+      "intro": {
+        "fr": "Le classifieur trie les documents. Règle son seuil.",
+        "en": "The classifier sorts documents. Set its threshold."
+      },
       "mechanic": {
         "type": "slider",
-        "control": { "label": { "fr": "Seuil de confiance", "en": "Confidence threshold" }, "min": 0.1, "max": 0.9, "step": 0.05, "start": 0.2 },
+        "control": {
+          "label": {
+            "fr": "Seuil de confiance",
+            "en": "Confidence threshold"
+          },
+          "min": 0.1,
+          "max": 0.9,
+          "step": 0.05,
+          "start": 0.2
+        },
         "rounds": 1,
         "outputs": [
-          { "var": "precision", "curve": { "family": "linear", "a": 60, "b": 0 } },
-          { "var": "recall", "curve": { "family": "linear", "a": -60, "b": 55 } }
+          {
+            "var": "precision",
+            "curve": {
+              "family": "linear",
+              "a": 60,
+              "b": 0
+            }
+          },
+          {
+            "var": "recall",
+            "curve": {
+              "family": "linear",
+              "a": -60,
+              "b": 55
+            }
+          }
         ],
         "noise": 0
       },
-      "win": [{ "var": "precision", "op": ">=", "value": 75 }, { "var": "recall", "op": ">=", "value": 55 }],
-      "winLine": { "fr": "Assez précis pour le métier, assez large pour ne rien rater.", "en": "Precise enough for the business, broad enough to miss nothing." },
-      "failJokes": [{ "fr": "Précision 100 %. Il n'a classé qu'un seul document.", "en": "100% precision. It classified a single document." }],
+      "win": [
+        {
+          "var": "precision",
+          "op": ">=",
+          "value": 75
+        },
+        {
+          "var": "recall",
+          "op": ">=",
+          "value": 55
+        }
+      ],
+      "winLine": {
+        "fr": "Assez précis pour le métier, assez large pour ne rien rater.",
+        "en": "Precise enough for the business, broad enough to miss nothing."
+      },
+      "failJokes": [
+        {
+          "fr": "Précision 100 %. Il n'a classé qu'un seul document.",
+          "en": "100% precision. It classified a single document."
+        }
+      ],
       "hintAfterFails": 2,
-      "hint": { "fr": "Monter le seuil gagne en précision et perd en rappel.", "en": "Raising the threshold gains precision and loses recall." }
+      "hint": {
+        "fr": "Monter le seuil gagne en précision et perd en rappel.",
+        "en": "Raising the threshold gains precision and loses recall."
+      }
     },
     {
-      "id": "lvl_prod", "order": 3, "requirementId": "req_mlops",
-      "title": { "fr": "Mise en production", "en": "Going to production" },
-      "intro": { "fr": "Trois déploiements. Arrête la roue au bon moment.", "en": "Three deployments. Stop the wheel at the right time." },
+      "id": "lvl_prod",
+      "order": 3,
+      "requirementId": "req_mlops",
+      "title": {
+        "fr": "Mise en production",
+        "en": "Going to production"
+      },
+      "intro": {
+        "fr": "Trois déploiements. Arrête la roue au bon moment.",
+        "en": "Three deployments. Stop the wheel at the right time."
+      },
       "mechanic": {
-        "type": "wheel", "stop": "timing", "spins": 3,
+        "type": "wheel",
+        "stop": "timing",
+        "spins": 3,
         "segments": [
-          { "id": "s_ci", "code": "CI OK", "label": { "fr": "Pipeline CI au vert", "en": "CI pipeline green" }, "color": "#3ad46a", "weight": 2, "effects": [{ "var": "stability", "op": "add", "value": 6 }] },
-          { "id": "s_drift", "code": "DRIFT", "label": { "fr": "Dérive des données", "en": "Data drift" }, "color": "#ff5a5a", "weight": 1, "effects": [{ "var": "stability", "op": "add", "value": -8 }] },
-          { "id": "s_mlflow", "code": "MLFLW", "label": { "fr": "Modèle versionné dans MLflow", "en": "Model versioned in MLflow" }, "color": "#3ad0ff", "weight": 2, "effects": [{ "var": "stability", "op": "add", "value": 5 }] },
-          { "id": "s_latency", "code": "LAG", "label": { "fr": "La latence explose", "en": "Latency spikes" }, "color": "#e8a020", "weight": 1, "effects": [{ "var": "stability", "op": "add", "value": -6 }] },
-          { "id": "s_monitor", "code": "ALERT", "label": { "fr": "Le monitoring alerte à temps", "en": "Monitoring alerts in time" }, "color": "#ff5ad8", "weight": 2, "effects": [{ "var": "stability", "op": "add", "value": 7 }] },
-          { "id": "s_nb", "code": "NB", "label": { "fr": "« Ça marchait sur mon notebook »", "en": "'It worked on my notebook'" }, "color": "#6a6a8a", "weight": 1, "effects": [{ "var": "stability", "op": "add", "value": -5 }] },
-          { "id": "s_rollback", "code": "ROLLB", "label": { "fr": "Retour arrière propre", "en": "Clean rollback" }, "color": "#8a7aff", "weight": 1, "effects": [{ "var": "stability", "op": "add", "value": 4 }] }
+          {
+            "id": "s_ci",
+            "code": "CI OK",
+            "label": {
+              "fr": "Pipeline CI au vert",
+              "en": "CI pipeline green"
+            },
+            "color": "#3ad46a",
+            "weight": 2,
+            "effects": [
+              {
+                "var": "stability",
+                "op": "add",
+                "value": 6
+              }
+            ]
+          },
+          {
+            "id": "s_drift",
+            "code": "DRIFT",
+            "label": {
+              "fr": "Dérive des données",
+              "en": "Data drift"
+            },
+            "color": "#ff5a5a",
+            "weight": 1,
+            "effects": [
+              {
+                "var": "stability",
+                "op": "add",
+                "value": -8
+              }
+            ]
+          },
+          {
+            "id": "s_mlflow",
+            "code": "MLFLW",
+            "label": {
+              "fr": "Modèle versionné dans MLflow",
+              "en": "Model versioned in MLflow"
+            },
+            "color": "#3ad0ff",
+            "weight": 2,
+            "effects": [
+              {
+                "var": "stability",
+                "op": "add",
+                "value": 5
+              }
+            ]
+          },
+          {
+            "id": "s_latency",
+            "code": "LAG",
+            "label": {
+              "fr": "La latence explose",
+              "en": "Latency spikes"
+            },
+            "color": "#e8a020",
+            "weight": 1,
+            "effects": [
+              {
+                "var": "stability",
+                "op": "add",
+                "value": -6
+              }
+            ]
+          },
+          {
+            "id": "s_monitor",
+            "code": "ALERT",
+            "label": {
+              "fr": "Le monitoring alerte à temps",
+              "en": "Monitoring alerts in time"
+            },
+            "color": "#ff5ad8",
+            "weight": 2,
+            "effects": [
+              {
+                "var": "stability",
+                "op": "add",
+                "value": 7
+              }
+            ]
+          },
+          {
+            "id": "s_nb",
+            "code": "NB",
+            "label": {
+              "fr": "« Ça marchait sur mon notebook »",
+              "en": "'It worked on my notebook'"
+            },
+            "color": "#6a6a8a",
+            "weight": 1,
+            "effects": [
+              {
+                "var": "stability",
+                "op": "add",
+                "value": -5
+              }
+            ]
+          },
+          {
+            "id": "s_rollback",
+            "code": "ROLLB",
+            "label": {
+              "fr": "Retour arrière propre",
+              "en": "Clean rollback"
+            },
+            "color": "#8a7aff",
+            "weight": 1,
+            "effects": [
+              {
+                "var": "stability",
+                "op": "add",
+                "value": 4
+              }
+            ]
+          }
         ]
       },
-      "win": [{ "var": "stability", "op": ">=", "value": 80 }],
-      "winLine": { "fr": "En prod, monitoré, versionné. Le vendredi est sauvé.", "en": "In prod, monitored, versioned. Friday is saved." },
-      "failJokes": [{ "fr": "Déploiement réussi sur l'environnement de… démo.", "en": "Successfully deployed to the… demo environment." }],
+      "win": [
+        {
+          "var": "stability",
+          "op": ">=",
+          "value": 80
+        }
+      ],
+      "winLine": {
+        "fr": "En prod, monitoré, versionné. Le vendredi est sauvé.",
+        "en": "In prod, monitored, versioned. Friday is saved."
+      },
+      "failJokes": [
+        {
+          "fr": "Déploiement réussi sur l'environnement de… démo.",
+          "en": "Successfully deployed to the… demo environment."
+        }
+      ],
       "hintAfterFails": 2
     },
     {
-      "id": "lvl_scope", "order": 4, "requirementId": "req_scope",
-      "title": { "fr": "Le cadrage", "en": "Scoping" },
-      "intro": { "fr": "Le métier veut « une IA qui fait tout ». Trois questions.", "en": "The business wants 'an AI that does everything'. Three questions." },
-      "mechanic": {
-        "type": "quiz",
-        "questions": [
-          { "prompt": { "fr": "Avant d'entraîner quoi que ce soit, on fixe…", "en": "Before training anything, you set…" },
-            "options": [{ "fr": "un critère de succès mesurable avec le métier", "en": "a measurable success criterion with the business" }, { "fr": "le nom du modèle", "en": "the model's name" }, { "fr": "la date de la démo", "en": "the demo date" }],
-            "correctIndex": 0, "explain": { "fr": "Sans critère de succès, impossible de dire si ça marche.", "en": "Without a success criterion, you can't tell if it works." } },
-          { "prompt": { "fr": "« Une IA qui fait tout » :", "en": "'An AI that does everything':" },
-            "options": [{ "fr": "on découpe en cas d'usage et on priorise par valeur", "en": "split into use cases, prioritise by value" }, { "fr": "on dit oui et on verra", "en": "say yes and see" }, { "fr": "on achète un plus gros GPU", "en": "buy a bigger GPU" }],
-            "correctIndex": 0, "explain": { "fr": "Petit périmètre, valeur prouvée, puis on étend.", "en": "Small scope, proven value, then expand." } },
-          { "prompt": { "fr": "Pour savoir si un LLM répond bien dans le temps :", "en": "To know if an LLM keeps answering well over time:" },
-            "options": [{ "fr": "un jeu de questions de référence rejoué régulièrement", "en": "a reference question set replayed regularly" }, { "fr": "demander au LLM s'il va bien", "en": "ask the LLM how it feels" }, { "fr": "attendre les plaintes", "en": "wait for complaints" }],
-            "correctIndex": 0, "explain": { "fr": "C'est ce qui permet de maîtriser la qualité dans le temps.", "en": "That's how you keep quality under control over time." } }
-        ],
-        "onCorrect": [{ "var": "quality", "op": "add", "value": 6 }],
-        "onWrong": [{ "var": "quality", "op": "add", "value": -6 }]
+      "id": "lvl_scope",
+      "order": 4,
+      "requirementId": "req_scope",
+      "title": {
+        "fr": "Le cadrage",
+        "en": "Scoping"
       },
-      "win": [{ "var": "quality", "op": ">=", "value": 80 }],
-      "winLine": { "fr": "Un cas d'usage, un critère, une date. Le métier signe.", "en": "One use case, one criterion, one date. The business signs." },
-      "failJokes": [{ "fr": "Le périmètre comprend désormais la machine à café.", "en": "The scope now includes the coffee machine." }],
+      "intro": {
+        "fr": "La directrice de l'audit veut « une IA qui fait tout ».",
+        "en": "The head of audit wants 'an AI that does everything'."
+      },
+      "mechanic": {
+        "type": "dialogue",
+        "characterId": "client_dir",
+        "nodes": [
+          {
+            "text": {
+              "fr": "Je veux une IA qui lit tous nos rapports et qui répond à tout.",
+              "en": "I want an AI that reads all our reports and answers everything."
+            },
+            "choices": [
+              {
+                "text": {
+                  "fr": "Commençons par une question à forte valeur : laquelle vous coûte le plus de temps ?",
+                  "en": "Let's start with one high-value question: which one costs you the most time?"
+                },
+                "reply": {
+                  "fr": "La recherche des clauses à risque. Des heures par dossier.",
+                  "en": "Finding risky clauses. Hours per file."
+                },
+                "effects": [
+                  {
+                    "var": "alignment",
+                    "op": "add",
+                    "value": 8
+                  }
+                ]
+              },
+              {
+                "text": {
+                  "fr": "C'est faisable en deux semaines.",
+                  "en": "That's doable in two weeks."
+                },
+                "reply": {
+                  "fr": "Le dernier prestataire disait pareil.",
+                  "en": "The last vendor said the same."
+                },
+                "effects": [
+                  {
+                    "var": "alignment",
+                    "op": "add",
+                    "value": -4
+                  }
+                ]
+              },
+              {
+                "text": {
+                  "fr": "Il faut d'abord refaire tout le data lake.",
+                  "en": "We need to rebuild the whole data lake first."
+                },
+                "reply": {
+                  "fr": "On n'a pas deux ans devant nous.",
+                  "en": "We don't have two years."
+                },
+                "effects": [
+                  {
+                    "var": "alignment",
+                    "op": "add",
+                    "value": -3
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "text": {
+              "fr": "Comment saura-t-on que ça marche ?",
+              "en": "How will we know it works?"
+            },
+            "choices": [
+              {
+                "text": {
+                  "fr": "On fixe avec vos experts 50 questions de référence et un seuil de bonnes réponses.",
+                  "en": "We set 50 reference questions with your experts, and a pass threshold."
+                },
+                "reply": {
+                  "fr": "Mesurable. J'aime ça.",
+                  "en": "Measurable. I like that."
+                },
+                "effects": [
+                  {
+                    "var": "alignment",
+                    "op": "add",
+                    "value": 8
+                  }
+                ]
+              },
+              {
+                "text": {
+                  "fr": "On verra si les utilisateurs sont contents.",
+                  "en": "We'll see if users are happy."
+                },
+                "reply": {
+                  "fr": "Contents de quoi, exactement ?",
+                  "en": "Happy about what, exactly?"
+                },
+                "effects": [
+                  {
+                    "var": "alignment",
+                    "op": "add",
+                    "value": -2
+                  }
+                ]
+              },
+              {
+                "text": {
+                  "fr": "Le modèle fait 92 % sur un benchmark public.",
+                  "en": "The model scores 92% on a public benchmark."
+                },
+                "reply": {
+                  "fr": "Et sur nos dossiers à nous ?",
+                  "en": "And on our own files?"
+                },
+                "effects": [
+                  {
+                    "var": "alignment",
+                    "op": "add",
+                    "value": 1
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "text": {
+              "fr": "Et si l'IA se trompe devant un client ?",
+              "en": "And if the AI gets it wrong in front of a client?"
+            },
+            "choices": [
+              {
+                "text": {
+                  "fr": "Elle cite ses sources, s'abstient quand elle ne sait pas, et un auditeur valide avant envoi.",
+                  "en": "It cites sources, abstains when unsure, and an auditor validates before sending."
+                },
+                "reply": {
+                  "fr": "Là, je peux la montrer à mes équipes.",
+                  "en": "Now I can show it to my teams."
+                },
+                "effects": [
+                  {
+                    "var": "alignment",
+                    "op": "add",
+                    "value": 7
+                  }
+                ]
+              },
+              {
+                "text": {
+                  "fr": "Elle ne se trompe quasiment jamais.",
+                  "en": "It almost never gets it wrong."
+                },
+                "reply": {
+                  "fr": "C'est exactement ce qui me fait peur.",
+                  "en": "That's exactly what scares me."
+                },
+                "effects": [
+                  {
+                    "var": "alignment",
+                    "op": "add",
+                    "value": -4
+                  }
+                ]
+              },
+              {
+                "text": {
+                  "fr": "On ajoutera un avertissement en bas de page.",
+                  "en": "We'll add a disclaimer at the bottom."
+                },
+                "reply": {
+                  "fr": "Personne ne lit les bas de page.",
+                  "en": "Nobody reads footers."
+                },
+                "effects": [
+                  {
+                    "var": "alignment",
+                    "op": "add",
+                    "value": -1
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "win": [
+        {
+          "var": "alignment",
+          "op": ">=",
+          "value": 15
+        }
+      ],
+      "winLine": {
+        "fr": "Un cas d'usage, un critère, une date. Le métier signe.",
+        "en": "One use case, one criterion, one date. The business signs."
+      },
+      "failJokes": [
+        {
+          "fr": "Le périmètre comprend désormais la machine à café.",
+          "en": "The scope now includes the coffee machine."
+        }
+      ],
       "hintAfterFails": 2,
-      "characterId": "lead"
+      "characterId": "client_dir"
     }
   ],
   "boss": {
-    "name": { "fr": "LA SOURCE INVENTÉE", "en": "THE MADE-UP SOURCE" },
-    "painPointId": "pp_quality", "hp": 3,
+    "name": {
+      "fr": "LA SOURCE INVENTÉE",
+      "en": "THE MADE-UP SOURCE"
+    },
+    "painPointId": "pp_quality",
+    "hp": 3,
     "mechanic": {
       "type": "quiz",
       "questions": [
-        { "prompt": { "fr": "L'IA cite « l'article 47 », qui n'existe pas. C'est…", "en": "The AI cites 'article 47', which doesn't exist. That's…" },
-          "options": [{ "fr": "une hallucination", "en": "a hallucination" }, { "fr": "une mise à jour du contrat", "en": "a contract update" }, { "fr": "de la créativité", "en": "creativity" }],
-          "correctIndex": 0, "explain": { "fr": "Une réponse plausible mais fausse.", "en": "A plausible but false answer." } },
-        { "prompt": { "fr": "Pour la limiter, on peut…", "en": "To reduce it, you can…" },
-          "options": [{ "fr": "ancrer les réponses dans les documents et exiger des citations vérifiables", "en": "ground answers in documents and require checkable citations" }, { "fr": "monter la température", "en": "raise the temperature" }, { "fr": "écrire « ne mens pas » en majuscules", "en": "write 'DON'T LIE' in caps" }],
-          "correctIndex": 0, "explain": { "fr": "L'ancrage documentaire (RAG) plus la vérification des sources.", "en": "Document grounding (RAG) plus source checking." } },
-        { "prompt": { "fr": "Une hallucination repérée en prod, on…", "en": "A hallucination spotted in prod, you…" },
-          "options": [{ "fr": "l'ajoute au jeu de test pour qu'elle ne revienne pas", "en": "add it to the test set so it never returns" }, { "fr": "la supprime des logs", "en": "delete it from the logs" }, { "fr": "change de modèle au hasard", "en": "switch models at random" }],
-          "correctIndex": 0, "explain": { "fr": "Chaque erreur trouvée renforce l'évaluation.", "en": "Every error found strengthens the evaluation." } }
+        {
+          "prompt": {
+            "fr": "L'IA cite « l'article 47 », qui n'existe pas. C'est…",
+            "en": "The AI cites 'article 47', which doesn't exist. That's…"
+          },
+          "options": [
+            {
+              "fr": "une hallucination",
+              "en": "a hallucination"
+            },
+            {
+              "fr": "une mise à jour du contrat",
+              "en": "a contract update"
+            },
+            {
+              "fr": "de la créativité",
+              "en": "creativity"
+            }
+          ],
+          "correctIndex": 0,
+          "explain": {
+            "fr": "Une réponse plausible mais fausse.",
+            "en": "A plausible but false answer."
+          }
+        },
+        {
+          "prompt": {
+            "fr": "Pour la limiter, on peut…",
+            "en": "To reduce it, you can…"
+          },
+          "options": [
+            {
+              "fr": "ancrer les réponses dans les documents et exiger des citations vérifiables",
+              "en": "ground answers in documents and require checkable citations"
+            },
+            {
+              "fr": "monter la température",
+              "en": "raise the temperature"
+            },
+            {
+              "fr": "écrire « ne mens pas » en majuscules",
+              "en": "write 'DON'T LIE' in caps"
+            }
+          ],
+          "correctIndex": 0,
+          "explain": {
+            "fr": "L'ancrage documentaire (RAG) plus la vérification des sources.",
+            "en": "Document grounding (RAG) plus source checking."
+          }
+        },
+        {
+          "prompt": {
+            "fr": "Une hallucination repérée en prod, on…",
+            "en": "A hallucination spotted in prod, you…"
+          },
+          "options": [
+            {
+              "fr": "l'ajoute au jeu de test pour qu'elle ne revienne pas",
+              "en": "add it to the test set so it never returns"
+            },
+            {
+              "fr": "la supprime des logs",
+              "en": "delete it from the logs"
+            },
+            {
+              "fr": "change de modèle au hasard",
+              "en": "switch models at random"
+            }
+          ],
+          "correctIndex": 0,
+          "explain": {
+            "fr": "Chaque erreur trouvée renforce l'évaluation.",
+            "en": "Every error found strengthens the evaluation."
+          }
+        }
       ],
-      "onCorrect": [{ "var": "quality", "op": "add", "value": 4 }],
-      "onWrong": [{ "var": "quality", "op": "add", "value": -6 }]
+      "onCorrect": [
+        {
+          "var": "quality",
+          "op": "add",
+          "value": 4
+        }
+      ],
+      "onWrong": [
+        {
+          "var": "quality",
+          "op": "add",
+          "value": -6
+        }
+      ]
     },
-    "taunts": [{ "fr": "Selon une étude que je viens d'inventer…", "en": "According to a study I just made up…" }, { "fr": "Je suis sûr à 97 %. De rien.", "en": "I'm 97% sure. You're welcome." }],
-    "defeatLine": { "fr": "La source inventée rejoint le jeu de test. Pour toujours.", "en": "The made-up source joins the test set. Forever." }
-  },
-  "easterEggs": [{ "trigger": "konami", "effect": "recruiter_mode", "content": { "fr": "Mode recruteur activé.", "en": "Recruiter mode on." } }],
-  "ending": {
-    "headline": { "fr": "COMPÉTENCES DÉBLOQUÉES", "en": "SKILLS UNLOCKED" },
-    "skillsUnlocked": [
-      { "requirementId": "req_python", "proofId": "proof_palier", "line": { "fr": "Python et SQL de la collecte au déploiement", "en": "Python and SQL from ingestion to deployment" } },
-      { "requirementId": "req_ml", "proofId": "proof_portfolio", "line": { "fr": "15+ projets data et IA en ligne", "en": "15+ data and AI projects online" } }
+    "taunts": [
+      {
+        "fr": "Selon une étude que je viens d'inventer…",
+        "en": "According to a study I just made up…"
+      },
+      {
+        "fr": "Je suis sûr à 97 %. De rien.",
+        "en": "I'm 97% sure. You're welcome."
+      }
     ],
-    "shareCard": { "text": { "fr": "J'ai chassé l'hallucination jusqu'en prod.", "en": "I hunted the hallucination all the way to prod." }, "showScore": true },
-    "challenge": { "fr": "Battez mon score de qualité, le café est pour moi.", "en": "Beat my quality score and coffee's on me." },
+    "defeatLine": {
+      "fr": "La source inventée rejoint le jeu de test. Pour toujours.",
+      "en": "The made-up source joins the test set. Forever."
+    }
+  },
+  "easterEggs": [
+    {
+      "trigger": "konami",
+      "effect": "recruiter_mode",
+      "content": {
+        "fr": "Mode recruteur activé.",
+        "en": "Recruiter mode on."
+      }
+    }
+  ],
+  "ending": {
+    "headline": {
+      "fr": "COMPÉTENCES DÉBLOQUÉES",
+      "en": "SKILLS UNLOCKED"
+    },
+    "skillsUnlocked": [
+      {
+        "requirementId": "req_python",
+        "proofId": "proof_palier",
+        "line": {
+          "fr": "Python et SQL de la collecte au déploiement",
+          "en": "Python and SQL from ingestion to deployment"
+        }
+      },
+      {
+        "requirementId": "req_ml",
+        "proofId": "proof_portfolio",
+        "line": {
+          "fr": "15+ projets data et IA en ligne",
+          "en": "15+ data and AI projects online"
+        }
+      }
+    ],
+    "shareCard": {
+      "text": {
+        "fr": "J'ai chassé l'hallucination jusqu'en prod.",
+        "en": "I hunted the hallucination all the way to prod."
+      },
+      "showScore": true
+    },
+    "challenge": {
+      "fr": "Battez mon score de qualité, le café est pour moi.",
+      "en": "Beat my quality score and coffee's on me."
+    },
     "cta": [
-      { "type": "cv", "label": { "fr": "Voir mon CV", "en": "See my CV" }, "url": "<URL_CV>" },
-      { "type": "contact", "label": { "fr": "Me contacter", "en": "Contact me" }, "url": "mailto:<EMAIL>" }
+      {
+        "type": "cv",
+        "label": {
+          "fr": "Voir mon CV",
+          "en": "See my CV"
+        },
+        "url": "<URL_CV>"
+      },
+      {
+        "type": "contact",
+        "label": {
+          "fr": "Me contacter",
+          "en": "Contact me"
+        },
+        "url": "mailto:<EMAIL>"
+      }
     ]
   },
-  "tracking": { "enabled": true },
-  "review": { "status": "draft", "notes": "Test manuel du 21/11." }
+  "tracking": {
+    "enabled": true
+  },
+  "review": {
+    "status": "draft",
+    "notes": "Test manuel du 21/11."
+  }
 }

@@ -271,3 +271,21 @@
   animation: ph-wave 1.2s ease-in-out infinite;
 }
 .skin-comic .ph-fx { background-image: radial-gradient(rgba(0, 0, 0, 0.22) 22%, transparent 24%); background-size: 6px 6px; mix-blend-mode: multiply; }
+
+/* bouton « mode recruteur » de l'écran titre */
+.ph-recruiter {
+  position: absolute;
+  left: 2.4cqw;
+  bottom: 2.4cqh;
+  z-index: 3;
+  font: inherit;
+  font-size: clamp(7px, min(1.4cqw, 2.6cqh), 12px);
+  padding: 0.6em 0.8em;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+}
+.ph-recruiter:hover, .ph-recruiter:focus-visible { background: var(--accent); color: #000; }
+.skin-gameboy .ph-recruiter { background: #0f380f; color: #9bbc0f; border-color: #9bbc0f; }
+.skin-corporate .ph-recruiter { left: auto; right: 2.4cqw; background: #fff; color: #14213d; border-color: #14213d; }

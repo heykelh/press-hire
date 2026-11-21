@@ -1,202 +1,1274 @@
 {
-  "meta": { "id": "test-gouvernance-banque", "schemaVersion": "0.2", "createdAt": "2026-11-21T18:00:00Z", "languages": ["fr", "en"], "defaultLang": "fr" },
+  "meta": {
+    "id": "test-gouvernance-banque",
+    "schemaVersion": "0.2",
+    "createdAt": "2026-11-21T18:00:00Z",
+    "languages": [
+      "fr",
+      "en"
+    ],
+    "defaultLang": "fr"
+  },
   "target": {
-    "company": { "name": "Caisse régionale", "sector": "Banque" },
-    "job": { "title": "Chargé de Gouvernance Data & IA F/H", "url": "https://www.apec.fr/candidat/recherche-emploi.html/emploi/detail-offre/179850800W", "location": "Créteil (94)", "contract": "CDI" },
-    "sourcesConsulted": [{ "label": "Offre APEC 179850800W (cabinet LEIHIA)", "url": "https://www.apec.fr/candidat/recherche-emploi.html/emploi/detail-offre/179850800W", "usedFor": "analysis" }]
+    "company": {
+      "name": "Caisse régionale",
+      "sector": "Banque"
+    },
+    "job": {
+      "title": "Chargé de Gouvernance Data & IA F/H",
+      "url": "https://www.apec.fr/candidat/recherche-emploi.html/emploi/detail-offre/179850800W",
+      "location": "Créteil (94)",
+      "contract": "CDI"
+    },
+    "sourcesConsulted": [
+      {
+        "label": "Offre APEC 179850800W (cabinet LEIHIA)",
+        "url": "https://www.apec.fr/candidat/recherche-emploi.html/emploi/detail-offre/179850800W",
+        "usedFor": "analysis"
+      }
+    ]
   },
   "analysis": {
     "requirements": [
-      { "id": "req_gov", "label": { "fr": "Instances de gouvernance Data & IA", "en": "Data & AI governance bodies" }, "kind": "hard", "priority": "must", "offerQuote": "Vous préparez et contribuez aux instances de gouvernance" },
-      { "id": "req_bcbs", "label": { "fr": "BCBS 239 et cadre normatif IA", "en": "BCBS 239 and AI regulatory framework" }, "kind": "hard", "priority": "must", "offerQuote": "notamment BCBS 239 et le cadre normatif IA" },
-      { "id": "req_quality", "label": { "fr": "Qualité des données", "en": "Data quality" }, "kind": "hard", "priority": "must", "offerQuote": "Vous les aidez à identifier les écarts de qualité" },
-      { "id": "req_culture", "label": { "fr": "Acculturation Data & IA", "en": "Data & AI literacy" }, "kind": "soft", "priority": "must", "offerQuote": "Vous animez les communautés Data & IA" },
-      { "id": "req_python", "label": { "fr": "Python et SQL", "en": "Python and SQL" }, "kind": "hard", "priority": "nice", "offerQuote": "Une pratique de Python, SQL ou d'un outil d'analyse de données" }
+      {
+        "id": "req_gov",
+        "label": {
+          "fr": "Instances de gouvernance Data & IA",
+          "en": "Data & AI governance bodies"
+        },
+        "kind": "hard",
+        "priority": "must",
+        "offerQuote": "Vous préparez et contribuez aux instances de gouvernance"
+      },
+      {
+        "id": "req_bcbs",
+        "label": {
+          "fr": "BCBS 239 et cadre normatif IA",
+          "en": "BCBS 239 and AI regulatory framework"
+        },
+        "kind": "hard",
+        "priority": "must",
+        "offerQuote": "notamment BCBS 239 et le cadre normatif IA"
+      },
+      {
+        "id": "req_quality",
+        "label": {
+          "fr": "Qualité des données",
+          "en": "Data quality"
+        },
+        "kind": "hard",
+        "priority": "must",
+        "offerQuote": "Vous les aidez à identifier les écarts de qualité"
+      },
+      {
+        "id": "req_culture",
+        "label": {
+          "fr": "Acculturation Data & IA",
+          "en": "Data & AI literacy"
+        },
+        "kind": "soft",
+        "priority": "must",
+        "offerQuote": "Vous animez les communautés Data & IA"
+      },
+      {
+        "id": "req_python",
+        "label": {
+          "fr": "Python et SQL",
+          "en": "Python and SQL"
+        },
+        "kind": "hard",
+        "priority": "nice",
+        "offerQuote": "Une pratique de Python, SQL ou d'un outil d'analyse de données"
+      }
     ],
     "painPoints": [
-      { "id": "pp_trust", "label": { "fr": "La confiance dans la donnée", "en": "Trust in data" }, "source": "offer" }
+      {
+        "id": "pp_trust",
+        "label": {
+          "fr": "La confiance dans la donnée",
+          "en": "Trust in data"
+        },
+        "source": "offer"
+      }
     ],
-    "tone": { "formality": 4, "humorLevel": 1, "retroNes": true, "rationale": "Banque régionale, poste de gouvernance et de conformité : ton sobre, humour léger sur les tableurs et les comités, jamais sur la banque." }
+    "tone": {
+      "formality": 4,
+      "humorLevel": 1,
+      "retroNes": true,
+      "rationale": "Banque régionale, poste de gouvernance et de conformité : ton sobre, humour léger sur les tableurs et les comités, jamais sur la banque."
+    }
   },
   "candidate": {
     "name": "<NOM>",
-    "headline": { "fr": "Chargé de Gouvernance Data & IA", "en": "Data & AI Governance Officer" },
-    "links": { "cv": "<URL_CV>", "portfolio": "https://heykelhachiche.com", "email": "<EMAIL>" },
+    "headline": {
+      "fr": "Chargé de Gouvernance Data & IA",
+      "en": "Data & AI Governance Officer"
+    },
+    "links": {
+      "cv": "<URL_CV>",
+      "portfolio": "https://heykelhachiche.com",
+      "email": "<EMAIL>"
+    },
     "proofs": [
-      { "id": "proof_gov", "label": "Démos de gouvernance data", "url": "https://data-governance-five.vercel.app", "requirementIds": ["req_gov", "req_quality"] },
-      { "id": "proof_palier", "label": "PALIER", "url": "https://palier-sncf.vercel.app", "requirementIds": ["req_python"] }
+      {
+        "id": "proof_gov",
+        "label": "Démos de gouvernance data",
+        "url": "https://data-governance-five.vercel.app",
+        "requirementIds": [
+          "req_gov",
+          "req_quality"
+        ]
+      },
+      {
+        "id": "proof_palier",
+        "label": "PALIER",
+        "url": "https://palier-sncf.vercel.app",
+        "requirementIds": [
+          "req_python"
+        ]
+      }
     ]
   },
   "design": {
     "skin": "corporate",
-    "title": { "fr": "Data de Confiance", "en": "Trusted Data" },
-    "tagline": { "fr": "Chaque donnée a un propriétaire. Trouvez-le.", "en": "Every piece of data has an owner. Find them." },
-    "palette": { "bg": "#0e1a2e", "panel": "#ffffff", "ink": "#14213d", "accent": "#007a5e", "colors": ["#007a5e", "#1a3a7a", "#c8a020"] },
-    "music": { "preset": "lofi", "bpm": 96 },
+    "title": {
+      "fr": "Data de Confiance",
+      "en": "Trusted Data"
+    },
+    "tagline": {
+      "fr": "Chaque donnée a un propriétaire. Trouvez-le.",
+      "en": "Every piece of data has an owner. Find them."
+    },
+    "palette": {
+      "bg": "#0e1a2e",
+      "panel": "#ffffff",
+      "ink": "#14213d",
+      "accent": "#007a5e",
+      "colors": [
+        "#007a5e",
+        "#1a3a7a",
+        "#c8a020"
+      ]
+    },
+    "music": {
+      "preset": "lofi",
+      "bpm": 96
+    },
     "juice": 1,
     "targetMinutes": 7
   },
   "titleScreen": {
-    "scene": "headquarters", "time": "dawn", "weather": "clear",
-    "actors": [{ "type": "crowd", "speed": 0.8, "lane": 2 }, { "type": "clouds", "speed": 0.3, "lane": 0 }, { "type": "birds", "speed": 0.6, "lane": 0 }],
-    "logo": { "animation": "zoom", "shine": false }
+    "scene": "headquarters",
+    "time": "dawn",
+    "weather": "clear",
+    "actors": [
+      {
+        "type": "crowd",
+        "speed": 0.8,
+        "lane": 2
+      },
+      {
+        "type": "clouds",
+        "speed": 0.3,
+        "lane": 0
+      },
+      {
+        "type": "birds",
+        "speed": 0.6,
+        "lane": 0
+      }
+    ],
+    "logo": {
+      "animation": "zoom",
+      "shine": false
+    }
   },
   "state": {
     "vars": [
-      { "id": "trust", "label": { "fr": "Confiance dans la donnée", "en": "Trust in data" }, "start": 50, "min": 0, "max": 100, "unit": "%", "display": "bar" },
-      { "id": "compliance", "label": { "fr": "Conformité", "en": "Compliance" }, "start": 50, "min": 0, "max": 100, "unit": "%", "display": "bar" },
-      { "id": "velocity", "label": { "fr": "Projets livrés", "en": "Projects delivered" }, "start": 0, "min": 0, "max": 30, "display": "counter" }
+      {
+        "id": "trust",
+        "label": {
+          "fr": "Confiance dans la donnée",
+          "en": "Trust in data"
+        },
+        "start": 50,
+        "min": 0,
+        "max": 100,
+        "unit": "%",
+        "display": "bar"
+      },
+      {
+        "id": "compliance",
+        "label": {
+          "fr": "Conformité",
+          "en": "Compliance"
+        },
+        "start": 50,
+        "min": 0,
+        "max": 100,
+        "unit": "%",
+        "display": "bar"
+      },
+      {
+        "id": "velocity",
+        "label": {
+          "fr": "Projets livrés",
+          "en": "Projects delivered"
+        },
+        "start": 0,
+        "min": 0,
+        "max": 30,
+        "display": "counter"
+      },
+      {
+        "id": "regulator",
+        "label": {
+          "fr": "Points auprès du régulateur",
+          "en": "Points with the regulator"
+        },
+        "start": 0,
+        "min": 0,
+        "max": 4,
+        "display": "counter"
+      },
+      {
+        "id": "adoption",
+        "label": {
+          "fr": "Adhésion des métiers",
+          "en": "Business buy-in"
+        },
+        "start": 0,
+        "min": 0,
+        "max": 40,
+        "display": "counter"
+      },
+      {
+        "id": "credibility",
+        "label": {
+          "fr": "Crédibilité en comité",
+          "en": "Credibility in committee"
+        },
+        "start": 0,
+        "min": 0,
+        "max": 30,
+        "display": "bar"
+      }
     ]
   },
   "characters": [
-    { "id": "cro", "name": "Mme Dumontel", "role": { "fr": "Directrice des risques", "en": "Chief Risk Officer" },
-      "palette": { "hair": "#3a2a20", "skin": "#e8b894", "body": "#1a3a7a", "accent": "#c8a020" },
-      "lines": [{ "fr": "D'où vient ce chiffre ?", "en": "Where does this number come from?" }, { "fr": "Bien. Ça, je peux le signer.", "en": "Good. That, I can sign." }] },
-    { "id": "sponsor", "name": "Kevin, sponsor IA", "role": { "fr": "Directeur métier pressé", "en": "Business lead in a hurry" },
-      "palette": { "hair": "#d8a040", "skin": "#f0c098", "body": "#c8201c", "accent": "#ffffff" },
-      "lines": [{ "fr": "On peut pas juste brancher ChatGPT ?", "en": "Can't we just plug in ChatGPT?" }] }
+    {
+      "id": "cro",
+      "name": "Mme Dumontel",
+      "role": {
+        "fr": "Directrice des risques",
+        "en": "Chief Risk Officer"
+      },
+      "palette": {
+        "hair": "#3a2a20",
+        "skin": "#e8b894",
+        "body": "#1a3a7a",
+        "accent": "#c8a020"
+      },
+      "lines": [
+        {
+          "fr": "D'où vient ce chiffre ?",
+          "en": "Where does this number come from?"
+        },
+        {
+          "fr": "Bien. Ça, je peux le signer.",
+          "en": "Good. That, I can sign."
+        }
+      ]
+    },
+    {
+      "id": "sponsor",
+      "name": "Kevin, sponsor IA",
+      "role": {
+        "fr": "Directeur métier pressé",
+        "en": "Business lead in a hurry"
+      },
+      "palette": {
+        "hair": "#d8a040",
+        "skin": "#f0c098",
+        "body": "#c8201c",
+        "accent": "#ffffff"
+      },
+      "lines": [
+        {
+          "fr": "On peut pas juste brancher ChatGPT ?",
+          "en": "Can't we just plug in ChatGPT?"
+        }
+      ]
+    }
   ],
   "events": [
-    { "id": "ev_committee", "text": { "fr": "Le comité est avancé à demain 8 h. Vous étiez prêt : conformité +5.", "en": "The committee moved to tomorrow 8 am. You were ready: compliance +5." }, "effects": [{ "var": "compliance", "op": "add", "value": 5 }] },
-    { "id": "ev_shadow", "text": { "fr": "Un service a branché un chatbot sans prévenir personne. Confiance −10.", "en": "A team plugged in a chatbot without telling anyone. Trust −10." }, "effects": [{ "var": "trust", "op": "add", "value": -10 }] }
+    {
+      "id": "ev_committee",
+      "text": {
+        "fr": "Le comité est avancé à demain 8 h. Vous étiez prêt : conformité +5.",
+        "en": "The committee moved to tomorrow 8 am. You were ready: compliance +5."
+      },
+      "effects": [
+        {
+          "var": "compliance",
+          "op": "add",
+          "value": 5
+        }
+      ]
+    },
+    {
+      "id": "ev_shadow",
+      "text": {
+        "fr": "Un service a branché un chatbot sans prévenir personne. Confiance −10.",
+        "en": "A team plugged in a chatbot without telling anyone. Trust −10."
+      },
+      "effects": [
+        {
+          "var": "trust",
+          "op": "add",
+          "value": -10
+        }
+      ]
+    }
   ],
   "data": [],
   "levels": [
     {
-      "id": "lvl_homolog", "order": 1, "requirementId": "req_gov",
-      "title": { "fr": "Le comité d'homologation IA", "en": "The AI approval committee" },
-      "intro": { "fr": "8 projets IA attendent. Lesquels passent en voie rapide ?", "en": "8 AI projects are waiting. Which ones get the fast track?" },
+      "id": "lvl_homolog",
+      "order": 1,
+      "requirementId": "req_gov",
+      "title": {
+        "fr": "Le comité d'homologation IA",
+        "en": "The AI approval committee"
+      },
+      "intro": {
+        "fr": "8 projets IA attendent. Lesquels passent en voie rapide ?",
+        "en": "8 AI projects are waiting. Which ones get the fast track?"
+      },
       "mechanic": {
         "type": "triage",
-        "rule": { "fr": "Accepte en voie rapide les usages à faible risque. Rejette (revue approfondie) ceux que le règlement européen sur l'IA classe à haut risque ou interdit.", "en": "Fast-track low-risk uses. Reject (full review) those the EU AI Act classifies as high-risk or prohibited." },
+        "rule": {
+          "fr": "Accepte en voie rapide les usages à faible risque. Rejette (revue approfondie) ceux que le règlement européen sur l'IA classe à haut risque ou interdit.",
+          "en": "Fast-track low-risk uses. Reject (full review) those the EU AI Act classifies as high-risk or prohibited."
+        },
         "items": [
-          { "id": "i_faq", "label": { "fr": "Chatbot FAQ interne pour les RH", "en": "Internal HR FAQ chatbot" }, "correct": "accept", "why": { "fr": "Risque limité : il suffit d'indiquer qu'on parle à une IA.", "en": "Limited risk: users just need to know they're talking to an AI." } },
-          { "id": "i_credit", "label": { "fr": "Score d'octroi de crédit des particuliers", "en": "Consumer credit scoring" }, "correct": "reject", "why": { "fr": "Évaluer la solvabilité des personnes est un usage à haut risque.", "en": "Assessing people's creditworthiness is a high-risk use." } },
-          { "id": "i_minutes", "label": { "fr": "Résumé des comptes rendus de réunion", "en": "Meeting minutes summaries" }, "correct": "accept", "why": { "fr": "Usage interne, sans décision sur une personne.", "en": "Internal use, no decision about a person." } },
-          { "id": "i_cv", "label": { "fr": "Tri automatique des CV", "en": "Automatic CV screening" }, "correct": "reject", "why": { "fr": "Le recrutement fait partie des usages à haut risque.", "en": "Recruitment is a high-risk use." } },
-          { "id": "i_anomaly", "label": { "fr": "Détection d'anomalies comptables", "en": "Accounting anomaly detection" }, "correct": "accept", "why": { "fr": "Aide à l'analyse interne, avec un contrôle humain.", "en": "Internal analysis aid, with human review." } },
-          { "id": "i_emotion", "label": { "fr": "Analyse des émotions des conseillers en appel", "en": "Emotion analysis of advisers on calls" }, "correct": "reject", "why": { "fr": "Reconnaître les émotions au travail est interdit, hors raisons médicales ou de sécurité.", "en": "Emotion recognition at work is prohibited, except for medical or safety reasons." } },
-          { "id": "i_translate", "label": { "fr": "Traduction des procédures internes", "en": "Translation of internal procedures" }, "correct": "accept", "why": { "fr": "Risque minimal.", "en": "Minimal risk." } },
-          { "id": "i_social", "label": { "fr": "Note de « bon client » selon la vie en ligne", "en": "'Good customer' score from online behaviour" }, "correct": "reject", "why": { "fr": "Noter les gens sur leur comportement social pour les défavoriser est interdit.", "en": "Scoring people on social behaviour to their detriment is prohibited." } }
+          {
+            "id": "i_faq",
+            "label": {
+              "fr": "Chatbot FAQ interne pour les RH",
+              "en": "Internal HR FAQ chatbot"
+            },
+            "correct": "accept",
+            "why": {
+              "fr": "Risque limité : il suffit d'indiquer qu'on parle à une IA.",
+              "en": "Limited risk: users just need to know they're talking to an AI."
+            }
+          },
+          {
+            "id": "i_credit",
+            "label": {
+              "fr": "Score d'octroi de crédit des particuliers",
+              "en": "Consumer credit scoring"
+            },
+            "correct": "reject",
+            "why": {
+              "fr": "Évaluer la solvabilité des personnes est un usage à haut risque.",
+              "en": "Assessing people's creditworthiness is a high-risk use."
+            }
+          },
+          {
+            "id": "i_minutes",
+            "label": {
+              "fr": "Résumé des comptes rendus de réunion",
+              "en": "Meeting minutes summaries"
+            },
+            "correct": "accept",
+            "why": {
+              "fr": "Usage interne, sans décision sur une personne.",
+              "en": "Internal use, no decision about a person."
+            }
+          },
+          {
+            "id": "i_cv",
+            "label": {
+              "fr": "Tri automatique des CV",
+              "en": "Automatic CV screening"
+            },
+            "correct": "reject",
+            "why": {
+              "fr": "Le recrutement fait partie des usages à haut risque.",
+              "en": "Recruitment is a high-risk use."
+            }
+          },
+          {
+            "id": "i_anomaly",
+            "label": {
+              "fr": "Détection d'anomalies comptables",
+              "en": "Accounting anomaly detection"
+            },
+            "correct": "accept",
+            "why": {
+              "fr": "Aide à l'analyse interne, avec un contrôle humain.",
+              "en": "Internal analysis aid, with human review."
+            }
+          },
+          {
+            "id": "i_emotion",
+            "label": {
+              "fr": "Analyse des émotions des conseillers en appel",
+              "en": "Emotion analysis of advisers on calls"
+            },
+            "correct": "reject",
+            "why": {
+              "fr": "Reconnaître les émotions au travail est interdit, hors raisons médicales ou de sécurité.",
+              "en": "Emotion recognition at work is prohibited, except for medical or safety reasons."
+            }
+          },
+          {
+            "id": "i_translate",
+            "label": {
+              "fr": "Traduction des procédures internes",
+              "en": "Translation of internal procedures"
+            },
+            "correct": "accept",
+            "why": {
+              "fr": "Risque minimal.",
+              "en": "Minimal risk."
+            }
+          },
+          {
+            "id": "i_social",
+            "label": {
+              "fr": "Note de « bon client » selon la vie en ligne",
+              "en": "'Good customer' score from online behaviour"
+            },
+            "correct": "reject",
+            "why": {
+              "fr": "Noter les gens sur leur comportement social pour les défavoriser est interdit.",
+              "en": "Scoring people on social behaviour to their detriment is prohibited."
+            }
+          }
         ],
-        "onCorrect": [{ "var": "compliance", "op": "add", "value": 8 }],
-        "onWrong": [{ "var": "compliance", "op": "add", "value": -12 }],
+        "onCorrect": [
+          {
+            "var": "compliance",
+            "op": "add",
+            "value": 8
+          }
+        ],
+        "onWrong": [
+          {
+            "var": "compliance",
+            "op": "add",
+            "value": -12
+          }
+        ],
         "timeLimitSec": 90
       },
-      "win": [{ "var": "compliance", "op": ">=", "value": 70 }],
-      "winLine": { "fr": "Homologué. Et personne n'a dû attendre trois mois.", "en": "Approved. And nobody had to wait three months." },
-      "failJokes": [{ "fr": "Le comité vous propose… un autre comité.", "en": "The committee suggests… another committee." }],
+      "win": [
+        {
+          "var": "compliance",
+          "op": ">=",
+          "value": 70
+        }
+      ],
+      "winLine": {
+        "fr": "Homologué. Et personne n'a dû attendre trois mois.",
+        "en": "Approved. And nobody had to wait three months."
+      },
+      "failJokes": [
+        {
+          "fr": "Le comité vous propose… un autre comité.",
+          "en": "The committee suggests… another committee."
+        }
+      ],
       "hintAfterFails": 2,
-      "hint": { "fr": "Crédit, recrutement, émotions, notation sociale : on regarde de très près.", "en": "Credit, hiring, emotions, social scoring: look very closely." },
+      "hint": {
+        "fr": "Crédit, recrutement, émotions, notation sociale : on regarde de très près.",
+        "en": "Credit, hiring, emotions, social scoring: look very closely."
+      },
       "characterId": "sponsor"
     },
     {
-      "id": "lvl_bcbs", "order": 2, "requirementId": "req_bcbs",
-      "title": { "fr": "Les 14 principes", "en": "The 14 principles" },
-      "intro": { "fr": "Le régulateur passe une tête. Quatre questions, pas une de plus.", "en": "The regulator drops by. Four questions, not one more." },
+      "id": "lvl_bcbs",
+      "order": 2,
+      "requirementId": "req_bcbs",
+      "title": {
+        "fr": "Les 14 principes",
+        "en": "The 14 principles"
+      },
+      "intro": {
+        "fr": "Le régulateur passe une tête. Quatre questions, pas une de plus.",
+        "en": "The regulator drops by. Four questions, not one more."
+      },
       "mechanic": {
         "type": "quiz",
         "questions": [
-          { "prompt": { "fr": "BCBS 239 est un texte…", "en": "BCBS 239 is a text…" },
-            "options": [{ "fr": "du Comité de Bâle sur les données de risque", "en": "from the Basel Committee on risk data" }, { "fr": "de la CNIL sur les cookies", "en": "from the CNIL on cookies" }, { "fr": "de l'AI Act sur les chatbots", "en": "from the AI Act on chatbots" }],
-            "correctIndex": 0, "explain": { "fr": "Publié en 2013 : agrégation et reporting des données de risque des banques.", "en": "Published in 2013: banks' risk data aggregation and reporting." } },
-          { "prompt": { "fr": "Combien de principes compte-t-il ?", "en": "How many principles does it have?" },
-            "options": [{ "fr": "7", "en": "7" }, { "fr": "14", "en": "14" }, { "fr": "21", "en": "21" }],
-            "correctIndex": 1, "explain": { "fr": "14 principes, dont 3 pour les superviseurs.", "en": "14 principles, 3 of them for supervisors." } },
-          { "prompt": { "fr": "Lequel n'en fait PAS partie ?", "en": "Which one is NOT among them?" },
-            "options": [{ "fr": "Exactitude des données", "en": "Data accuracy" }, { "fr": "Exhaustivité", "en": "Completeness" }, { "fr": "Joli code couleur", "en": "Nice colour scheme" }],
-            "correctIndex": 2, "explain": { "fr": "Exactitude, exhaustivité, rapidité, adaptabilité : pas d'esthétique.", "en": "Accuracy, completeness, timeliness, adaptability: no aesthetics." } },
-          { "prompt": { "fr": "En pleine crise, la banque doit pouvoir…", "en": "In a crisis, the bank must be able to…" },
-            "options": [{ "fr": "produire vite des données de risque fiables", "en": "quickly produce reliable risk data" }, { "fr": "suspendre son reporting", "en": "suspend its reporting" }, { "fr": "envoyer le tableur à tout le monde", "en": "email the spreadsheet to everyone" }],
-            "correctIndex": 0, "explain": { "fr": "C'est tout l'objet du texte : être fiable même sous tension.", "en": "That's the whole point: be reliable even under stress." } }
+          {
+            "prompt": {
+              "fr": "BCBS 239 est un texte…",
+              "en": "BCBS 239 is a text…"
+            },
+            "options": [
+              {
+                "fr": "du Comité de Bâle sur les données de risque",
+                "en": "from the Basel Committee on risk data"
+              },
+              {
+                "fr": "de la CNIL sur les cookies",
+                "en": "from the CNIL on cookies"
+              },
+              {
+                "fr": "de l'AI Act sur les chatbots",
+                "en": "from the AI Act on chatbots"
+              }
+            ],
+            "correctIndex": 0,
+            "explain": {
+              "fr": "Publié en 2013 : agrégation et reporting des données de risque des banques.",
+              "en": "Published in 2013: banks' risk data aggregation and reporting."
+            }
+          },
+          {
+            "prompt": {
+              "fr": "Combien de principes compte-t-il ?",
+              "en": "How many principles does it have?"
+            },
+            "options": [
+              {
+                "fr": "7",
+                "en": "7"
+              },
+              {
+                "fr": "14",
+                "en": "14"
+              },
+              {
+                "fr": "21",
+                "en": "21"
+              }
+            ],
+            "correctIndex": 1,
+            "explain": {
+              "fr": "14 principes, dont 3 pour les superviseurs.",
+              "en": "14 principles, 3 of them for supervisors."
+            }
+          },
+          {
+            "prompt": {
+              "fr": "Lequel n'en fait PAS partie ?",
+              "en": "Which one is NOT among them?"
+            },
+            "options": [
+              {
+                "fr": "Exactitude des données",
+                "en": "Data accuracy"
+              },
+              {
+                "fr": "Exhaustivité",
+                "en": "Completeness"
+              },
+              {
+                "fr": "Joli code couleur",
+                "en": "Nice colour scheme"
+              }
+            ],
+            "correctIndex": 2,
+            "explain": {
+              "fr": "Exactitude, exhaustivité, rapidité, adaptabilité : pas d'esthétique.",
+              "en": "Accuracy, completeness, timeliness, adaptability: no aesthetics."
+            }
+          },
+          {
+            "prompt": {
+              "fr": "En pleine crise, la banque doit pouvoir…",
+              "en": "In a crisis, the bank must be able to…"
+            },
+            "options": [
+              {
+                "fr": "produire vite des données de risque fiables",
+                "en": "quickly produce reliable risk data"
+              },
+              {
+                "fr": "suspendre son reporting",
+                "en": "suspend its reporting"
+              },
+              {
+                "fr": "envoyer le tableur à tout le monde",
+                "en": "email the spreadsheet to everyone"
+              }
+            ],
+            "correctIndex": 0,
+            "explain": {
+              "fr": "C'est tout l'objet du texte : être fiable même sous tension.",
+              "en": "That's the whole point: be reliable even under stress."
+            }
+          }
         ],
-        "onCorrect": [{ "var": "compliance", "op": "add", "value": 6 }],
-        "onWrong": [{ "var": "trust", "op": "add", "value": -5 }]
+        "onCorrect": [
+          {
+            "var": "regulator",
+            "op": "add",
+            "value": 1
+          }
+        ],
+        "onWrong": [
+          {
+            "var": "trust",
+            "op": "add",
+            "value": -5
+          }
+        ]
       },
-      "win": [{ "var": "compliance", "op": ">=", "value": 80 }],
-      "winLine": { "fr": "Le régulateur range son stylo rouge.", "en": "The regulator puts away the red pen." },
-      "failJokes": [{ "fr": "Principe n°15 : relire les 14 premiers.", "en": "Principle 15: reread the first 14." }],
+      "win": [
+        {
+          "var": "regulator",
+          "op": ">=",
+          "value": 3
+        }
+      ],
+      "winLine": {
+        "fr": "Le régulateur range son stylo rouge.",
+        "en": "The regulator puts away the red pen."
+      },
+      "failJokes": [
+        {
+          "fr": "Principe n°15 : relire les 14 premiers.",
+          "en": "Principle 15: reread the first 14."
+        }
+      ],
       "hintAfterFails": 2,
       "characterId": "cro"
     },
     {
-      "id": "lvl_threshold", "order": 3, "requirementId": "req_quality",
-      "title": { "fr": "Le seuil qui ne bloque pas", "en": "The threshold that doesn't block" },
-      "intro": { "fr": "Trop strict, rien ne sort. Trop souple, plus personne n'y croit.", "en": "Too strict, nothing ships. Too loose, nobody believes it." },
+      "id": "lvl_threshold",
+      "order": 3,
+      "requirementId": "req_quality",
+      "title": {
+        "fr": "Le seuil qui ne bloque pas",
+        "en": "The threshold that doesn't block"
+      },
+      "intro": {
+        "fr": "Trop strict, rien ne sort. Trop souple, plus personne n'y croit.",
+        "en": "Too strict, nothing ships. Too loose, nobody believes it."
+      },
       "mechanic": {
         "type": "slider",
-        "control": { "label": { "fr": "Seuil de contrôle qualité", "en": "Quality control threshold" }, "min": 50, "max": 100, "step": 5, "start": 60, "unit": "%" },
+        "control": {
+          "label": {
+            "fr": "Seuil de contrôle qualité",
+            "en": "Quality control threshold"
+          },
+          "min": 50,
+          "max": 100,
+          "step": 5,
+          "start": 60,
+          "unit": "%"
+        },
         "rounds": 3,
         "outputs": [
-          { "var": "trust", "curve": { "family": "linear", "a": 0.6, "b": -36 } },
-          { "var": "velocity", "curve": { "family": "linear", "a": -0.2, "b": 20 } }
+          {
+            "var": "trust",
+            "curve": {
+              "family": "linear",
+              "a": 0.6,
+              "b": -36
+            }
+          },
+          {
+            "var": "velocity",
+            "curve": {
+              "family": "linear",
+              "a": -0.2,
+              "b": 20
+            }
+          }
         ],
         "noise": 0
       },
-      "win": [{ "var": "trust", "op": ">=", "value": 80 }, { "var": "velocity", "op": ">=", "value": 9 }],
-      "winLine": { "fr": "Des données fiables, et des projets qui sortent.", "en": "Reliable data, and projects that ship." },
-      "failJokes": [{ "fr": "Le contrôle est parfait. Il ne laisse rien passer. Rien du tout.", "en": "The control is perfect. Nothing gets through. Nothing at all." }],
+      "win": [
+        {
+          "var": "trust",
+          "op": ">=",
+          "value": 80
+        },
+        {
+          "var": "velocity",
+          "op": ">=",
+          "value": 9
+        }
+      ],
+      "winLine": {
+        "fr": "Des données fiables, et des projets qui sortent.",
+        "en": "Reliable data, and projects that ship."
+      },
+      "failJokes": [
+        {
+          "fr": "Le contrôle est parfait. Il ne laisse rien passer. Rien du tout.",
+          "en": "The control is perfect. Nothing gets through. Nothing at all."
+        }
+      ],
       "hintAfterFails": 2,
-      "hint": { "fr": "Cherche entre 75 et 85 %.", "en": "Look between 75 and 85%." }
+      "hint": {
+        "fr": "Cherche entre 75 et 85 %.",
+        "en": "Look between 75 and 85%."
+      }
     },
     {
-      "id": "lvl_culture", "order": 4, "requirementId": "req_culture",
-      "title": { "fr": "La tournée d'acculturation", "en": "The data literacy tour" },
-      "intro": { "fr": "Trois services à convaincre. Arrête la roue au bon moment.", "en": "Three teams to win over. Stop the wheel at the right time." },
+      "id": "lvl_culture",
+      "order": 4,
+      "requirementId": "req_culture",
+      "title": {
+        "fr": "La tournée d'acculturation",
+        "en": "The data literacy tour"
+      },
+      "intro": {
+        "fr": "Trois services à convaincre. Arrête la roue au bon moment.",
+        "en": "Three teams to win over. Stop the wheel at the right time."
+      },
       "mechanic": {
-        "type": "wheel", "stop": "timing", "spins": 3,
+        "type": "wheel",
+        "stop": "timing",
+        "spins": 3,
         "segments": [
-          { "id": "s_workshop", "code": "ATEL", "label": { "fr": "Atelier qui fait mouche", "en": "Workshop that lands" }, "color": "#007a5e", "weight": 2, "effects": [{ "var": "trust", "op": "add", "value": 6 }] },
-          { "id": "s_champion", "code": "CHAMP", "label": { "fr": "Un champion data recruté", "en": "A data champion recruited" }, "color": "#1a3a7a", "weight": 1, "effects": [{ "var": "trust", "op": "add", "value": 8 }] },
-          { "id": "s_webinar", "code": "12H30", "label": { "fr": "Webinaire à 12 h 30", "en": "Webinar at 12:30" }, "color": "#8a8e9a", "weight": 2, "effects": [] },
-          { "id": "s_quiz", "code": "QUIZ", "label": { "fr": "Quiz flash en réunion", "en": "Flash quiz in a meeting" }, "color": "#c8a020", "weight": 2, "effects": [{ "var": "trust", "op": "add", "value": 4 }] },
-          { "id": "s_allmail", "code": "@ALL", "label": { "fr": "Mail à « Tous »", "en": "Reply-all email" }, "color": "#c8201c", "weight": 1, "effects": [{ "var": "trust", "op": "add", "value": -3 }] },
-          { "id": "s_shadow", "code": "SHDW", "label": { "fr": "IA fantôme découverte", "en": "Shadow AI found" }, "color": "#3a3a4a", "weight": 1, "effects": [{ "var": "compliance", "op": "add", "value": -8 }] },
-          { "id": "s_coffee", "code": "CAFÉ", "label": { "fr": "Café data du jeudi", "en": "Thursday data coffee" }, "color": "#6a4428", "weight": 2, "effects": [{ "var": "trust", "op": "add", "value": 5 }] }
+          {
+            "id": "s_workshop",
+            "code": "ATEL",
+            "label": {
+              "fr": "Atelier qui fait mouche",
+              "en": "Workshop that lands"
+            },
+            "color": "#007a5e",
+            "weight": 2,
+            "effects": [
+              {
+                "var": "adoption",
+                "op": "add",
+                "value": 6
+              }
+            ]
+          },
+          {
+            "id": "s_champion",
+            "code": "CHAMP",
+            "label": {
+              "fr": "Un champion data recruté",
+              "en": "A data champion recruited"
+            },
+            "color": "#1a3a7a",
+            "weight": 1,
+            "effects": [
+              {
+                "var": "adoption",
+                "op": "add",
+                "value": 8
+              }
+            ]
+          },
+          {
+            "id": "s_webinar",
+            "code": "12H30",
+            "label": {
+              "fr": "Webinaire à 12 h 30",
+              "en": "Webinar at 12:30"
+            },
+            "color": "#8a8e9a",
+            "weight": 2,
+            "effects": []
+          },
+          {
+            "id": "s_quiz",
+            "code": "QUIZ",
+            "label": {
+              "fr": "Quiz flash en réunion",
+              "en": "Flash quiz in a meeting"
+            },
+            "color": "#c8a020",
+            "weight": 2,
+            "effects": [
+              {
+                "var": "adoption",
+                "op": "add",
+                "value": 4
+              }
+            ]
+          },
+          {
+            "id": "s_allmail",
+            "code": "@ALL",
+            "label": {
+              "fr": "Mail à « Tous »",
+              "en": "Reply-all email"
+            },
+            "color": "#c8201c",
+            "weight": 1,
+            "effects": [
+              {
+                "var": "adoption",
+                "op": "add",
+                "value": -3
+              }
+            ]
+          },
+          {
+            "id": "s_shadow",
+            "code": "SHDW",
+            "label": {
+              "fr": "IA fantôme découverte",
+              "en": "Shadow AI found"
+            },
+            "color": "#3a3a4a",
+            "weight": 1,
+            "effects": [
+              {
+                "var": "compliance",
+                "op": "add",
+                "value": -8
+              }
+            ]
+          },
+          {
+            "id": "s_coffee",
+            "code": "CAFÉ",
+            "label": {
+              "fr": "Café data du jeudi",
+              "en": "Thursday data coffee"
+            },
+            "color": "#6a4428",
+            "weight": 2,
+            "effects": [
+              {
+                "var": "adoption",
+                "op": "add",
+                "value": 5
+              }
+            ]
+          }
         ]
       },
-      "win": [{ "var": "trust", "op": ">=", "value": 90 }],
-      "winLine": { "fr": "Les métiers viennent d'eux-mêmes poser leurs questions.", "en": "Business teams now come with their own questions." },
-      "failJokes": [{ "fr": "Taux de participation : vous et le traiteur.", "en": "Attendance: you and the caterer." }],
+      "win": [
+        {
+          "var": "adoption",
+          "op": ">=",
+          "value": 14
+        }
+      ],
+      "winLine": {
+        "fr": "Les métiers viennent d'eux-mêmes poser leurs questions.",
+        "en": "Business teams now come with their own questions."
+      },
+      "failJokes": [
+        {
+          "fr": "Taux de participation : vous et le traiteur.",
+          "en": "Attendance: you and the caterer."
+        }
+      ],
       "hintAfterFails": 2
+    },
+    {
+      "id": "lvl_committee",
+      "order": 5,
+      "requirementId": "req_gov",
+      "title": {
+        "fr": "Le Comité Data & IA",
+        "en": "The Data & AI Committee"
+      },
+      "intro": {
+        "fr": "La directrice des risques préside. Trois questions, trois réponses.",
+        "en": "The CRO is chairing. Three questions, three answers."
+      },
+      "mechanic": {
+        "type": "dialogue",
+        "characterId": "cro",
+        "nodes": [
+          {
+            "text": {
+              "fr": "Votre indicateur qualité passe de 82 à 91 %. Qu'est-ce qui a changé ?",
+              "en": "Your quality KPI went from 82 to 91%. What changed?"
+            },
+            "choices": [
+              {
+                "text": {
+                  "fr": "Les doublons ont été corrigés à la source, avec le métier. Voici le détail.",
+                  "en": "Duplicates were fixed at the source, with the business. Here are the details."
+                },
+                "reply": {
+                  "fr": "Bien. Une correction à la source, c'est durable.",
+                  "en": "Good. A fix at the source lasts."
+                },
+                "effects": [
+                  {
+                    "var": "credibility",
+                    "op": "add",
+                    "value": 8
+                  }
+                ]
+              },
+              {
+                "text": {
+                  "fr": "Le nouveau calcul exclut les lignes incomplètes.",
+                  "en": "The new calculation excludes incomplete rows."
+                },
+                "reply": {
+                  "fr": "Donc on a changé la règle, pas la donnée ?",
+                  "en": "So we changed the rule, not the data?"
+                },
+                "effects": [
+                  {
+                    "var": "credibility",
+                    "op": "add",
+                    "value": 2
+                  }
+                ]
+              },
+              {
+                "text": {
+                  "fr": "Je ne sais pas trop, mais c'est une bonne nouvelle.",
+                  "en": "Not quite sure, but it's good news."
+                },
+                "reply": {
+                  "fr": "Une bonne nouvelle inexpliquée est une mauvaise nouvelle.",
+                  "en": "Unexplained good news is bad news."
+                },
+                "effects": [
+                  {
+                    "var": "credibility",
+                    "op": "add",
+                    "value": -4
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "text": {
+              "fr": "Le métier veut mettre son modèle IA en service vendredi. Votre avis ?",
+              "en": "The business wants its AI model live on Friday. Your view?"
+            },
+            "choices": [
+              {
+                "text": {
+                  "fr": "Oui, avec un contrôle humain et un suivi des dérives dès le premier jour.",
+                  "en": "Yes, with human review and drift monitoring from day one."
+                },
+                "reply": {
+                  "fr": "Des conditions claires. Je valide.",
+                  "en": "Clear conditions. Approved."
+                },
+                "effects": [
+                  {
+                    "var": "credibility",
+                    "op": "add",
+                    "value": 8
+                  }
+                ]
+              },
+              {
+                "text": {
+                  "fr": "Non, c'est trop risqué.",
+                  "en": "No, it's too risky."
+                },
+                "reply": {
+                  "fr": "Vous bloquez sans proposer. Le métier ira ailleurs.",
+                  "en": "You block without proposing. They'll go elsewhere."
+                },
+                "effects": [
+                  {
+                    "var": "credibility",
+                    "op": "add",
+                    "value": -2
+                  }
+                ]
+              },
+              {
+                "text": {
+                  "fr": "Oui, on verra bien.",
+                  "en": "Yes, we'll see."
+                },
+                "reply": {
+                  "fr": "« On verra bien » n'est pas un dispositif de maîtrise des risques.",
+                  "en": "'We'll see' is not a risk control."
+                },
+                "effects": [
+                  {
+                    "var": "credibility",
+                    "op": "add",
+                    "value": -5
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "text": {
+              "fr": "Comment je présente tout ça au comité de direction, en une phrase ?",
+              "en": "How do I sum this up for the exec committee, in one sentence?"
+            },
+            "choices": [
+              {
+                "text": {
+                  "fr": "Nos données de risque sont plus fiables qu'au dernier trimestre, et l'IA sort avec des garde-fous.",
+                  "en": "Our risk data is more reliable than last quarter, and the AI ships with safeguards."
+                },
+                "reply": {
+                  "fr": "Parfait. Clair, vrai, vérifiable.",
+                  "en": "Perfect. Clear, true, checkable."
+                },
+                "effects": [
+                  {
+                    "var": "credibility",
+                    "op": "add",
+                    "value": 7
+                  }
+                ]
+              },
+              {
+                "text": {
+                  "fr": "Je vous envoie mon tableau de 40 colonnes.",
+                  "en": "I'll send you my 40-column table."
+                },
+                "reply": {
+                  "fr": "Le comité n'ouvrira pas 40 colonnes.",
+                  "en": "The committee won't open 40 columns."
+                },
+                "effects": [
+                  {
+                    "var": "credibility",
+                    "op": "add",
+                    "value": -3
+                  }
+                ]
+              },
+              {
+                "text": {
+                  "fr": "Tout est conforme, rien à signaler.",
+                  "en": "All compliant, nothing to report."
+                },
+                "reply": {
+                  "fr": "Trop beau. On va me poser des questions.",
+                  "en": "Too good. I'll get questions."
+                },
+                "effects": [
+                  {
+                    "var": "credibility",
+                    "op": "add",
+                    "value": 1
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "win": [
+        {
+          "var": "credibility",
+          "op": ">=",
+          "value": 15
+        }
+      ],
+      "winLine": {
+        "fr": "Le comité valide. Et la directrice des risques reprend votre phrase.",
+        "en": "The committee approves. And the CRO reuses your sentence."
+      },
+      "failJokes": [
+        {
+          "fr": "Le comité décide de créer un groupe de travail sur votre réponse.",
+          "en": "The committee sets up a working group on your answer."
+        }
+      ],
+      "hintAfterFails": 2,
+      "hint": {
+        "fr": "Des faits, des conditions claires, une phrase vérifiable.",
+        "en": "Facts, clear conditions, a checkable sentence."
+      },
+      "characterId": "cro"
     }
   ],
   "boss": {
-    "name": { "fr": "LE TABLEUR SANS PROPRIÉTAIRE", "en": "THE OWNERLESS SPREADSHEET" },
-    "painPointId": "pp_trust", "hp": 3,
+    "name": {
+      "fr": "LE TABLEUR SANS PROPRIÉTAIRE",
+      "en": "THE OWNERLESS SPREADSHEET"
+    },
+    "painPointId": "pp_trust",
+    "hp": 3,
     "mechanic": {
       "type": "quiz",
       "questions": [
-        { "prompt": { "fr": "Une donnée sans propriétaire, c'est d'abord un problème de…", "en": "Data without an owner is first a problem of…" },
-          "options": [{ "fr": "gouvernance : rôles et responsabilités", "en": "governance: roles and responsibilities" }, { "fr": "stockage", "en": "storage" }, { "fr": "police d'écriture", "en": "font" }],
-          "correctIndex": 0, "explain": { "fr": "Sans responsable, personne ne corrige.", "en": "With no one accountable, nobody fixes it." } },
-        { "prompt": { "fr": "Qui définit une donnée métier ?", "en": "Who defines a business data item?" },
-          "options": [{ "fr": "Son propriétaire côté métier", "en": "Its business owner" }, { "fr": "Le dernier qui a ouvert le fichier", "en": "Whoever opened the file last" }, { "fr": "L'éditeur du logiciel", "en": "The software vendor" }],
-          "correctIndex": 0, "explain": { "fr": "Le métier définit, la data outille.", "en": "Business defines, data equips." } },
-        { "prompt": { "fr": "Avant de montrer un indicateur en comité, on vérifie…", "en": "Before showing a KPI in committee, check…" },
-          "options": [{ "fr": "sa définition, sa source et sa qualité", "en": "its definition, source and quality" }, { "fr": "qu'il est en hausse", "en": "that it's going up" }, { "fr": "sa couleur", "en": "its colour" }],
-          "correctIndex": 0, "explain": { "fr": "Un chiffre qu'on ne peut pas expliquer ne se présente pas.", "en": "A number you can't explain doesn't get presented." } }
+        {
+          "prompt": {
+            "fr": "Une donnée sans propriétaire, c'est d'abord un problème de…",
+            "en": "Data without an owner is first a problem of…"
+          },
+          "options": [
+            {
+              "fr": "gouvernance : rôles et responsabilités",
+              "en": "governance: roles and responsibilities"
+            },
+            {
+              "fr": "stockage",
+              "en": "storage"
+            },
+            {
+              "fr": "police d'écriture",
+              "en": "font"
+            }
+          ],
+          "correctIndex": 0,
+          "explain": {
+            "fr": "Sans responsable, personne ne corrige.",
+            "en": "With no one accountable, nobody fixes it."
+          }
+        },
+        {
+          "prompt": {
+            "fr": "Qui définit une donnée métier ?",
+            "en": "Who defines a business data item?"
+          },
+          "options": [
+            {
+              "fr": "Son propriétaire côté métier",
+              "en": "Its business owner"
+            },
+            {
+              "fr": "Le dernier qui a ouvert le fichier",
+              "en": "Whoever opened the file last"
+            },
+            {
+              "fr": "L'éditeur du logiciel",
+              "en": "The software vendor"
+            }
+          ],
+          "correctIndex": 0,
+          "explain": {
+            "fr": "Le métier définit, la data outille.",
+            "en": "Business defines, data equips."
+          }
+        },
+        {
+          "prompt": {
+            "fr": "Avant de montrer un indicateur en comité, on vérifie…",
+            "en": "Before showing a KPI in committee, check…"
+          },
+          "options": [
+            {
+              "fr": "sa définition, sa source et sa qualité",
+              "en": "its definition, source and quality"
+            },
+            {
+              "fr": "qu'il est en hausse",
+              "en": "that it's going up"
+            },
+            {
+              "fr": "sa couleur",
+              "en": "its colour"
+            }
+          ],
+          "correctIndex": 0,
+          "explain": {
+            "fr": "Un chiffre qu'on ne peut pas expliquer ne se présente pas.",
+            "en": "A number you can't explain doesn't get presented."
+          }
+        }
       ],
-      "onCorrect": [{ "var": "trust", "op": "add", "value": 4 }],
-      "onWrong": [{ "var": "trust", "op": "add", "value": -6 }]
+      "onCorrect": [
+        {
+          "var": "trust",
+          "op": "add",
+          "value": 4
+        }
+      ],
+      "onWrong": [
+        {
+          "var": "trust",
+          "op": "add",
+          "value": -6
+        }
+      ]
     },
-    "taunts": [{ "fr": "Je suis dans 14 dossiers partagés. Bonne chance.", "en": "I live in 14 shared folders. Good luck." }, { "fr": "version_finale_v3_OK_def.xlsx, c'est moi.", "en": "final_v3_OK_really.xlsx, that's me." }],
-    "defeatLine": { "fr": "Le tableur a enfin un propriétaire. Et une définition.", "en": "The spreadsheet finally has an owner. And a definition." }
-  },
-  "easterEggs": [{ "trigger": "konami", "effect": "recruiter_mode", "content": { "fr": "Mode recruteur activé.", "en": "Recruiter mode on." } }],
-  "ending": {
-    "headline": { "fr": "COMPÉTENCES DÉBLOQUÉES", "en": "SKILLS UNLOCKED" },
-    "skillsUnlocked": [
-      { "requirementId": "req_gov", "proofId": "proof_gov", "line": { "fr": "Démos interactives de gouvernance et de conformité", "en": "Interactive governance and compliance demos" } },
-      { "requirementId": "req_python", "proofId": "proof_palier", "line": { "fr": "Python et SQL sur données ouvertes", "en": "Python and SQL on open data" } }
+    "taunts": [
+      {
+        "fr": "Je suis dans 14 dossiers partagés. Bonne chance.",
+        "en": "I live in 14 shared folders. Good luck."
+      },
+      {
+        "fr": "version_finale_v3_OK_def.xlsx, c'est moi.",
+        "en": "final_v3_OK_really.xlsx, that's me."
+      }
     ],
-    "shareCard": { "text": { "fr": "J'ai fait homologuer l'IA sans bloquer un seul projet.", "en": "I got the AI approved without blocking a single project." }, "showScore": true },
-    "challenge": { "fr": "Battez mon score de confiance, le café est pour moi.", "en": "Beat my trust score and coffee's on me." },
+    "defeatLine": {
+      "fr": "Le tableur a enfin un propriétaire. Et une définition.",
+      "en": "The spreadsheet finally has an owner. And a definition."
+    }
+  },
+  "easterEggs": [
+    {
+      "trigger": "konami",
+      "effect": "recruiter_mode",
+      "content": {
+        "fr": "Mode recruteur activé.",
+        "en": "Recruiter mode on."
+      }
+    }
+  ],
+  "ending": {
+    "headline": {
+      "fr": "COMPÉTENCES DÉBLOQUÉES",
+      "en": "SKILLS UNLOCKED"
+    },
+    "skillsUnlocked": [
+      {
+        "requirementId": "req_gov",
+        "proofId": "proof_gov",
+        "line": {
+          "fr": "Démos interactives de gouvernance et de conformité",
+          "en": "Interactive governance and compliance demos"
+        }
+      },
+      {
+        "requirementId": "req_python",
+        "proofId": "proof_palier",
+        "line": {
+          "fr": "Python et SQL sur données ouvertes",
+          "en": "Python and SQL on open data"
+        }
+      }
+    ],
+    "shareCard": {
+      "text": {
+        "fr": "J'ai fait homologuer l'IA sans bloquer un seul projet.",
+        "en": "I got the AI approved without blocking a single project."
+      },
+      "showScore": true
+    },
+    "challenge": {
+      "fr": "Battez mon score de confiance, le café est pour moi.",
+      "en": "Beat my trust score and coffee's on me."
+    },
     "cta": [
-      { "type": "cv", "label": { "fr": "Voir mon CV", "en": "See my CV" }, "url": "<URL_CV>" },
-      { "type": "contact", "label": { "fr": "Me contacter", "en": "Contact me" }, "url": "mailto:<EMAIL>" }
+      {
+        "type": "cv",
+        "label": {
+          "fr": "Voir mon CV",
+          "en": "See my CV"
+        },
+        "url": "<URL_CV>"
+      },
+      {
+        "type": "contact",
+        "label": {
+          "fr": "Me contacter",
+          "en": "Contact me"
+        },
+        "url": "mailto:<EMAIL>"
+      }
     ]
   },
-  "tracking": { "enabled": true },
-  "review": { "status": "draft", "notes": "Test manuel du 21/11 : cartouche écrite à la main comme l'agent devra le faire." }
+  "tracking": {
+    "enabled": true
+  },
+  "review": {
+    "status": "draft",
+    "notes": "Test manuel du 21/11 : cartouche écrite à la main comme l'agent devra le faire."
+  }
 }

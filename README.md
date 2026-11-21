@@ -9,10 +9,24 @@ Chaque jeu est une **cartouche** : un fichier JSON qui décrit tout le jeu en do
 | Phase | Contenu | État |
 | --- | --- | --- |
 | 0 · Socle | Monorepo, format de cartouche v0.2, contrôles, app qui lit Neon, scripts | ✅ ce dépôt |
-| 1a · Écran titre | 14 décors pixel animés, 7 habillages, météo, heures du jour, galerie `/gallery` | ✅ |
-| 1b · Niveaux | Mécaniques `wheel` / `slider` / `triage` / `quiz`, juice, audio, écran de fin | à faire |
+| 1a · Écran titre | 15 décors pixel animés, 7 habillages, météo, heures du jour, galerie `/gallery` | ✅ |
+| 1b · Niveaux | 5 mécaniques (`wheel` hasard/adresse, `slider`, `triage`, `quiz`, `dialogue`), boss à PV, imprévus, sons chiptune, écran de fin, mode recruteur, contrôle d'équilibrage | ✅ |
 | 2 · Publier | Image d'aperçu, `/api/track`, notifications ntfy, `/studio` | à faire |
 | 3 · Agent | Graphe LangGraph.js sur GitHub Actions : offre → cartouche → URL | à faire |
+
+## Comment se joue une cartouche
+
+1. **Écran titre** : clic ou Entrée. Un bouton « mode recruteur » mène directement au résumé (compétences, preuves, CTA).
+2. **Niveaux** dans l'ordre : présentation (personnage, exigence de l'offre visée), mécanique, verdict.
+   Raté : blague, retour à l'état du début du niveau, indice après `hintAfterFails` échecs, bouton « passer » après 3 échecs.
+3. **Imprévus** tous les deux niveaux, tirés uniquement parmi ceux qui laissent le niveau suivant gagnable.
+4. **Boss** (facultatif) : 3 vies, une bonne réponse ou une case favorable = 1 coup.
+5. **Fin** : score, compétences débloquées reliées aux preuves, CTA (grisés tant qu'un lien `<...>` n'est pas rempli), texte à partager.
+
+Clavier : Entrée/espace pour valider, 1-4 pour répondre, ← → pour le tri et le curseur. Code Konami si la cartouche le prévoit.
+
+Contrôles d'équilibrage (`pnpm validate`) : chaque niveau doit être gagnable en jouant bien et pas déjà gagné avant de jouer ;
+les roues sont simulées 600 fois avec un joueur moyen (avertissement si moins de 30 % ou plus de 95 % de victoires).
 
 ## Structure
 

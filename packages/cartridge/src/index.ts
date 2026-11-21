@@ -4,6 +4,7 @@ import { hasErrors, lintCartridge, type Issue } from "./lint";
 export * from "./schema";
 export * from "./lint";
 export * from "./slug";
+export * from "./rules";
 
 export type ValidationResult =
   | { ok: true; cartridge: Cartridge; issues: Issue[] }
