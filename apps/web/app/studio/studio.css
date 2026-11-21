@@ -67,3 +67,6 @@
   background: rgba(0, 0, 0, 0.88); border: 3px solid var(--c3); padding: 8px 10px; font-family: "Press Start 2P", monospace; font-size: 9px; color: #fff; max-width: min(520px, calc(100vw - 80px)); justify-content: flex-start; }
 .pv-bar .st-btn { font-size: 8px; padding: 7px 9px; }
 .pv-bar p { margin: 0; }
+.st-usage { margin: 0 0 0 auto; font-size: 14px; color: var(--mut); }
+.st-usage b { color: var(--ink); font-weight: 400; font-family: "Press Start 2P", monospace; font-size: 9px; }
+.st { padding-top: 12px; }

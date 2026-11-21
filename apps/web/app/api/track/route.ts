@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 import { dbConfigured, ensureSchema, q } from "@/lib/db";
 import { ntfy } from "@/lib/notify";
+import { planOf } from "@/lib/plans";
 import { isStudioCookie, STUDIO_COOKIE } from "@/lib/studio-auth";
 
 export const runtime = "nodejs";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 const Body = z.object({
   slug: z.string().regex(/^[a-z0-9-]{3,80}$/),
-  kind: z.enum(["start", "end", "cta", "recruiter"]),
+  kind: z.enum(["start", "end"]),
   sid: z.string().regex(/^[a-z0-9]{6,16}$/),
   detail: z.string().max(20).optional(),
 });
@@ -18,7 +19,7 @@ const BOTS = /bot|crawl|spider|slurp|preview|facebookexternalhit|linkedin|whatsa
 /** une notification « quelqu'un joue » au plus toutes les 10 minutes par jeu */
 const BURST_MIN = 10;
 
-const COUNTER: Record<string, string> = { start: "plays", end: "ends", cta: "cta_clicks", recruiter: "recruiter_views" };
+const COUNTER: Record<string, string> = { start: "plays", end: "ends" };
 
 export async function POST(req: Request) {
   const ok = new Response(null, { status: 204 });
@@ -32,8 +33,9 @@ export async function POST(req: Request) {
   if (isStudioCookie((await cookies()).get(STUDIO_COOKIE)?.value)) return ok;
 
   await ensureSchema();
-  const game = (await q<{ title: string; company: string; job_title: string; notified_at: string | null }>(
-    "select data->'design'->'title'->>'fr' as title, company, job_title, notified_at from cartridges where slug = $1 and status = 'live'",
+  const game = (await q<{ title: string; company: string; job_title: string; notified_at: string | null; plan: string | null }>(
+    `select c.data->'design'->'title'->>'fr' as title, c.company, c.job_title, c.notified_at, a.plan
+       from cartridges c left join accounts a on a.id = c.owner_id where c.slug = $1 and c.status = 'live'`,
     [slug],
   ))[0];
   if (!game) return ok;
@@ -48,14 +50,15 @@ export async function POST(req: Request) {
     [slug],
   );
 
+  if (!planOf(game.plan ?? "owner").notifications) return ok;
   const base = process.env.PUBLIC_BASE_URL?.replace(/\/+$/, "") ?? new URL(req.url).origin;
   const where = `${game.company} · ${game.job_title}`;
-  if (kind === "start" || kind === "recruiter") {
+  if (kind === "start") {
     const recent = game.notified_at && Date.now() - new Date(game.notified_at).getTime() < BURST_MIN * 60_000;
     if (!recent) {
       await q("update cartridges set notified_at = now() where slug = $1", [slug]);
       await ntfy({
-        title: kind === "start" ? `🎮 On joue à ${game.title} !` : `👀 Mode recruteur ouvert : ${game.title}`,
+        title: `🎮 On joue à ${game.title} !`,
         message: `${where}\nPartie n°${row?.plays ?? 1}`,
         click: `${base}/studio`,
         tags: ["video_game"],
@@ -64,9 +67,6 @@ export async function POST(req: Request) {
     }
   } else if (kind === "end") {
     await ntfy({ title: `🏁 ${game.title} terminé jusqu'au bout`, message: where, click: `${base}/studio`, tags: ["checkered_flag"], priority: 3 });
-  } else if (kind === "cta") {
-    const what = detail === "cv" ? "a ouvert ton CV" : detail === "contact" ? "a cliqué sur « Me contacter »" : detail === "linkedin" ? "a ouvert ton LinkedIn" : "a ouvert ton portfolio";
-    await ntfy({ title: `🔥 ${game.title} : quelqu'un ${what}`, message: where, click: `${base}/studio`, tags: ["fire"], priority: 5 });
   }
   return ok;
 }

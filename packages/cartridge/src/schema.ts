@@ -6,7 +6,9 @@
  */
 import { z } from "zod";
 
-export const SCHEMA_VERSION = "0.2" as const;
+export const SCHEMA_VERSION = "0.3" as const;
+/** versions encore lues (les jeux déjà publiés restent jouables) */
+export const SUPPORTED_VERSIONS = ["0.2", "0.3"] as const;
 
 /* ---------- briques communes ---------- */
 
@@ -158,12 +160,94 @@ export const DialogueMechanic = z.object({
     .max(6),
 });
 
+/* ---------- mécaniques d'arcade (v0.3) ---------- */
+
+/** Petites icônes pixel dessinées par le moteur. */
+export const ICONS = [
+  "file", "bug", "coin", "star", "bomb", "mail", "chart", "shield", "fire", "box",
+  "cloud", "key", "warning", "heart", "ticket", "server", "cart", "clock", "drop", "bolt",
+] as const;
+export const Icon = z.enum(ICONS);
+
+/** Objet d'une mécanique d'arcade : « good » = à attraper / à frapper, « bad » = à éviter. */
+const ArcadeItem = z.object({
+  id: Id,
+  label: I18n, // court : affiché sur l'objet (14 caractères conseillés)
+  kind: z.enum(["good", "bad"]),
+  icon: Icon.default("box"),
+  weight: z.number().positive().default(1),
+});
+
+/** Attrape-tout (façon Kaboom!) : des objets tombent, on déplace le panier. Métriques : précision, rappel. */
+export const CatchMechanic = z.object({
+  type: z.literal("catch"),
+  catcher: I18n, // ce que représente le panier (« ton pipeline », « le filtre anti-spam »…)
+  durationSec: z.number().int().min(15).max(60).default(30),
+  perSec: z.number().min(0.5).max(3).default(1.2),
+  items: z.array(ArcadeItem).min(2).max(8),
+  onGood: z.array(Effect).default([]), // un bon objet attrapé
+  onBad: z.array(Effect).default([]), // un mauvais objet attrapé
+  onMiss: z.array(Effect).default([]), // un bon objet raté
+});
+
+/** Tape-taupe : des incidents sortent des trous, il faut les frapper avant qu'ils repartent. Métriques : SLA, MTTR. */
+export const WhackMechanic = z.object({
+  type: z.literal("whack"),
+  durationSec: z.number().int().min(15).max(60).default(30),
+  holes: z.number().int().min(4).max(9).default(9),
+  perSec: z.number().min(0.5).max(2.5).default(1),
+  upMs: z.number().int().min(600).max(3000).default(1400), // temps de présence d'une cible
+  targets: z.array(ArcadeItem).min(2).max(8), // good = à frapper, bad = à épargner
+  onHit: z.array(Effect).default([]),
+  onWrong: z.array(Effect).default([]),
+  onMiss: z.array(Effect).default([]),
+});
+
+/** Jauge de puissance (façon golf ou baseball 8-bit) : l'aiguille va et vient, on l'arrête dans la bonne zone. */
+export const GaugeMechanic = z.object({
+  type: z.literal("gauge"),
+  label: I18n, // ce que l'on dose (« taux d'échantillonnage », « budget cloud »…)
+  rounds: z.number().int().min(1).max(8).default(3),
+  speed: z.number().min(0.5).max(2.5).default(1), // allers-retours par seconde
+  zones: z
+    .array(
+      z.object({
+        id: Id,
+        from: z.number().min(0).max(100),
+        to: z.number().min(0).max(100),
+        label: I18n,
+        color: Hex,
+        effects: z.array(Effect).default([]),
+      }),
+    )
+    .min(2)
+    .max(7),
+});
+
+/** Mémoire (façon Simon) : la machine joue une séquence, on la répète. Elle s'allonge à chaque manche. */
+export const SequenceMechanic = z.object({
+  type: z.literal("sequence"),
+  theme: I18n, // ce que représente la séquence (« ordre de déploiement », « étapes du RGPD »…)
+  pads: z
+    .array(z.object({ id: Id, label: I18n, color: Hex }))
+    .min(3)
+    .max(6),
+  rounds: z.number().int().min(2).max(8).default(4), // longueur de départ 3, +1 par manche
+  speedMs: z.number().int().min(350).max(1200).default(650),
+  onSuccess: z.array(Effect).default([]),
+  onFail: z.array(Effect).default([]),
+});
+
 export const Mechanic = z.discriminatedUnion("type", [
   WheelMechanic,
   SliderMechanic,
   TriageMechanic,
   QuizMechanic,
   DialogueMechanic,
+  CatchMechanic,
+  WhackMechanic,
+  GaugeMechanic,
+  SequenceMechanic,
 ]);
 export type Mechanic = z.infer<typeof Mechanic>;
 export type MechanicType = Mechanic["type"];
@@ -268,6 +352,8 @@ export const Level = z.object({
   hintAfterFails: z.number().int().min(1).max(5).default(2),
   hint: I18n.optional(),
   characterId: Id.optional(),
+  /** conseil propre à ce niveau, affiché dans la fiche « comment jouer » */
+  howTo: I18n.optional(),
 });
 export type Level = z.infer<typeof Level>;
 
@@ -276,7 +362,7 @@ export const Boss = z.object({
   painPointId: Id,
   characterId: Id.optional(),
   hp: z.number().int().min(1).max(20),
-  mechanic: z.discriminatedUnion("type", [QuizMechanic, WheelMechanic]),
+  mechanic: z.discriminatedUnion("type", [QuizMechanic, WheelMechanic, GaugeMechanic]),
   taunts: z.array(I18n).min(1).max(6),
   defeatLine: I18n,
 });
@@ -287,7 +373,7 @@ export type Boss = z.infer<typeof Boss>;
 export const Cartridge = z.object({
   meta: z.object({
     id: z.string().regex(/^[a-z0-9-]{3,80}$/),
-    schemaVersion: z.literal(SCHEMA_VERSION),
+    schemaVersion: z.enum(SUPPORTED_VERSIONS),
     createdAt: z.string().datetime(),
     languages: z.array(Lang).min(1),
     defaultLang: Lang,
@@ -341,7 +427,7 @@ export const Cartridge = z.object({
         }),
       )
       .default([]),
-  }),
+  }).optional(), // ancien format : profil du candidat (plus généré depuis la v0.3)
   design: z.object({
     /** habillage complet (police, logo, cadres, filtre d'image) : chaque jeu doit avoir sa propre identité */
     skin: z.enum(["arcade", "famicom", "gameboy", "terminal", "synth", "corporate", "comic"]).default("arcade"),
@@ -389,12 +475,14 @@ export const Cartridge = z.object({
     .default([]),
   ending: z.object({
     headline: I18n,
-    skillsUnlocked: z.array(z.object({ requirementId: Id, proofId: Id, line: I18n })).min(1),
+    /** missions du poste jouées pendant la partie (proofId : ancien format) */
+    skillsUnlocked: z.array(z.object({ requirementId: Id, proofId: Id.optional(), line: I18n })).default([]),
     shareCard: z.object({ text: I18n, showScore: z.boolean().default(true) }),
     challenge: I18n.optional(),
     cta: z
       .array(z.object({ type: z.enum(["cv", "contact", "portfolio", "linkedin"]), label: I18n, url: Url }))
-      .min(1),
+      .default([]), // ancien format, plus généré
+
   }),
   tracking: z.object({ enabled: z.boolean().default(true) }).default({ enabled: true }),
   review: z

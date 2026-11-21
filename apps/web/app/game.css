@@ -1,6 +1,6 @@
 /* ================= PRESS HIRE — écran de jeu ================= */
 
-.g-root {
+.g-root, .g-root-lite {
   --head: "Press Start 2P", monospace;
   --body: "Pixelify Sans", "Press Start 2P", sans-serif;
   --frame: #000;
@@ -18,6 +18,7 @@
   font-family: var(--body);
   overflow-x: hidden;
 }
+.g-root-lite { position: fixed; inset: 0; z-index: 300; min-height: 0; background: transparent; font-family: var(--body); color: var(--ink); }
 .g-backdrop { position: fixed; inset: 0; width: 100vw; height: 100vh; image-rendering: pixelated; z-index: 0; }
 .g-veil { position: fixed; inset: 0; z-index: 0; background: color-mix(in srgb, var(--bg) 62%, transparent); backdrop-filter: blur(1px); }
 .g-root > header, .g-root > main { position: relative; z-index: 1; }
@@ -110,17 +111,17 @@
 .g-you { margin: 0; font-style: italic; opacity: 0.85; font-size: 16px; }
 
 /* ---------- roue ---------- */
-.g-wheel-wrap { position: relative; width: min(320px, 82vw); aspect-ratio: 1; }
+.g-wheel-wrap { position: relative; width: min(360px, 86vw); aspect-ratio: 1; filter: drop-shadow(0 0 18px color-mix(in srgb, var(--accent) 35%, transparent)); }
 .g-wheel { width: 100%; height: 100%; image-rendering: pixelated; }
 .g-hub {
-  position: absolute; left: 50%; top: 53%; transform: translate(-50%, -50%);
-  width: 22%; aspect-ratio: 1; border-radius: 50%; cursor: pointer;
+  position: absolute; left: 50%; top: 53.3%; transform: translate(-50%, -50%);
+  width: 19%; aspect-ratio: 1; border-radius: 50%; cursor: pointer;
   font-family: "Press Start 2P", monospace; font-size: clamp(8px, 2.4vw, 11px);
   background: var(--accent); color: #000; border: 3px solid #000; box-shadow: 0 3px 0 #000;
 }
 .g-hub:disabled { background: #555; color: #aaa; cursor: default; }
 .g-hub:not(:disabled) { animation: g-pulse 0.9s ease-in-out infinite; }
-@keyframes g-pulse { 50% { transform: translate(-50%, -50%) scale(1.08); } }
+@keyframes g-pulse { 50% { transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 3px 0 #000, 0 0 16px var(--accent); } }
 .g-wheel-info { display: flex; flex-direction: column; align-items: center; gap: 8px; min-height: 64px; }
 .g-legend { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 4px 12px; text-align: left; font-size: 13px; width: 100%; opacity: 0.85; }
 .g-legend i { display: inline-block; width: 10px; height: 10px; border: 2px solid #000; margin-right: 6px; vertical-align: -1px; }
@@ -280,3 +281,90 @@
 .gskin-comic .g-h3 { font-size: 20px; }
 .gskin-corporate .g-h3 { font-size: 15px; }
 .gskin-terminal .g-h3, .gskin-terminal .g-chip, .gskin-terminal .g-tool { font-size: 18px; }
+
+/* ================= tutoriel ================= */
+.g-overlay { position: fixed; inset: 0; z-index: 320; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, 0.72); animation: g-in 0.2s steps(3) both; }
+.g-tuto { width: min(640px, 100%); max-height: calc(100dvh - 32px); overflow: auto; display: flex; flex-direction: column; gap: 12px; align-items: center; text-align: center; }
+.g-tuto-steps { text-align: left; margin: 0; padding-left: 1.4em; font-size: 16px; line-height: 1.45; }
+.g-tuto-steps li + li { margin-top: 6px; }
+.g-tuto-levels { list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 6px; text-align: left; font-size: 15px; }
+.g-tuto-levels li { display: flex; gap: 10px; align-items: center; padding: 6px 8px; background: var(--soft); }
+.g-howto { width: 100%; max-width: 600px; text-align: left; padding: 12px 14px; background: var(--soft); border-left: 4px solid var(--accent); font-size: 15px; line-height: 1.4; }
+.g-howto p { margin: 0 0 6px; }
+.g-howto p:last-child { margin-bottom: 0; }
+.g-howto-head { font-family: var(--head); font-size: 10px; color: var(--accent); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.g-howto-head small { font-family: var(--body); font-size: 13px; color: var(--ink); opacity: 0.7; }
+.g-howto-goal b, .g-howto-tip { color: var(--accent); }
+.g-howto-keys, .g-howto-metric { opacity: 0.85; }
+.g-icon { image-rendering: pixelated; vertical-align: middle; flex: none; }
+
+/* ================= arcade ================= */
+.g-arcade-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; justify-content: center; font-size: 14px; }
+.g-arcade-legend > div { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
+.g-arcade-legend b { font-family: var(--head); font-size: 8px; padding: 3px 5px; border: 2px solid #000; }
+.g-arcade-legend b.ok { background: var(--good); color: #000; }
+.g-arcade-legend b.ko { background: var(--bad); color: #000; }
+.g-arcade-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.g-metrics { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; font-family: "Press Start 2P", monospace; font-size: 9px; }
+.g-metrics span { padding: 5px 7px; background: #000; color: #9effb0; border: 2px solid #1f3; border-color: color-mix(in srgb, var(--accent) 70%, #000); }
+.g-metrics b { color: #ffe04a; font-weight: 400; }
+.g-screen { position: relative; width: min(600px, 100%); }
+.g-arcade-canvas { display: block; width: 100%; aspect-ratio: 4 / 3; image-rendering: pixelated; border: 3px solid #000; box-shadow: 0 0 0 3px var(--accent), 6px 6px 0 6px rgba(0, 0, 0, 0.4); cursor: none; }
+.g-count { position: absolute; inset: 0; display: grid; place-items: center; font-family: "Press Start 2P", monospace; font-size: clamp(36px, 10vw, 72px); color: #ffe04a; text-shadow: 5px 5px 0 #000; background: rgba(0, 0, 0, 0.45); animation: g-stamp 0.5s steps(4) both; }
+.g-rule.small { font-size: 14px; opacity: 0.75; }
+
+/* tape-alerte */
+.g-holes { display: grid; gap: 10px; padding: 14px; background: linear-gradient(#2a5a22, #1c4418); border: 3px solid #000; box-shadow: 0 0 0 3px var(--accent); }
+.g-mech-whack .g-screen { width: min(500px, 100%); }
+.g-hole {
+  position: relative; aspect-ratio: 1.3; overflow: hidden; cursor: pointer; border: 0; padding: 0; font: inherit;
+  background: radial-gradient(ellipse 46% 24% at 50% 80%, #120a06 0 92%, transparent 94%), transparent;
+  touch-action: manipulation;
+}
+.g-hole kbd { position: absolute; left: 4px; top: 4px; font-family: "Press Start 2P", monospace; font-size: 8px; color: rgba(255, 255, 255, 0.5); }
+.g-mole {
+  position: absolute; left: 50%; bottom: 16%; transform: translate(-50%, 0); display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 6px 6px 4px; min-width: 74%; background: #fffdf2; color: #111; border: 3px solid #000; border-radius: 10px 10px 2px 2px;
+  animation: g-popup 0.14s steps(3) both;
+}
+.g-mole.bad { background: #ffe0e0; border-style: dashed; }
+.g-mole em { font-style: normal; font-size: 12px; line-height: 1.1; text-align: center; }
+.g-hole.gone .g-mole { animation: g-popdown 0.25s steps(3) forwards; }
+.g-hole.hit .g-mole, .g-hole.wrong .g-mole { animation: g-squash 0.25s steps(3) forwards; }
+@keyframes g-popup { from { transform: translate(-50%, 110%); } to { transform: translate(-50%, 0); } }
+@keyframes g-popdown { to { transform: translate(-50%, 120%); } }
+@keyframes g-squash { to { transform: translate(-50%, 30%) scaleY(0.4); opacity: 0.4; } }
+.g-bonk { position: absolute; left: 50%; top: 18%; transform: translateX(-50%) rotate(-8deg); font-family: "Press Start 2P", monospace; font-style: normal; font-size: 11px; color: #ffe04a; text-shadow: 2px 2px 0 #000; pointer-events: none; animation: g-stamp 0.3s steps(3) both; }
+.g-bonk.ko { color: #ff6a6a; }
+
+/* jauge */
+.g-gauge-wrap { width: min(620px, 100%); display: flex; flex-direction: column; gap: 14px; align-items: center; }
+.g-gauge { position: relative; width: 100%; height: 64px; background: #111; border: 4px solid #000; box-shadow: 0 0 0 3px var(--accent), 5px 5px 0 5px rgba(0, 0, 0, 0.4); }
+.g-zone { position: absolute; top: 0; bottom: 0; display: flex; align-items: flex-end; justify-content: center; border-right: 2px solid #000; box-shadow: inset 0 8px 0 rgba(255, 255, 255, 0.22), inset 0 -8px 0 rgba(0, 0, 0, 0.25); }
+.g-zone span { font-family: "Press Start 2P", monospace; font-size: 7px; color: #fff; text-shadow: 1px 1px 0 #000; padding: 0 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.g-zone.on { animation: g-zone 0.2s steps(2) 5; }
+@keyframes g-zone { 50% { filter: brightness(1.8); } }
+.g-tick { position: absolute; top: -8px; width: 2px; height: 6px; background: var(--ink); }
+.g-needle { position: absolute; top: -14px; bottom: -14px; width: 0; transform: translateX(-50%); }
+.g-needle::before { content: ""; position: absolute; left: -3px; top: 10px; bottom: 10px; width: 6px; background: #fff; box-shadow: 0 0 0 2px #000, 0 0 10px #fff; }
+.g-needle::after { content: ""; position: absolute; left: -9px; top: -2px; border: 9px solid transparent; border-top: 12px solid #ffe04a; filter: drop-shadow(0 2px 0 #000); }
+.g-needle.stopped::before { background: #ffe04a; }
+.g-gauge-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; justify-content: center; min-height: 54px; }
+
+/* mémoire */
+.g-seq-msg { margin: 0; font-family: "Press Start 2P", monospace; font-size: 13px; color: var(--accent); min-height: 1.4em; }
+.g-seq-msg.ok { color: var(--good); }
+.g-seq-msg.ko { color: var(--bad); }
+.g-pads { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; width: min(460px, 100%); }
+.g-pads.n3, .g-pads.n5, .g-pads.n6 { grid-template-columns: repeat(3, 1fr); }
+.g-pad {
+  position: relative; min-height: 92px; font: inherit; font-size: 15px; cursor: pointer; color: #000; padding: 10px;
+  background: color-mix(in srgb, var(--pc) 55%, #000); border: 4px solid #000; box-shadow: inset 0 6px 0 rgba(255, 255, 255, 0.18), 0 5px 0 #000;
+  transition: transform 0.05s; touch-action: manipulation;
+}
+.g-pad kbd { position: absolute; left: 6px; top: 5px; font-family: "Press Start 2P", monospace; font-size: 8px; color: rgba(0, 0, 0, 0.6); }
+.g-pad.lit { background: var(--pc); box-shadow: inset 0 6px 0 rgba(255, 255, 255, 0.5), 0 0 22px var(--pc), 0 5px 0 #000; transform: translateY(2px); }
+.g-pad:disabled { cursor: default; }
+
+.g-made { font-family: "Press Start 2P", monospace; font-size: 8px; color: var(--ink); opacity: 0.6; text-decoration: none; margin-top: 6px; }
+.g-made:hover { opacity: 1; }

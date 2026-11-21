@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { simulateBestRun, validateCartridge } from "@press-hire/cartridge";
 import {
-  DEFAULT_PROFILE,
   EXAMPLE_BRIEF,
+  EXAMPLE_BRIEF_ARCADE,
   briefSchemaText,
   generate,
   parseJsonReply,
@@ -12,7 +12,6 @@ import {
 } from "../src";
 
 const OFFER_TEXT = "Nous recherchons un Data Analyst pour la supply chain. ".repeat(20);
-const profile = { ...DEFAULT_PROFILE, name: "Test", email: "test@example.com", cv: "https://example.com/cv.pdf" };
 
 const scripted = (...replies: string[]): Llm & { calls: number } => {
   const l = {
@@ -29,7 +28,7 @@ const scripted = (...replies: string[]): Llm & { calls: number } => {
 
 async function run(llm: Llm, extra: Record<string, unknown> = {}) {
   const events: GenerateEvent[] = [];
-  for await (const e of generate({ offerText: OFFER_TEXT, ...extra }, { llm, profile, now: new Date("2026-11-21T12:00:00Z"), rand: () => 0.1 }))
+  for await (const e of generate({ offerText: OFFER_TEXT, ...extra }, { llm, now: new Date("2026-11-21T12:00:00Z"), rand: () => 0.1 }))
     events.push(e);
   return { events, last: events[events.length - 1]! };
 }
@@ -73,12 +72,19 @@ describe("génération", () => {
     expect(llm.calls).toBe(1);
     expect(last.slug).toMatch(/^carrefour-france-data-analyst-[a-z2-9]{4}$/);
     expect(last.cartridge.meta.id).toBe(last.slug);
-    expect(last.cartridge.candidate.name).toBe("Test");
-    expect(last.cartridge.ending.cta.map((c) => c.type)).toEqual(["cv", "contact", "portfolio"]);
-    expect(last.cartridge.ending.cta[1]!.url).toBe("mailto:test@example.com");
+    expect(last.cartridge.candidate).toBeUndefined();
+    expect(last.cartridge.ending.cta).toEqual([]);
+    expect(last.cartridge.ending.skillsUnlocked.every((s) => s.proofId === undefined)).toBe(true);
     // prêt à publier : aucun emplacement, contrôle strict OK
     const strict = validateCartridge(last.cartridge, { strict: true });
     expect(strict.issues.filter((i) => i.severity === "error")).toEqual([]);
+  });
+
+  it("accepte un brief à mécaniques d'arcade", async () => {
+    const { last } = await run(scripted(JSON.stringify(EXAMPLE_BRIEF_ARCADE)));
+    expect(last.type).toBe("done");
+    if (last.type !== "done") return;
+    expect(last.cartridge.levels.map((l) => l.mechanic.type)).toEqual(["catch", "whack", "gauge", "sequence"]);
   });
 
   it("répare seul les petites fautes (codes, intro, traduction, réponse en bloc ```)", async () => {
@@ -125,7 +131,7 @@ describe("génération", () => {
 
   it("échoue proprement sur une offre trop courte ou un modèle muet", async () => {
     const short = [];
-    for await (const e of generate({ offerText: "court" }, { llm: scripted("{}"), profile })) short.push(e);
+    for await (const e of generate({ offerText: "court" }, { llm: scripted("{}") })) short.push(e);
     expect(short.at(-1)).toMatchObject({ type: "fail" });
     const { last } = await run(scripted("pas du json", "toujours pas", "non"));
     expect(last).toMatchObject({ type: "fail" });

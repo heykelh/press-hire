@@ -1,9 +1,10 @@
 /**
  * Le « brief » est ce que le modèle de langue écrit : la cartouche sans les parties
- * que l'on connaît déjà (métadonnées, profil du candidat, boutons de contact, suivi).
+ * que l'on connaît déjà (métadonnées, suivi, relecture).
  * On l'assemble ensuite de façon déterministe, puis on corrige les petites fautes courantes.
  */
 import {
+  arcadeSplit,
   Cartridge,
   SCHEMA_VERSION,
   applyEffects,
@@ -14,7 +15,6 @@ import {
   type Level,
 } from "@press-hire/cartridge";
 import { z } from "zod";
-import type { CandidateProfile } from "./profile";
 
 export const Brief = Cartridge.omit({ meta: true, candidate: true, tracking: true, review: true }).extend({
   ending: Cartridge.shape.ending.omit({ cta: true }),
@@ -23,7 +23,6 @@ export type Brief = z.input<typeof Brief>;
 
 export interface AssembleCtx {
   slug: string;
-  profile: CandidateProfile;
   offerUrl?: string;
   contact?: { name: string; role?: string };
   now: Date;
@@ -119,6 +118,16 @@ export function repairBrief(raw: unknown): unknown {
     const sorted = [...(b.levels as Obj[])].sort((a, z) => (a.order as number) - (z.order as number));
     sorted.forEach((l, i) => (l.order = i + 1));
   }
+  // jauges : zones dans 0..100
+  const fixGauge = (m: Obj | undefined) => {
+    if (!isObj(m) || m.type !== "gauge" || !Array.isArray(m.zones)) return;
+    for (const z of m.zones as Obj[]) {
+      if (typeof z.from === "number") z.from = Math.max(0, Math.min(100, z.from));
+      if (typeof z.to === "number") z.to = Math.max(0, Math.min(100, z.to));
+    }
+  };
+  if (Array.isArray(b.levels)) for (const l of b.levels as Obj[]) fixGauge(l.mechanic as Obj);
+  if (isObj(b.boss)) fixGauge(b.boss.mechanic as Obj);
   if (isObj(b.boss)) {
     fixWheel(b.boss.mechanic as Obj);
     fixQuiz(b.boss.mechanic as Obj);
@@ -140,34 +149,18 @@ export function repairBrief(raw: unknown): unknown {
 /* ---------------- assemblage ---------------- */
 
 export function assemble(brief: Obj, ctx: AssembleCtx): CartridgeInput {
-  const { profile } = ctx;
-  const ending = (brief.ending ?? {}) as Obj;
-  const skills = (Array.isArray(ending.skillsUnlocked) ? ending.skillsUnlocked : []) as Array<{ requirementId: string; proofId: string }>;
-  const used = new Map<string, Set<string>>();
-  for (const s of skills) {
-    if (!used.has(s.proofId)) used.set(s.proofId, new Set());
-    used.get(s.proofId)!.add(s.requirementId);
-  }
-  const proofs = profile.proofs
-    .filter((p) => used.has(p.id))
-    .map((p) => ({ id: p.id, label: p.label, url: p.url, requirementIds: [...used.get(p.id)!], ...(p.fact ? { fact: p.fact } : {}) }));
-
+  const ending = (isObj(brief.ending) ? brief.ending : {}) as Obj;
+  const skills = (Array.isArray(ending.skillsUnlocked) ? ending.skillsUnlocked : []) as Obj[];
   const target = (isObj(brief.target) ? brief.target : {}) as Obj;
   const job = (isObj(target.job) ? target.job : {}) as Obj;
   const sources = (Array.isArray(target.sourcesConsulted) ? target.sourcesConsulted : []) as Obj[];
   if (ctx.offerUrl && !sources.some((s) => s.url === ctx.offerUrl))
     sources.unshift({ label: "Offre d'emploi", url: ctx.offerUrl, usedFor: "analysis" });
 
-  const email = profile.email.startsWith("mailto:") ? profile.email : `mailto:${profile.email}`;
-  const cta = [
-    { type: "cv", label: { fr: "Voir mon CV", en: "See my CV" }, url: profile.cv },
-    { type: "contact", label: { fr: "Me contacter", en: "Contact me" }, url: email },
-    { type: "portfolio", label: { fr: "Mon portfolio", en: "My portfolio" }, url: profile.portfolio },
-    ...(profile.linkedin ? [{ type: "linkedin", label: { fr: "LinkedIn", en: "LinkedIn" }, url: profile.linkedin }] : []),
-  ];
-
+  const { candidate: _c, meta: _m, tracking: _t, review: _r, ...rest } = brief;
+  void _c; void _m; void _t; void _r;
   return {
-    ...(brief as object),
+    ...rest,
     meta: { id: ctx.slug, schemaVersion: SCHEMA_VERSION, createdAt: ctx.now.toISOString(), languages: ["fr", "en"], defaultLang: "fr" },
     target: {
       ...target,
@@ -175,16 +168,11 @@ export function assemble(brief: Obj, ctx: AssembleCtx): CartridgeInput {
       ...(ctx.contact ? { contact: ctx.contact } : {}),
       sourcesConsulted: sources,
     },
-    candidate: {
-      name: profile.name,
-      headline: profile.headline,
-      links: { cv: profile.cv, portfolio: profile.portfolio, email: profile.email, ...(profile.linkedin ? { linkedin: profile.linkedin } : {}) },
-      proofs,
-    },
-    ending: { ...ending, cta },
+    // le récapitulatif de fin ne pointe plus vers des preuves externes
+    ending: { ...ending, skillsUnlocked: skills.map(({ proofId: _p, ...x }) => x), cta: [] },
     tracking: { enabled: true },
     review: { status: "draft" },
-  } as CartridgeInput;
+  } as unknown as CartridgeInput;
 }
 
 /* ---------------- équilibrage de secours ---------------- */
@@ -210,6 +198,16 @@ function bestDelta(c: Cartridge, l: Level, varId: string, start: GameState, dir:
       const best = [...m.segments].sort((a, b) => gain(b.effects) - gain(a.effects))[0]!;
       return run((s) => { for (let i = 0; i < m.spins; i++) applyEffects(c, s, best.effects); });
     }
+    case "catch":
+      return run((s) => { for (let i = 0; i < arcadeSplit(m).good; i++) applyEffects(c, s, m.onGood); });
+    case "whack":
+      return run((s) => { for (let i = 0; i < arcadeSplit(m).good; i++) applyEffects(c, s, m.onHit); });
+    case "sequence":
+      return run((s) => { for (let i = 0; i < m.rounds; i++) applyEffects(c, s, m.onSuccess); });
+    case "gauge": {
+      const best = [...m.zones].sort((a, b) => gain(b.effects) - gain(a.effects))[0]!;
+      return run((s) => { for (let i = 0; i < m.rounds; i++) applyEffects(c, s, best.effects); });
+    }
     case "slider": {
       let top = -Infinity;
       for (let x = m.control.min; x <= m.control.max + 1e-9; x += m.control.step)
@@ -220,6 +218,7 @@ function bestDelta(c: Cartridge, l: Level, varId: string, start: GameState, dir:
       return top;
     }
   }
+  return 0;
 }
 
 /**

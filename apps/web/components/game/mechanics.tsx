@@ -5,6 +5,7 @@ import type { Boss, Character, Effect, Level } from "@press-hire/cartridge";
 import { evalCurve } from "@press-hire/cartridge";
 import { brakeDistance, easeOutCubic, pickWeighted, sliceAt, slices, targetRotation } from "@press-hire/engine";
 import { BossSprite, deltaText, Portrait, type Ctx } from "./ui";
+import { CatchPlay, GaugeMeter, GaugePlay, SequencePlay, WhackPlay } from "./arcade";
 
 type M = Level["mechanic"];
 type Wheel = Extract<M, { type: "wheel" }>;
@@ -40,8 +41,12 @@ function useKeys(map: Record<string, () => void>, on = true) {
   }, [on]);
 }
 
-export function Mechanic({ ctx, m, character, onDone }: { ctx: Ctx; m: M; character?: Character; onDone: () => void }) {
+export function Mechanic({ ctx, m, character, paused = false, onDone }: { ctx: Ctx; m: M; character?: Character; paused?: boolean; onDone: () => void }) {
   switch (m.type) {
+    case "catch": return <CatchPlay ctx={ctx} m={m} paused={paused} onDone={onDone} />;
+    case "whack": return <WhackPlay ctx={ctx} m={m} paused={paused} onDone={onDone} />;
+    case "gauge": return <GaugePlay ctx={ctx} m={m} paused={paused} onDone={onDone} />;
+    case "sequence": return <SequencePlay ctx={ctx} m={m} paused={paused} onDone={onDone} />;
     case "wheel": return <WheelPlay ctx={ctx} m={m} onDone={onDone} />;
     case "slider": return <SliderPlay ctx={ctx} m={m} onDone={onDone} />;
     case "triage": return <TriagePlay ctx={ctx} m={m} onDone={onDone} />;
@@ -53,111 +58,170 @@ export function Mechanic({ ctx, m, character, onDone }: { ctx: Ctx; m: M; charac
 /* ======================= ROUE ======================= */
 
 const TAU = Math.PI * 2;
+const WS = 240; // taille interne de la toile de la roue
 
-export function WheelCanvas({ m, rot, pointerColor }: { m: Wheel; rot: number; pointerColor: string }) {
-  const ref = useRef<HTMLCanvasElement>(null);
-  const sl = slices(m.segments.map((s) => s.weight));
-  useEffect(() => {
-    const cv = ref.current;
-    if (!cv) return;
-    const g = cv.getContext("2d")!;
-    const S = 200, R = 92, cx = S / 2, cy = S / 2 + 6;
-    g.clearRect(0, 0, S, S);
-    g.imageSmoothingEnabled = false;
-    // ombre et anneau
-    g.fillStyle = "rgba(0,0,0,.45)";
-    g.beginPath(); g.arc(cx + 4, cy + 5, R + 6, 0, TAU); g.fill();
-    g.fillStyle = "#111";
-    g.beginPath(); g.arc(cx, cy, R + 6, 0, TAU); g.fill();
-    m.segments.forEach((seg, i) => {
-      const s = sl[i]!;
-      // angle 0 = pointeur en haut, sens horaire
-      const a0 = s.start + rot - Math.PI / 2, a1 = s.end + rot - Math.PI / 2;
-      g.fillStyle = seg.color;
-      g.beginPath(); g.moveTo(cx, cy); g.arc(cx, cy, R, a0, a1); g.closePath(); g.fill();
-      g.strokeStyle = "#111"; g.lineWidth = 2; g.stroke();
-      const mid = (a0 + a1) / 2;
-      // texte le long du rayon : tient aussi dans les cases étroites
-      g.save();
-      g.translate(cx, cy);
-      g.rotate(mid);
-      g.font = `${s.end - s.start < 0.5 ? 6 : 8}px 'Press Start 2P', monospace`;
-      g.textAlign = "center"; g.textBaseline = "middle";
-      g.fillStyle = "#000"; g.fillText(seg.code, R * 0.6 + 1, 1);
-      g.fillStyle = "#fff"; g.fillText(seg.code, R * 0.6, 0);
-      g.restore();
-    });
-    // lumières de l'anneau
-    for (let i = 0; i < 24; i++) {
-      const a = (i / 24) * TAU;
-      g.fillStyle = i % 2 ? "#ffe04a" : "#fff7c0";
-      g.fillRect(Math.round(cx + Math.cos(a) * (R + 3)) - 1, Math.round(cy + Math.sin(a) * (R + 3)) - 1, 3, 3);
-    }
-    // moyeu
-    g.fillStyle = "#111"; g.beginPath(); g.arc(cx, cy, 17, 0, TAU); g.fill();
-    // pointeur
-    g.fillStyle = "#111";
-    g.beginPath(); g.moveTo(cx - 11, 0); g.lineTo(cx + 11, 0); g.lineTo(cx, 20); g.closePath(); g.fill();
-    g.fillStyle = pointerColor;
-    g.beginPath(); g.moveTo(cx - 7, 2); g.lineTo(cx + 7, 2); g.lineTo(cx, 15); g.closePath(); g.fill();
-  }, [m, rot, pointerColor, sl]);
-  return <canvas ref={ref} width={200} height={200} className="g-wheel" aria-hidden="true" />;
-}
+/** Éclaircit (k > 0) ou assombrit (k < 0) une couleur hex. */
+const tone = (hex: string, k: number) => {
+  const n = parseInt(hex.slice(1), 16);
+  const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => Math.round(k >= 0 ? v + (255 - v) * k : v * (1 + k)));
+  return `rgb(${ch.join(",")})`;
+};
 
-/** Roue jouable : renvoie l'index de la case obtenue via onResult. */
+/**
+ * Roue de jeu télévisé en pixels : ampoules qui défilent, cases ombrées, picots,
+ * languette qui claque sur chaque picot, case gagnante qui clignote.
+ * Tout est dessiné dans la boucle d'animation (aucun rendu React par image).
+ */
 export function SpinningWheel({ ctx, m, disabled, onResult }: { ctx: Ctx; m: Wheel; disabled?: boolean; onResult: (i: number) => void }) {
-  const [rot, setRot] = useState(0);
+  const cvRef = useRef<HTMLCanvasElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<"idle" | "free" | "brake" | "spin">(m.stop === "timing" ? "free" : "idle");
-  const anim = useRef({ from: 0, to: 0, t0: 0, dur: 0, rot: 0, last: 0 });
-  const sl = slices(m.segments.map((s) => s.weight));
-  const lastSlice = useRef(-1);
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const S = useRef({ rot: 0, vel: 0, from: 0, to: 0, t0: 0, dur: 0, flap: 0, slice: -1, winner: -1, winT: 0 });
+  const sl = slices(m.segments.map((x) => x.weight));
+  const onResultRef = useRef(onResult);
+  onResultRef.current = onResult;
+  const accent = ctx.c.design.palette.accent;
 
   useEffect(() => {
-    if (mode === "idle") return;
-    let raf = 0;
-    const tick = (now: number) => {
-      raf = requestAnimationFrame(tick);
-      const a = anim.current;
-      if (mode === "free") {
-        const dt = a.last ? (now - a.last) / 1000 : 0;
-        a.last = now;
-        a.rot += dt * 3.6; // ≈ 0,57 tour/s
-      } else {
-        const k = Math.min(1, (now - a.t0) / a.dur);
-        a.rot = a.from + (a.to - a.from) * easeOutCubic(k);
+    const cv = cvRef.current!;
+    const g = cv.getContext("2d")!;
+    const cx = WS / 2, cy = WS / 2 + 8, R = 92;
+    let raf = 0, last = performance.now();
+    const labels = m.segments.map((x) => x.code);
+
+    const draw = (now: number) => {
+      const s = S.current;
+      const t = now / 1000;
+      g.clearRect(0, 0, WS, WS);
+      g.imageSmoothingEnabled = false;
+      // ombre portée
+      g.fillStyle = "rgba(0,0,0,.45)";
+      g.beginPath(); g.arc(cx + 5, cy + 6, R + 14, 0, TAU); g.fill();
+      // jante : bois sombre + anneau doré biseauté
+      g.fillStyle = "#1b1022"; g.beginPath(); g.arc(cx, cy, R + 14, 0, TAU); g.fill();
+      g.fillStyle = "#b8860b"; g.beginPath(); g.arc(cx, cy, R + 7, 0, TAU); g.fill();
+      g.fillStyle = "#ffd54a"; g.beginPath(); g.arc(cx, cy, R + 7, Math.PI * 1.05, Math.PI * 1.75); g.lineTo(cx, cy); g.fill();
+      g.fillStyle = "#1b1022"; g.beginPath(); g.arc(cx, cy, R + 3, 0, TAU); g.fill();
+
+      const spinning = modeRef.current === "spin" || modeRef.current === "brake" || Math.abs(s.vel) > 0.5;
+      const flashing = s.winner >= 0 && t - s.winT < 1.6;
+      // cases : couleur, reflet intérieur, ombre extérieure
+      m.segments.forEach((seg, i) => {
+        const a0 = sl[i]!.start + s.rot - Math.PI / 2, a1 = sl[i]!.end + s.rot - Math.PI / 2;
+        const win = flashing && i === s.winner;
+        const base = win && Math.floor(t * 8) % 2 === 0 ? tone(seg.color, 0.45) : seg.color;
+        const wedge = (r: number, c: string) => { g.fillStyle = c; g.beginPath(); g.moveTo(cx, cy); g.arc(cx, cy, r, a0, a1); g.closePath(); g.fill(); };
+        wedge(R, base.startsWith("#") ? tone(base, -0.22) : base);
+        wedge(R * 0.86, base);
+        wedge(R * 0.5, base.startsWith("#") ? tone(base, 0.18) : base);
+        if (flashing && i !== s.winner) wedge(R, "rgba(0,0,0,.45)");
+      });
+      // séparations
+      g.lineWidth = 3; g.strokeStyle = "#140c18";
+      for (const x of sl) {
+        const a = x.start + s.rot - Math.PI / 2;
+        g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R); g.stroke();
+      }
+      // étiquettes le long du rayon
+      m.segments.forEach((seg, i) => {
+        const mid = (sl[i]!.start + sl[i]!.end) / 2 + s.rot - Math.PI / 2;
+        g.save(); g.translate(cx, cy); g.rotate(mid);
+        g.font = `${sl[i]!.end - sl[i]!.start < 0.5 ? 7 : 9}px 'Press Start 2P', monospace`;
+        g.textAlign = "center"; g.textBaseline = "middle";
+        g.fillStyle = "#000"; g.fillText(labels[i]!, R * 0.62 + 1, 1);
+        g.fillStyle = "#fff"; g.fillText(labels[i]!, R * 0.62, 0);
+        g.restore();
+        void seg;
+      });
+      // picots dorés aux limites des cases
+      for (const x of sl) {
+        const a = x.start + s.rot - Math.PI / 2;
+        const px = Math.round(cx + Math.cos(a) * (R - 4)), py = Math.round(cy + Math.sin(a) * (R - 4));
+        g.fillStyle = "#000"; g.fillRect(px - 3, py - 3, 6, 6);
+        g.fillStyle = "#ffd54a"; g.fillRect(px - 2, py - 2, 4, 4);
+        g.fillStyle = "#fff7c0"; g.fillRect(px - 2, py - 2, 2, 2);
+      }
+      // ampoules : clignotent au repos, défilent pendant la rotation, s'emballent à la victoire
+      const N = 28;
+      for (let i = 0; i < N; i++) {
+        const a = (i / N) * TAU;
+        const on = flashing ? Math.floor(t * 10) % 2 === 0 : spinning ? (i + Math.floor(t * 24)) % 4 === 0 : (i + Math.floor(t * 2)) % 2 === 0;
+        const bx = Math.round(cx + Math.cos(a) * (R + 10)), by = Math.round(cy + Math.sin(a) * (R + 10));
+        g.fillStyle = on ? "rgba(255,240,150,.35)" : "transparent";
+        g.fillRect(bx - 4, by - 4, 8, 8);
+        g.fillStyle = on ? "#fff7c0" : "#6b5a20";
+        g.fillRect(bx - 2, by - 2, 4, 4);
+      }
+      // moyeu
+      g.fillStyle = "#140c18"; g.beginPath(); g.arc(cx, cy, 27, 0, TAU); g.fill();
+      g.fillStyle = "#b8860b"; g.beginPath(); g.arc(cx, cy, 24, 0, TAU); g.fill();
+      g.fillStyle = "#ffd54a"; g.beginPath(); g.arc(cx - 3, cy - 3, 20, 0, TAU); g.fill();
+      // languette (pivot en haut), qui claque sur chaque picot
+      g.save();
+      g.translate(cx, cy - R - 16);
+      g.rotate(s.flap);
+      g.fillStyle = "#000";
+      g.beginPath(); g.moveTo(-10, -2); g.lineTo(10, -2); g.lineTo(0, 24); g.closePath(); g.fill();
+      g.fillStyle = accent;
+      g.beginPath(); g.moveTo(-7, 0); g.lineTo(7, 0); g.lineTo(0, 19); g.closePath(); g.fill();
+      g.fillStyle = "rgba(255,255,255,.7)"; g.fillRect(-4, 1, 3, 6);
+      g.fillStyle = "#000"; g.fillRect(-3, -6, 6, 6);
+      g.fillStyle = "#ffd54a"; g.fillRect(-2, -5, 4, 4);
+      g.restore();
+    };
+
+    const loop = (now: number) => {
+      raf = requestAnimationFrame(loop);
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      const s = S.current;
+      const prev = s.rot;
+      const md = modeRef.current;
+      if (md === "free") s.rot += dt * 3.6;
+      else if (md === "spin" || md === "brake") {
+        const k = Math.min(1, (now - s.t0) / s.dur);
+        s.rot = s.from + (s.to - s.from) * (md === "spin" ? 1 - Math.pow(1 - k, 4) : easeOutCubic(k));
         if (k >= 1) {
-          cancelAnimationFrame(raf);
-          setRot(a.rot);
-          a.last = 0;
-          const i = sliceAt(sl, a.rot);
+          const i = sliceAt(sl, s.rot);
+          s.winner = i;
+          s.winT = now / 1000;
           setMode(m.stop === "timing" ? "free" : "idle");
-          onResult(i);
-          return;
+          onResultRef.current(i);
         }
       }
-      const cur = sliceAt(sl, a.rot);
-      if (cur !== lastSlice.current) { lastSlice.current = cur; if (mode !== "free") ctx.chip.sfx("tick"); }
-      setRot(a.rot);
+      s.vel = dt > 0 ? (s.rot - prev) / dt : 0;
+      const cur = sliceAt(sl, s.rot);
+      if (cur !== s.slice) {
+        if (s.slice >= 0 && md !== "free") { ctx.chip.sfx("tick"); s.flap = -0.55; }
+        else if (s.slice >= 0) s.flap = -0.3;
+        s.slice = cur;
+      }
+      s.flap *= Math.exp(-dt * 10);
+      if (wrapRef.current) wrapRef.current.dataset.rot = s.rot.toFixed(3);
+      draw(now);
     };
-    raf = requestAnimationFrame(tick);
+    raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
+  }, [m]);
 
   const go = () => {
     if (disabled) return;
-    const a = anim.current;
+    const s = S.current;
     ctx.chip.sfx("click");
+    s.winner = -1;
     if (m.stop === "random") {
-      if (mode !== "idle") return;
-      const i = pickWeighted(m.segments.map((s) => s.weight), ctx.rand);
-      a.from = a.rot; a.to = targetRotation(sl, i, a.rot, 3 + Math.floor(ctx.rand() * 2), ctx.rand);
-      a.t0 = performance.now(); a.dur = 2800;
+      if (modeRef.current !== "idle") return;
+      const i = pickWeighted(m.segments.map((x) => x.weight), ctx.rand);
+      s.from = s.rot; s.to = targetRotation(sl, i, s.rot, 4 + Math.floor(ctx.rand() * 2), ctx.rand);
+      s.t0 = performance.now(); s.dur = 3400;
       setMode("spin");
     } else {
-      if (mode !== "free") return;
-      a.from = a.rot; a.to = a.rot + brakeDistance(m.segments.length);
-      a.t0 = performance.now(); a.dur = 900;
+      if (modeRef.current !== "free") return;
+      s.from = s.rot; s.to = s.rot + brakeDistance(m.segments.length);
+      s.t0 = performance.now(); s.dur = 900;
       setMode("brake");
     }
   };
@@ -166,8 +230,8 @@ export function SpinningWheel({ ctx, m, disabled, onResult }: { ctx: Ctx; m: Whe
   const busy = mode === "spin" || mode === "brake";
   const label = m.stop === "random" ? "GO!" : "STOP!";
   return (
-    <div className="g-wheel-wrap" data-rot={rot.toFixed(3)}>
-      <WheelCanvas m={m} rot={rot} pointerColor={ctx.c.design.palette.accent} />
+    <div className="g-wheel-wrap" ref={wrapRef}>
+      <canvas ref={cvRef} width={WS} height={WS} className="g-wheel" aria-hidden="true" />
       <button className="g-hub" onClick={go} disabled={disabled || busy || (m.stop === "random" && mode !== "idle")}>{label}</button>
     </div>
   );
@@ -451,7 +515,7 @@ export function BossFight({ ctx, boss, character, onEnd }: { ctx: Ctx; boss: Bos
   const [spins, setSpins] = useState(0);
   const ended = useRef(false);
   const m = boss.mechanic;
-  const maxSpins = m.type === "wheel" ? Math.max(m.spins, boss.hp + LIVES) : 0;
+  const maxSpins = m.type === "wheel" ? Math.max(m.spins, boss.hp + LIVES) : m.type === "gauge" ? Math.max(m.rounds, boss.hp + LIVES) : 0;
 
   const hit = (good: boolean, effects: Effect[]) => {
     play(ctx, effects, good);
@@ -484,13 +548,20 @@ export function BossFight({ ctx, boss, character, onEnd }: { ctx: Ctx; boss: Bos
   useKeys(m.type === "quiz" && picked !== null ? { Enter: next, " ": next } : m.type === "quiz" ? Object.fromEntries(m.questions[q % m.questions.length]!.options.map((_, k) => [String(k + 1), () => choose(k)])) : {});
 
   const onSpin = (i: number) => {
-    if (m.type !== "wheel") return;
-    const seg = m.segments[i]!;
-    const sum = seg.effects.reduce((t, e) => t + (e.op === "add" ? e.value : 0), 0);
-    const r = hit(sum > 0, seg.effects);
+    if (m.type === "quiz") return;
+    const seg = m.type === "wheel" ? m.segments[i] : m.zones[i];
+    const effects = seg?.effects ?? [];
+    // une case ou zone favorable = un coup ; pour la jauge, la meilleure zone compte même sans effet chiffré
+    const sum = effects.reduce((t, e) => t + (e.op === "add" ? e.value : 0), 0);
+    const best = m.type === "gauge" && seg ? m.zones.indexOf(seg as never) === bossBestZone : false;
+    const r = hit(sum > 0 || best, effects);
     const s = spins + 1; setSpins(s);
     check(r.nh, r.nl, s >= maxSpins);
   };
+
+  const bossBestZone = m.type === "gauge"
+    ? m.zones.map((z, i) => [z.effects.reduce((t, e) => t + (e.op === "add" ? e.value : 0), 0), i] as const).sort((a, b) => b[0] - a[0])[0]![1]
+    : -1;
 
   return (
     <div className="g-mech g-boss">
@@ -512,8 +583,10 @@ export function BossFight({ ctx, boss, character, onEnd }: { ctx: Ctx; boss: Bos
         </>
       ) : (
         <>
-          <SpinningWheel ctx={ctx} m={m} disabled={ended.current} onResult={onSpin} />
-          <span className="g-chip">{L(ctx, "Lancers", "Spins")} : {maxSpins - spins}</span>
+          {m.type === "wheel"
+            ? <SpinningWheel ctx={ctx} m={m} disabled={ended.current} onResult={onSpin} />
+            : <GaugeMeter ctx={ctx} m={m} disabled={ended.current} onResult={(zi) => onSpin(zi)} />}
+          <span className="g-chip">{m.type === "wheel" ? L(ctx, "Lancers", "Spins") : L(ctx, "Essais", "Tries")} : {maxSpins - spins}</span>
         </>
       )}
     </div>

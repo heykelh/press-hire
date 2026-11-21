@@ -39,11 +39,16 @@ export async function countFixtures(): Promise<number> {
   }
 }
 
-/** Jeu publié (ou, pour l'aperçu du studio, brouillon). */
-export async function getCartridge(slug: string, opts: { drafts?: boolean } = {}): Promise<CartridgeT | null> {
+/** Jeu publié ; avec `owner`, aussi les brouillons de ce compte (aperçu du studio). */
+export async function getCartridge(slug: string, opts: { owner?: string } = {}): Promise<CartridgeT | null> {
   if (!/^[a-z0-9-]{3,80}$/.test(slug)) return null;
   let raw: unknown | null = null;
-  if (dbConfigured()) raw = await fromDb(slug, opts.drafts ? ["live", "draft", "archived"] : ["live"]);
+  if (dbConfigured()) {
+    if (opts.owner) {
+      await ensureSchema();
+      raw = (await q<{ data: unknown }>("select data from cartridges where slug = $1 and owner_id = $2 limit 1", [slug, opts.owner]))[0]?.data ?? null;
+    } else raw = await fromDb(slug, ["live"]);
+  }
   if (!raw && fixturesEnabled()) raw = await fromFixtures(slug);
   if (!raw) return null;
 
@@ -60,25 +65,26 @@ export async function countLive(): Promise<number> {
   return rows[0]?.n ?? 0;
 }
 
-export async function saveCartridge(c: CartridgeT, status: Status, sourceUrl?: string): Promise<void> {
+export async function saveCartridge(c: CartridgeT, status: Status, owner: string, sourceUrl?: string): Promise<void> {
   await ensureSchema();
   await q(
-    `insert into cartridges (slug, data, status, company, job_title, source_url)
-     values ($1, $2::jsonb, $3, $4, $5, $6)
+    `insert into cartridges (slug, data, status, company, job_title, source_url, owner_id)
+     values ($1, $2::jsonb, $3, $4, $5, $6, $7)
      on conflict (slug) do update
        set data = excluded.data, status = excluded.status, company = excluded.company,
-           job_title = excluded.job_title, source_url = coalesce(excluded.source_url, cartridges.source_url), updated_at = now()`,
-    [c.meta.id, JSON.stringify(c), status, c.target.company.name, c.target.job.title, sourceUrl ?? null],
+           job_title = excluded.job_title, source_url = coalesce(excluded.source_url, cartridges.source_url), updated_at = now()
+     where cartridges.owner_id = excluded.owner_id`,
+    [c.meta.id, JSON.stringify(c), status, c.target.company.name, c.target.job.title, sourceUrl ?? null, owner],
   );
 }
 
-export async function setStatus(slug: string, status: Status): Promise<void> {
-  await q("update cartridges set status = $2, updated_at = now() where slug = $1", [slug, status]);
+export async function setStatus(slug: string, status: Status, owner: string): Promise<void> {
+  await q("update cartridges set status = $2, updated_at = now() where slug = $1 and owner_id = $3", [slug, status, owner]);
 }
 
-export async function deleteCartridge(slug: string): Promise<void> {
-  await q("delete from cartridges where slug = $1", [slug]);
-  await q("delete from play_events where slug = $1", [slug]);
+export async function deleteCartridge(slug: string, owner: string): Promise<void> {
+  const rows = await q("delete from cartridges where slug = $1 and owner_id = $2 returning slug", [slug, owner]);
+  if (rows.length) await q("delete from play_events where slug = $1", [slug]);
 }
 
 export interface GameRow {
@@ -91,17 +97,32 @@ export interface GameRow {
   created_at: string;
   plays: number;
   ends: number;
-  cta_clicks: number;
-  recruiter_views: number;
   last_play_at: string | null;
 }
 
-export async function listGames(): Promise<GameRow[]> {
+export async function listGames(owner: string): Promise<GameRow[]> {
   await ensureSchema();
   return q<GameRow>(
     `select slug, status, company, job_title, data->'design'->'title'->>'fr' as title, source_url,
-            created_at, plays, ends, cta_clicks, recruiter_views, last_play_at
-       from cartridges where status <> 'archived' or updated_at > now() - interval '90 days'
+            created_at, plays, ends, last_play_at
+       from cartridges where owner_id = $1
       order by created_at desc limit 200`,
+    [owner],
   );
+}
+
+/** Cartouches de démonstration (dossier fixtures), pour la page /demos. */
+export async function listDemos(): Promise<CartridgeT[]> {
+  if (!fixturesEnabled()) return [];
+  const out: CartridgeT[] = [];
+  try {
+    for (const f of (await readdir(FIXTURES_DIR)).sort()) {
+      if (!f.endsWith(".json")) continue;
+      const r = Cartridge.safeParse(JSON.parse(await readFile(join(FIXTURES_DIR, f), "utf8")));
+      if (r.success) out.push(r.data);
+    }
+  } catch {
+    /* pas de démos embarquées */
+  }
+  return out;
 }

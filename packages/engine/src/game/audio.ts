@@ -64,6 +64,18 @@ export class Chip {
     }
   }
 
+  /** Note d'une touche de la mécanique « sequence » (gamme pentatonique). */
+  pad(index: number, dur = 0.28): void {
+    if (!this.sfxOn) return;
+    const notes = [330, 392, 440, 523, 587, 659];
+    this.tone(notes[index % notes.length]!, dur, "square", 0, 0.8);
+  }
+
+  /** Bip court à fréquence libre (aiguille de jauge, apparition d'une cible…). */
+  blip(freq: number, dur = 0.04): void {
+    if (this.sfxOn) this.tone(freq, dur, "square", 0, 0.35);
+  }
+
   /** Petite boucle basse + arpège selon le preset de la cartouche. */
   startMusic(preset: Preset, bpm = 120): void {
     this.stopMusic();

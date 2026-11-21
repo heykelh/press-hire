@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { Cartridge, lintCartridge, makeSlug, validateCartridge } from "../src";
+import { Cartridge, arcadeCounts, lintCartridge, makeSlug, validateCartridge } from "../src";
 
 const FIX = join(__dirname, "../../../fixtures/cartridges");
 const load = (f: string) => JSON.parse(readFileSync(join(FIX, f), "utf8"));
@@ -46,8 +46,14 @@ describe("règles métier", () => {
   it("refuse une intro trop longue", () => {
     expect(rules(parse((c) => (c.levels[0].intro.fr = "x".repeat(81))))).toContain("intro-length");
   });
-  it("refuse une fin sans bouton contact", () => {
-    expect(rules(parse((c) => (c.ending.cta = c.ending.cta.filter((x: any) => x.type !== "contact"))))).toContain("cta");
+  it("accepte une fin sans profil ni boutons (format v0.3)", () => {
+    expect(rules(parse((c) => {
+      delete c.candidate;
+      c.ending.cta = [];
+      c.ending.skillsUnlocked = c.ending.skillsUnlocked.map(({ proofId, ...rest }: any) => rest);
+      c.levels.forEach((l: any) => (l.requirementId = c.analysis.requirements[0].id));
+      c.analysis.requirements.forEach((r: any) => (r.priority = "nice"));
+    }))).toEqual([]);
   });
   it("accepte une cartouche sans boss", () => {
     expect(rules(parse((c) => delete c.boss))).toEqual([]);
@@ -61,5 +67,13 @@ describe("slug", () => {
   it("est lisible et se termine par 4 caractères", () => {
     const s = makeSlug("Air France", "Data Analyst IA Fuel & Efficiency (H/F)", () => 0);
     expect(s).toMatch(/^air-france-data-analyst-ia-fuel-[a-z2-9]{4}$/);
+  });
+});
+
+describe("mécaniques d'arcade", () => {
+  it("répartit le paquet d'objets selon les poids, sans en perdre", () => {
+    expect(arcadeCounts([3, 1], 36)).toEqual([27, 9]);
+    const c = arcadeCounts([1, 1, 1], 10);
+    expect(c.reduce((a, b) => a + b, 0)).toBe(10);
   });
 });

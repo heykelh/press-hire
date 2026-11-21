@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import GameShell from "@/components/GameShell";
 import { getCartridge } from "@/lib/cartridges";
+import { ownerPlanOfGame } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -23,5 +24,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function GamePage({ params }: Props) {
   const c = await getCartridge((await params).slug);
   if (!c) notFound();
-  return <GameShell c={c} />;
+  const plan = await ownerPlanOfGame(c.meta.id);
+  return <GameShell c={c} badge={plan.badge} />;
 }

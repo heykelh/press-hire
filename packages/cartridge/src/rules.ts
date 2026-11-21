@@ -59,6 +59,37 @@ export function checkConditions(conds: Condition[], s: GameState, levelStart: Ga
   return conds.every((c) => OPS[c.op](conditionValue(c, s, levelStart), c.value));
 }
 
+/* ------------- mécaniques d'arcade : un « paquet » d'objets fixé d'avance ------------- */
+
+/**
+ * Nombre d'apparitions de chaque objet, proportionnel aux poids (plus forts restes).
+ * Le jeu mélange ce paquet : le nombre de bons objets est donc connu, et la simulation exacte.
+ */
+export function arcadeCounts(weights: number[], total: number): number[] {
+  const sum = weights.reduce((a, b) => a + b, 0) || 1;
+  const raw = weights.map((w) => (w / sum) * total);
+  const counts = raw.map(Math.floor);
+  let left = total - counts.reduce((a, b) => a + b, 0);
+  const order = raw.map((r, i) => [r - Math.floor(r), i] as const).sort((a, b) => b[0] - a[0]);
+  for (const [, i] of order) {
+    if (left <= 0) break;
+    counts[i]!++;
+    left--;
+  }
+  return counts;
+}
+
+export const arcadeTotal = (durationSec: number, perSec: number) => Math.max(1, Math.round(durationSec * perSec));
+
+/** Apparitions de bons et de mauvais objets d'une mécanique catch ou whack. */
+export function arcadeSplit(m: { durationSec: number; perSec: number; items?: Array<{ kind: string; weight: number }>; targets?: Array<{ kind: string; weight: number }> }): { good: number; bad: number } {
+  const items = m.items ?? m.targets ?? [];
+  const counts = arcadeCounts(items.map((x) => x.weight), arcadeTotal(m.durationSec, m.perSec));
+  let good = 0, bad = 0;
+  items.forEach((x, i) => (x.kind === "good" ? (good += counts[i]!) : (bad += counts[i]!)));
+  return { good, bad };
+}
+
 /* ------------- simulation « meilleur joueur » pour les contrôles ------------- */
 
 const sumEffects = (es: Effect[]) => es.reduce((t, e) => t + (e.op === "add" ? e.value : 0), 0);
@@ -85,6 +116,24 @@ export function playBest(c: Cartridge, m: Mechanic, win: Condition[], start: Gam
       for (let i = 0; i < m.spins; i++) applyEffects(c, s, best.effects);
       break;
     }
+    case "catch": {
+      const { good } = arcadeSplit(m);
+      for (let i = 0; i < good; i++) applyEffects(c, s, m.onGood);
+      break;
+    }
+    case "whack": {
+      const { good } = arcadeSplit(m);
+      for (let i = 0; i < good; i++) applyEffects(c, s, m.onHit);
+      break;
+    }
+    case "gauge": {
+      const best = [...m.zones].sort((a, b) => scoreToward(b.effects, win) - scoreToward(a.effects, win))[0]!;
+      for (let i = 0; i < m.rounds; i++) applyEffects(c, s, best.effects);
+      break;
+    }
+    case "sequence":
+      for (let i = 0; i < m.rounds; i++) applyEffects(c, s, m.onSuccess);
+      break;
     case "slider": {
       for (let x = m.control.min; x <= m.control.max + 1e-9; x += m.control.step) {
         const t = { ...start };
@@ -115,6 +164,8 @@ export interface LevelCheck {
   wonAtStart: boolean;
   /** roues : part des parties gagnées par un joueur moyen (hasard, ou visée une fois sur deux en mode adresse) */
   winRate?: number;
+  /** arcade : un joueur moyen (75 % des bons objets) ne gagne pas */
+  tooHard?: boolean;
 }
 
 /** Petit générateur déterministe pour les simulations. */
@@ -127,6 +178,35 @@ function seeded(seed: number): () => number {
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+
+/** Joueur moyen sur une jauge : vise la meilleure zone, l'atteint une fois sur deux (sinon position au hasard). */
+export function gaugeWinRate(c: Cartridge, m: Extract<Mechanic, { type: "gauge" }>, win: Condition[], start: GameState, runs = 600): number {
+  const rand = seeded(runs * 31 + m.zones.length);
+  const best = [...m.zones].sort((a, b) => scoreToward(b.effects, win) - scoreToward(a.effects, win))[0]!;
+  let wins = 0;
+  for (let r = 0; r < runs; r++) {
+    const s = { ...start };
+    for (let i = 0; i < m.rounds; i++) {
+      const x = rand() < 0.5 ? (best.from + best.to) / 2 : rand() * 100;
+      const z = m.zones.find((q) => x >= q.from && x < q.to);
+      if (z) applyEffects(c, s, z.effects);
+    }
+    if (checkConditions(win, s, start)) wins++;
+  }
+  return wins / runs;
+}
+
+/** Joueur moyen sur une mécanique d'arcade : 75 % des bons objets, 20 % des pièges. */
+export function arcadeAverageWins(c: Cartridge, m: Extract<Mechanic, { type: "catch" | "whack" }>, win: Condition[], start: GameState): boolean {
+  const { good, bad } = arcadeSplit(m);
+  const s = { ...start };
+  const [onGood, onBad, onMiss] = m.type === "catch" ? [m.onGood, m.onBad, m.onMiss] : [m.onHit, m.onWrong, m.onMiss];
+  const g = Math.round(good * 0.75);
+  for (let i = 0; i < g; i++) applyEffects(c, s, onGood);
+  for (let i = 0; i < good - g; i++) applyEffects(c, s, onMiss);
+  for (let i = 0; i < Math.round(bad * 0.2); i++) applyEffects(c, s, onBad);
+  return checkConditions(win, s, start);
 }
 
 /** Taux de victoire d'un joueur moyen sur une roue. */
@@ -159,8 +239,10 @@ export function simulateBestRun(c: Cartridge): LevelCheck[] {
     const start = { ...s };
     const wonAtStart = checkConditions(l.win, start, start);
     const end = playBest(c, l.mechanic, l.win, start);
-    const winRate = l.mechanic.type === "wheel" ? wheelWinRate(c, l.mechanic, l.win, start) : undefined;
-    out.push({ levelId: l.id, winnable: end !== null, wonAtStart, winRate });
+    const m = l.mechanic;
+    const winRate = m.type === "wheel" ? wheelWinRate(c, m, l.win, start) : m.type === "gauge" ? gaugeWinRate(c, m, l.win, start) : undefined;
+    const tooHard = m.type === "catch" || m.type === "whack" ? !arcadeAverageWins(c, m, l.win, start) : undefined;
+    out.push({ levelId: l.id, winnable: end !== null, wonAtStart, winRate, tooHard });
     if (end) Object.assign(s, end);
   }
   return out;

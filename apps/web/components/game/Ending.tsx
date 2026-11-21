@@ -3,19 +3,16 @@
 import { useEffect, useState } from "react";
 import type { Ctx } from "./ui";
 
-const isPlaceholder = (u: string) => /<|%3C/i.test(u);
-
-export default function Ending({ ctx, score, fails, recruiter, perfectEgg, onReplay }: {
-  ctx: Ctx; score: number | null; fails: number; recruiter: boolean; perfectEgg?: string; onReplay: () => void;
+export default function Ending({ ctx, score, fails, perfectEgg, badge, onReplay }: {
+  ctx: Ctx; score: number; fails: number; perfectEgg?: string; badge: boolean; onReplay: () => void;
 }) {
   const { c, t, lang } = ctx;
   const fr = lang === "fr";
   const [copied, setCopied] = useState(false);
-  const [shown, setShown] = useState(score === null ? 0 : 0);
+  const [shown, setShown] = useState(0);
 
   // compteur de score qui défile
   useEffect(() => {
-    if (score === null) return;
     let raf = 0;
     const t0 = performance.now();
     const tick = (now: number) => {
@@ -24,82 +21,52 @@ export default function Ending({ ctx, score, fails, recruiter, perfectEgg, onRep
       if (k < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    if (!recruiter) { ctx.chip.sfx("win"); ctx.fx.confetti(); }
+    ctx.chip.sfx("win");
+    ctx.fx.confetti();
     return () => cancelAnimationFrame(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [score]);
 
   const req = (id: string) => c.analysis.requirements.find((r) => r.id === id);
-  const proof = (id: string) => c.candidate.proofs.find((p) => p.id === id);
 
   const share = () => {
     const parts = [t(c.ending.shareCard.text)];
-    if (c.ending.shareCard.showScore && score !== null) parts.push(`${fr ? "Score" : "Score"} : ${score}`);
-    parts.push(typeof window !== "undefined" ? window.location.href.split("#")[0]! : "");
+    if (c.ending.shareCard.showScore) parts.push(`Score : ${score}`);
+    parts.push(window.location.href.split("#")[0]!);
     navigator.clipboard?.writeText(parts.join("\n")).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800); }).catch(() => {});
   };
 
+  // récapitulatif : missions de la fin, sinon celles des niveaux
+  const recap = c.ending.skillsUnlocked.length
+    ? c.ending.skillsUnlocked.map((s) => ({ label: req(s.requirementId) ? t(req(s.requirementId)!.label) : s.requirementId, line: t(s.line) }))
+    : [...c.levels].sort((a, b) => a.order - b.order).map((l) => ({ label: req(l.requirementId) ? t(req(l.requirementId)!.label) : t(l.title), line: t(l.winLine) }));
+
   return (
     <div className="g-ending">
-      {recruiter && <p className="g-chip accent">{fr ? "MODE RECRUTEUR · l'essentiel en 30 s" : "RECRUITER MODE · the gist in 30 s"}</p>}
       <h2 className="g-ending-head">{t(c.ending.headline)}</h2>
-      <p className="g-ending-who">{c.candidate.name} — {t(c.candidate.headline)}</p>
+      <p className="g-ending-who">{c.target.job.title} · {c.target.company.name}</p>
 
-      {score !== null && (
-        <div className="g-score">
-          <span>SCORE</span>
-          <b>{shown.toLocaleString(lang)}</b>
-          <small>{fails === 0 ? (fr ? "SANS FAUTE" : "FLAWLESS") : `${fails} ${fr ? (fails > 1 ? "échecs" : "échec") : fails > 1 ? "fails" : "fail"}`}</small>
-        </div>
-      )}
-      {recruiter && (
-        <section className="g-panel">
-          <h3 className="g-h3">{fr ? "CE QUE LE JEU FAIT JOUER" : "WHAT THE GAME COVERS"}</h3>
-          <ol className="g-covered">
-            {[...c.levels].sort((a, b) => a.order - b.order).map((l) => {
-              const r = req(l.requirementId);
-              return <li key={l.id}><b>{t(l.title)}</b>{r ? ` · ${t(r.label)}` : ""}</li>;
-            })}
-          </ol>
-        </section>
-      )}
+      <div className="g-score">
+        <span>SCORE</span>
+        <b>{shown.toLocaleString(lang)}</b>
+        <small>{fails === 0 ? (fr ? "SANS FAUTE" : "FLAWLESS") : `${fails} ${fr ? (fails > 1 ? "échecs" : "échec") : fails > 1 ? "fails" : "fail"}`}</small>
+      </div>
       {perfectEgg && <p className="g-callout">★ {perfectEgg}</p>}
 
       <section className="g-panel">
-        <h3 className="g-h3">{fr ? "CE QUE ÇA PROUVE, POUR DE VRAI" : "WHAT IT PROVES, FOR REAL"}</h3>
+        <h3 className="g-h3">{fr ? "CE QUE TU VIENS DE JOUER" : "WHAT YOU JUST PLAYED"}</h3>
         <ul className="g-skills">
-          {c.ending.skillsUnlocked.map((s, i) => {
-            const r = req(s.requirementId);
-            const p = proof(s.proofId);
-            return (
-              <li key={i} style={{ animationDelay: `${0.2 + i * 0.15}s` }}>
-                <span className="g-skill-badge">✓</span>
-                <div>
-                  <p className="g-skill-req">{r ? t(r.label) : s.requirementId}</p>
-                  <p>{t(s.line)}</p>
-                  {p && (
-                    <a className="g-proof" href={p.url} target="_blank" rel="noopener noreferrer">
-                      ▶ {p.label}{p.fact ? ` · ${t(p.fact)}` : ""}
-                    </a>
-                  )}
-                </div>
-              </li>
-            );
-          })}
+          {recap.map((s, i) => (
+            <li key={i} style={{ animationDelay: `${0.2 + i * 0.15}s` }}>
+              <span className="g-skill-badge">✓</span>
+              <div>
+                <p className="g-skill-req">{s.label}</p>
+                <p>{s.line}</p>
+              </div>
+            </li>
+          ))}
         </ul>
       </section>
-
-      <div className="g-cta">
-        {c.ending.cta.map((b, i) => {
-          const off = isPlaceholder(b.url);
-          const href = b.type === "contact" && !b.url.startsWith("http") && !b.url.startsWith("mailto:") ? `mailto:${b.url}` : b.url;
-          return off ? (
-            <span key={i} className="g-btn disabled" title={fr ? "Lien à compléter" : "Link to be filled"}>{t(b.label)}</span>
-          ) : (
-            <a key={i} className={`g-btn${i === 0 ? " primary" : ""}`} href={href} target="_blank" rel="noopener noreferrer" onClick={() => ctx.track?.("cta", b.type)}>{t(b.label)}</a>
-          );
-        })}
-      </div>
 
       <section className="g-share">
         <p>{t(c.ending.shareCard.text)}</p>
@@ -108,7 +75,8 @@ export default function Ending({ ctx, score, fails, recruiter, perfectEgg, onRep
 
       {c.ending.challenge && <p className="g-challenge">{t(c.ending.challenge)}</p>}
 
-      <button className="g-btn" onClick={onReplay}>{recruiter ? (fr ? "▶ JOUER QUAND MÊME" : "▶ PLAY ANYWAY") : fr ? "↺ REJOUER" : "↺ PLAY AGAIN"}</button>
+      <button className="g-btn primary" onClick={onReplay}>{fr ? "↺ REJOUER" : "↺ PLAY AGAIN"}</button>
+      {badge && <a className="g-made" href="/" target="_blank" rel="noopener">{fr ? "Fait avec" : "Made with"} PRESS HIRE</a>}
     </div>
   );
 }

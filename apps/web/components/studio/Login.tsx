@@ -7,7 +7,8 @@ export default function Login({ configured }: { configured: boolean }) {
   const [state, action, pending] = useActionState(login, {});
   return (
     <main className="st" style={{ maxWidth: 460 }}>
-      <h1>PRESS <b>HIRE</b> · STUDIO</h1>
+      <h1>STUDIO</h1>
+      <p className="st-hint">Espace de création des jeux. Accès réservé.</p>
       <form className="st-card" action={action}>
         <label>
           <span>MOT DE PASSE</span>

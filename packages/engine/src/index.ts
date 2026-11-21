@@ -9,3 +9,4 @@ export * from "./skins";
 export * from "./game/wheel";
 export * from "./game/audio";
 export * from "./game/score";
+export * from "./game/icons";

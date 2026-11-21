@@ -1,10 +1,8 @@
-import { cookies } from "next/headers";
 import { z } from "zod";
-import { chain, EXAMPLE_BRIEF, generate, hasPlaceholders, llmsFromEnv, type GenerateEvent, type Llm } from "@press-hire/agent";
+import { chain, EXAMPLE_BRIEF, EXAMPLE_BRIEF_ARCADE, generate, llmsFromEnv, type GenerateEvent, type Llm } from "@press-hire/agent";
 import { saveCartridge } from "@/lib/cartridges";
 import { dbConfigured } from "@/lib/db";
-import { getProfile } from "@/lib/settings";
-import { isStudioCookie, STUDIO_COOKIE } from "@/lib/studio-auth";
+import { generationsThisMonth, getSession, logGeneration } from "@/lib/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,7 +25,8 @@ function mockLlm(company?: string, job?: string): Llm {
     name: "modèle simulé",
     async complete() {
       await new Promise((r) => setTimeout(r, 400));
-      const b = JSON.parse(JSON.stringify(EXAMPLE_BRIEF));
+      // une fois sur deux l'exemple d'arcade, pour tester les deux familles de mécaniques
+      const b = JSON.parse(JSON.stringify(Math.random() < 0.5 ? EXAMPLE_BRIEF : EXAMPLE_BRIEF_ARCADE));
       if (company) b.target.company.name = company;
       if (job) b.target.job.title = job;
       return JSON.stringify(b);
@@ -36,8 +35,12 @@ function mockLlm(company?: string, job?: string): Llm {
 }
 
 export async function POST(req: Request) {
-  if (!isStudioCookie((await cookies()).get(STUDIO_COOKIE)?.value)) return Response.json({ error: "non connecté" }, { status: 401 });
+  const session = await getSession();
+  if (!session) return Response.json({ error: "non connecté" }, { status: 401 });
   if (!dbConfigured()) return Response.json({ error: "la base Neon n'est pas configurée" }, { status: 500 });
+  const used = await generationsThisMonth(session.accountId);
+  if (used >= session.plan.generationsPerMonth)
+    return Response.json({ error: `Quota atteint : ${session.plan.generationsPerMonth} jeux par mois avec l'offre ${session.plan.label}.` }, { status: 402 });
   const parsed = Input.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "formulaire invalide", issues: parsed.error.issues }, { status: 400 });
   const input = parsed.data;
@@ -46,28 +49,35 @@ export async function POST(req: Request) {
   const stream = new ReadableStream({
     async start(ctrl) {
       const send = (e: GenerateEvent | Record<string, unknown>) => ctrl.enqueue(enc.encode(JSON.stringify(e) + "\n"));
+      const t0 = Date.now();
+      let provider = "";
       try {
-        const profile = await getProfile();
         const llm =
           process.env.PRESS_HIRE_MOCK_LLM === "1" && process.env.VERCEL !== "1"
             ? mockLlm(input.company, input.jobTitle)
             : chain(llmsFromEnv(), (from, err) => send({ type: "warn", message: `${from} indisponible (${err.slice(0, 160)}), essai suivant…` }));
+        provider = llm.name;
         const contact = input.contactName ? { name: input.contactName, ...(input.contactRole ? { role: input.contactRole } : {}) } : undefined;
-        for await (const e of generate({ ...input, contact }, { llm, profile })) {
+        for await (const e of generate({ ...input, contact }, { llm })) {
           if (e.type === "done") {
-            await saveCartridge(e.cartridge, "draft", input.offerUrl);
+            await saveCartridge(e.cartridge, "draft", session.accountId, input.offerUrl);
+            await logGeneration({ accountId: session.accountId, slug: e.slug, ok: true, provider, durationMs: Date.now() - t0 });
             send({
               type: "done",
               slug: e.slug,
               title: e.cartridge.design.title.fr,
+              mechanics: e.cartridge.levels.map((l) => l.mechanic.type),
               warnings: e.issues.filter((i) => i.severity === "warning").map((i) => i.message),
-              profileIncomplete: hasPlaceholders(profile),
               attempts: e.attempts,
             });
-          } else send(e);
+          } else {
+            if (e.type === "fail") await logGeneration({ accountId: session.accountId, ok: false, provider, durationMs: Date.now() - t0, error: e.message });
+            send(e);
+          }
         }
       } catch (e) {
         send({ type: "fail", message: (e as Error).message });
+        await logGeneration({ accountId: session.accountId, ok: false, provider, durationMs: Date.now() - t0, error: (e as Error).message }).catch(() => {});
       } finally {
         ctrl.close();
       }

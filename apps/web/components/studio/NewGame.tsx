@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { publishGame } from "@/app/studio/actions";
 
 type Line = { kind: "s" | "w" | "f" | "d"; text: string };
-type Done = { slug: string; title: string; warnings: string[]; profileIncomplete: boolean };
+type Done = { slug: string; title: string; warnings: string[]; mechanics: string[] };
 
 export default function NewGame() {
   const router = useRouter();
@@ -56,7 +56,7 @@ export default function NewGame() {
             push({ kind: "f", text: `✗ ${ev.message}` });
             for (const i of ev.issues ?? []) push({ kind: "f", text: `   [${i.rule}] ${i.path} : ${i.message}` });
           } else if (ev.type === "done") {
-            push({ kind: "d", text: `★ « ${ev.title} » est prêt (brouillon). ${ev.attempts > 1 ? `${ev.attempts} passes.` : ""}` });
+            push({ kind: "d", text: `★ « ${ev.title} » est prêt (brouillon) : ${(ev.mechanics ?? []).join(", ")}. ${ev.attempts > 1 ? `${ev.attempts} passes.` : ""}` });
             for (const w of ev.warnings ?? []) push({ kind: "w", text: `! ${w}` });
             setDone(ev);
             router.refresh();
@@ -99,7 +99,7 @@ export default function NewGame() {
           <input name="jobTitle" placeholder="déduit de l'offre si vide" />
         </label>
         <label>
-          <span>DÉCIDEUR VISÉ <em>jamais affiché</em></span>
+          <span>DESTINATAIRE <em>pour toi, jamais affiché</em></span>
           <input name="contactName" placeholder="Prénom Nom" />
         </label>
         <label>
@@ -108,7 +108,7 @@ export default function NewGame() {
         </label>
         <label className="full">
           <span>CONSIGNES POUR CE JEU <em>facultatif</em></span>
-          <textarea name="notes" style={{ minHeight: 70 }} placeholder="Ex. : insiste sur SQL et la gouvernance, ton sobre, un boss sur la dette technique…" />
+          <textarea name="notes" style={{ minHeight: 70 }} placeholder="Ex. : insiste sur SQL et la gouvernance, ton sobre, un niveau tape-alerte, un boss sur la dette technique…" />
         </label>
         <div className="full st-row">
           <button className="st-btn go" disabled={busy}>{busy ? "GÉNÉRATION…" : "GÉNÉRER LE JEU ▶"}</button>
@@ -129,7 +129,6 @@ export default function NewGame() {
           {published && <PublishedLink url={published} />}
         </div>
       )}
-      {done?.profileIncomplete && !published && <p className="st-hint">Complète ton profil avant de publier (nom, e-mail, CV).</p>}
       {pubError && <p className="st-err">{pubError}</p>}
     </section>
   );

@@ -1,7 +1,7 @@
 {
   "meta": {
     "id": "test-gouvernance-banque",
-    "schemaVersion": "0.2",
+    "schemaVersion": "0.3",
     "createdAt": "2026-11-21T18:00:00Z",
     "languages": [
       "fr",
@@ -97,37 +97,6 @@
       "retroNes": true,
       "rationale": "Banque régionale, poste de gouvernance et de conformité : ton sobre, humour léger sur les tableurs et les comités, jamais sur la banque."
     }
-  },
-  "candidate": {
-    "name": "<NOM>",
-    "headline": {
-      "fr": "Chargé de Gouvernance Data & IA",
-      "en": "Data & AI Governance Officer"
-    },
-    "links": {
-      "cv": "<URL_CV>",
-      "portfolio": "https://heykelhachiche.com",
-      "email": "<EMAIL>"
-    },
-    "proofs": [
-      {
-        "id": "proof_gov",
-        "label": "Démos de gouvernance data",
-        "url": "https://data-governance-five.vercel.app",
-        "requirementIds": [
-          "req_gov",
-          "req_quality"
-        ]
-      },
-      {
-        "id": "proof_palier",
-        "label": "PALIER",
-        "url": "https://palier-sncf.vercel.app",
-        "requirementIds": [
-          "req_python"
-        ]
-      }
-    ]
   },
   "design": {
     "skin": "corporate",
@@ -1204,10 +1173,10 @@
   "easterEggs": [
     {
       "trigger": "konami",
-      "effect": "recruiter_mode",
+      "effect": "joke",
       "content": {
-        "fr": "Mode recruteur activé.",
-        "en": "Recruiter mode on."
+        "fr": "Code Konami accepté. Tu as gagné… notre respect.",
+        "en": "Konami code accepted. You won… our respect."
       }
     }
   ],
@@ -1219,7 +1188,6 @@
     "skillsUnlocked": [
       {
         "requirementId": "req_gov",
-        "proofId": "proof_gov",
         "line": {
           "fr": "Démos interactives de gouvernance et de conformité",
           "en": "Interactive governance and compliance demos"
@@ -1227,7 +1195,6 @@
       },
       {
         "requirementId": "req_python",
-        "proofId": "proof_palier",
         "line": {
           "fr": "Python et SQL sur données ouvertes",
           "en": "Python and SQL on open data"
@@ -1244,25 +1211,7 @@
     "challenge": {
       "fr": "Battez mon score de confiance, le café est pour moi.",
       "en": "Beat my trust score and coffee's on me."
-    },
-    "cta": [
-      {
-        "type": "cv",
-        "label": {
-          "fr": "Voir mon CV",
-          "en": "See my CV"
-        },
-        "url": "<URL_CV>"
-      },
-      {
-        "type": "contact",
-        "label": {
-          "fr": "Me contacter",
-          "en": "Contact me"
-        },
-        "url": "mailto:<EMAIL>"
-      }
-    ]
+    }
   },
   "tracking": {
     "enabled": true

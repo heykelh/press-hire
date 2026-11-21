@@ -1,0 +1,850 @@
+{
+  "meta": {
+    "id": "demo-arcade-soc",
+    "schemaVersion": "0.3",
+    "createdAt": "2026-11-21T20:00:00Z",
+    "languages": [
+      "fr",
+      "en"
+    ],
+    "defaultLang": "fr"
+  },
+  "target": {
+    "company": {
+      "name": "Démo Cyber",
+      "sector": "Cybersécurité"
+    },
+    "job": {
+      "title": "Analyste SOC",
+      "location": "Paris",
+      "contract": "CDI"
+    }
+  },
+  "analysis": {
+    "requirements": [
+      {
+        "id": "req_phishing",
+        "label": {
+          "fr": "Lutte contre le phishing",
+          "en": "Fighting phishing"
+        },
+        "kind": "hard",
+        "priority": "must",
+        "offerQuote": "analyse des signalements de phishing"
+      },
+      {
+        "id": "req_triage",
+        "label": {
+          "fr": "Traitement des alertes",
+          "en": "Alert handling"
+        },
+        "kind": "hard",
+        "priority": "must",
+        "offerQuote": "qualification et traitement des alertes de sécurité"
+      },
+      {
+        "id": "req_siem",
+        "label": {
+          "fr": "Réglage du SIEM",
+          "en": "SIEM tuning"
+        },
+        "kind": "hard",
+        "priority": "must",
+        "offerQuote": "amélioration continue des règles de détection"
+      },
+      {
+        "id": "req_ir",
+        "label": {
+          "fr": "Réponse à incident",
+          "en": "Incident response"
+        },
+        "kind": "hard",
+        "priority": "must",
+        "offerQuote": "application des procédures de réponse à incident"
+      }
+    ],
+    "painPoints": [
+      {
+        "id": "pp_ransom",
+        "label": {
+          "fr": "Les attaques qui tombent le vendredi soir",
+          "en": "Attacks that land on Friday night"
+        },
+        "source": "offer"
+      }
+    ],
+    "tone": {
+      "formality": 2,
+      "humorLevel": 3,
+      "retroNes": true,
+      "rationale": "Démo des mécaniques d'arcade : ton énergique, humour d'astreinte."
+    }
+  },
+  "design": {
+    "skin": "terminal",
+    "title": {
+      "fr": "SOC ATTACK",
+      "en": "SOC ATTACK"
+    },
+    "tagline": {
+      "fr": "Les pirates ne prennent jamais de RTT.",
+      "en": "Hackers never take a day off."
+    },
+    "palette": {
+      "bg": "#03140a",
+      "panel": "#06200f",
+      "ink": "#c8ffd4",
+      "accent": "#33d65a",
+      "colors": [
+        "#33d65a",
+        "#ffb020",
+        "#ff4a4a",
+        "#3ad0ff",
+        "#c86bff"
+      ]
+    },
+    "music": {
+      "preset": "tense",
+      "bpm": 132
+    },
+    "juice": 3,
+    "targetMinutes": 5
+  },
+  "titleScreen": {
+    "scene": "data_center",
+    "time": "night",
+    "weather": "clear",
+    "actors": [
+      {
+        "type": "server_lights",
+        "speed": 1,
+        "lane": 1
+      },
+      {
+        "type": "drone",
+        "speed": 0.6,
+        "lane": 0
+      }
+    ],
+    "logo": {
+      "animation": "glitch",
+      "shine": true
+    },
+    "detail": {
+      "label": {
+        "fr": "Alerte",
+        "en": "Alert"
+      },
+      "value": "ALERTES : 1 337"
+    }
+  },
+  "state": {
+    "vars": [
+      {
+        "id": "inbox",
+        "label": {
+          "fr": "Boîte saine",
+          "en": "Clean inbox"
+        },
+        "start": 0,
+        "min": -100,
+        "max": 100,
+        "display": "bar"
+      },
+      {
+        "id": "sla",
+        "label": {
+          "fr": "Incidents traités",
+          "en": "Incidents handled"
+        },
+        "start": 0,
+        "min": -50,
+        "max": 50,
+        "display": "counter"
+      },
+      {
+        "id": "tuning",
+        "label": {
+          "fr": "Qualité de détection",
+          "en": "Detection quality"
+        },
+        "start": 0,
+        "min": -20,
+        "max": 30,
+        "display": "bar"
+      },
+      {
+        "id": "playbook",
+        "label": {
+          "fr": "Étapes maîtrisées",
+          "en": "Steps mastered"
+        },
+        "start": 0,
+        "min": 0,
+        "max": 10,
+        "display": "counter"
+      },
+      {
+        "id": "trust",
+        "label": {
+          "fr": "Confiance du RSSI",
+          "en": "CISO trust"
+        },
+        "start": 50,
+        "min": 0,
+        "max": 100,
+        "display": "bar"
+      }
+    ]
+  },
+  "characters": [
+    {
+      "id": "ines",
+      "name": "Inès",
+      "role": {
+        "fr": "Responsable du SOC",
+        "en": "SOC lead"
+      },
+      "palette": {
+        "hair": "#2a1a10",
+        "skin": "#c98e6a",
+        "body": "#1e3a2a",
+        "accent": "#33d65a"
+      },
+      "lines": []
+    }
+  ],
+  "events": [
+    {
+      "id": "ev_coffee",
+      "text": {
+        "fr": "La machine à café tombe en panne. Le SOC tient bon.",
+        "en": "The coffee machine breaks. The SOC holds on."
+      },
+      "effects": [
+        {
+          "var": "trust",
+          "op": "add",
+          "value": 2
+        }
+      ],
+      "weight": 1
+    },
+    {
+      "id": "ev_audit",
+      "text": {
+        "fr": "Audit surprise : tes rapports sont nickel.",
+        "en": "Surprise audit: your reports are spotless."
+      },
+      "effects": [
+        {
+          "var": "trust",
+          "op": "add",
+          "value": 5
+        }
+      ],
+      "weight": 1
+    }
+  ],
+  "levels": [
+    {
+      "id": "lvl_phish",
+      "order": 1,
+      "requirementId": "req_phishing",
+      "title": {
+        "fr": "Filtre anti-phishing",
+        "en": "Phishing filter"
+      },
+      "intro": {
+        "fr": "Laisse passer les vrais mails, rate exprès les pièges.",
+        "en": "Let real mail in, dodge the traps on purpose."
+      },
+      "howTo": {
+        "fr": "Un mail urgent qui promet un cadeau est presque toujours un piège.",
+        "en": "An urgent mail promising a gift is almost always a trap."
+      },
+      "characterId": "ines",
+      "mechanic": {
+        "type": "catch",
+        "catcher": {
+          "fr": "ta passerelle mail",
+          "en": "your mail gateway"
+        },
+        "durationSec": 30,
+        "perSec": 1.2,
+        "items": [
+          {
+            "id": "m_invoice",
+            "label": {
+              "fr": "Facture",
+              "en": "Invoice"
+            },
+            "kind": "good",
+            "icon": "mail",
+            "weight": 2
+          },
+          {
+            "id": "m_report",
+            "label": {
+              "fr": "Rapport",
+              "en": "Report"
+            },
+            "kind": "good",
+            "icon": "file",
+            "weight": 1
+          },
+          {
+            "id": "m_gift",
+            "label": {
+              "fr": "iPhone gratuit",
+              "en": "Free iPhone"
+            },
+            "kind": "bad",
+            "icon": "coin",
+            "weight": 1
+          },
+          {
+            "id": "m_parcel",
+            "label": {
+              "fr": "Colis bloqué",
+              "en": "Parcel stuck"
+            },
+            "kind": "bad",
+            "icon": "box",
+            "weight": 1
+          }
+        ],
+        "onGood": [
+          {
+            "var": "inbox",
+            "op": "add",
+            "value": 2
+          }
+        ],
+        "onBad": [
+          {
+            "var": "inbox",
+            "op": "add",
+            "value": -4
+          },
+          {
+            "var": "trust",
+            "op": "add",
+            "value": -1
+          }
+        ],
+        "onMiss": [
+          {
+            "var": "inbox",
+            "op": "add",
+            "value": -1
+          }
+        ]
+      },
+      "win": [
+        {
+          "var": "inbox",
+          "op": ">=",
+          "value": 15,
+          "scope": "level"
+        }
+      ],
+      "winLine": {
+        "fr": "Zéro clic sur « Colis bloqué ». Respect.",
+        "en": "Zero clicks on \"Parcel stuck\". Respect."
+      },
+      "failJokes": [
+        {
+          "fr": "Quelqu'un a gagné un iPhone. Le pirate aussi.",
+          "en": "Someone won an iPhone. So did the hacker."
+        },
+        {
+          "fr": "La compta attend toujours sa facture.",
+          "en": "Accounting is still waiting for its invoice."
+        }
+      ],
+      "hintAfterFails": 2,
+      "hint": {
+        "fr": "Reste sous les mails bleus, écarte-toi des objets clignotants.",
+        "en": "Stay under blue mails, step away from flashing items."
+      }
+    },
+    {
+      "id": "lvl_whack",
+      "order": 2,
+      "requirementId": "req_triage",
+      "title": {
+        "fr": "Astreinte du SOC",
+        "en": "SOC on-call"
+      },
+      "intro": {
+        "fr": "Les alertes surgissent. Frappe les attaques, épargne les tests.",
+        "en": "Alerts pop up. Hit attacks, spare the tests."
+      },
+      "mechanic": {
+        "type": "whack",
+        "durationSec": 30,
+        "holes": 9,
+        "perSec": 1,
+        "upMs": 1400,
+        "targets": [
+          {
+            "id": "t_brute",
+            "label": {
+              "fr": "Brute force",
+              "en": "Brute force"
+            },
+            "kind": "good",
+            "icon": "fire",
+            "weight": 2
+          },
+          {
+            "id": "t_ransom",
+            "label": {
+              "fr": "Rançongiciel",
+              "en": "Ransomware"
+            },
+            "kind": "good",
+            "icon": "bomb",
+            "weight": 1
+          },
+          {
+            "id": "t_exfil",
+            "label": {
+              "fr": "Exfiltration",
+              "en": "Exfiltration"
+            },
+            "kind": "good",
+            "icon": "drop",
+            "weight": 1
+          },
+          {
+            "id": "t_pentest",
+            "label": {
+              "fr": "Pentest prévu",
+              "en": "Planned pentest"
+            },
+            "kind": "bad",
+            "icon": "shield",
+            "weight": 1
+          }
+        ],
+        "onHit": [
+          {
+            "var": "sla",
+            "op": "add",
+            "value": 1
+          }
+        ],
+        "onWrong": [
+          {
+            "var": "sla",
+            "op": "add",
+            "value": -2
+          },
+          {
+            "var": "trust",
+            "op": "add",
+            "value": -2
+          }
+        ],
+        "onMiss": []
+      },
+      "win": [
+        {
+          "var": "sla",
+          "op": ">=",
+          "value": 15,
+          "scope": "level"
+        }
+      ],
+      "winLine": {
+        "fr": "MTTR record. Le café peut refroidir tranquille.",
+        "en": "Record MTTR. The coffee can cool down in peace."
+      },
+      "failJokes": [
+        {
+          "fr": "Tu as bloqué le pentest. Le prestataire facture quand même.",
+          "en": "You blocked the pentest. The contractor bills anyway."
+        },
+        {
+          "fr": "L'alerte a duré plus longtemps que la réunion de crise.",
+          "en": "The alert lasted longer than the crisis meeting."
+        }
+      ],
+      "hintAfterFails": 2,
+      "hint": {
+        "fr": "Ne frappe pas le bouclier : c'est le pentest autorisé.",
+        "en": "Don't hit the shield: it's the authorised pentest."
+      }
+    },
+    {
+      "id": "lvl_gauge",
+      "order": 3,
+      "requirementId": "req_siem",
+      "title": {
+        "fr": "Seuil d'alerte",
+        "en": "Alert threshold"
+      },
+      "intro": {
+        "fr": "Trop bas, tu rates tout. Trop haut, tout sonne.",
+        "en": "Too low, you miss everything. Too high, everything rings."
+      },
+      "mechanic": {
+        "type": "gauge",
+        "label": {
+          "fr": "Sensibilité de la règle SIEM",
+          "en": "SIEM rule sensitivity"
+        },
+        "rounds": 3,
+        "speed": 1,
+        "zones": [
+          {
+            "id": "z_blind",
+            "from": 0,
+            "to": 30,
+            "label": {
+              "fr": "Aveugle",
+              "en": "Blind"
+            },
+            "color": "#3a3a4a",
+            "effects": [
+              {
+                "var": "tuning",
+                "op": "add",
+                "value": -3
+              }
+            ]
+          },
+          {
+            "id": "z_lax",
+            "from": 30,
+            "to": 45,
+            "label": {
+              "fr": "Laxiste",
+              "en": "Lax"
+            },
+            "color": "#3ad0ff",
+            "effects": [
+              {
+                "var": "tuning",
+                "op": "add",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "id": "z_good",
+            "from": 45,
+            "to": 60,
+            "label": {
+              "fr": "Bien réglé",
+              "en": "Well tuned"
+            },
+            "color": "#33d65a",
+            "effects": [
+              {
+                "var": "tuning",
+                "op": "add",
+                "value": 5
+              }
+            ]
+          },
+          {
+            "id": "z_chatty",
+            "from": 60,
+            "to": 78,
+            "label": {
+              "fr": "Bavard",
+              "en": "Chatty"
+            },
+            "color": "#ffb020",
+            "effects": [
+              {
+                "var": "tuning",
+                "op": "add",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "id": "z_xmas",
+            "from": 78,
+            "to": 100,
+            "label": {
+              "fr": "Sapin de Noël",
+              "en": "Christmas tree"
+            },
+            "color": "#ff4a4a",
+            "effects": [
+              {
+                "var": "tuning",
+                "op": "add",
+                "value": -2
+              },
+              {
+                "var": "trust",
+                "op": "add",
+                "value": -1
+              }
+            ]
+          }
+        ]
+      },
+      "win": [
+        {
+          "var": "tuning",
+          "op": ">=",
+          "value": 9,
+          "scope": "level"
+        }
+      ],
+      "winLine": {
+        "fr": "Faux positifs divisés par trois.",
+        "en": "False positives divided by three."
+      },
+      "failJokes": [
+        {
+          "fr": "Ta règle détecte même la photocopieuse.",
+          "en": "Your rule even flags the photocopier."
+        },
+        {
+          "fr": "Silence radio. Trop silencieux.",
+          "en": "Radio silence. Too silent."
+        }
+      ],
+      "hintAfterFails": 2,
+      "hint": {
+        "fr": "Appuie un peu avant que l'aiguille arrive dans le vert.",
+        "en": "Press slightly before the needle reaches green."
+      }
+    },
+    {
+      "id": "lvl_seq",
+      "order": 4,
+      "requirementId": "req_ir",
+      "title": {
+        "fr": "Le playbook",
+        "en": "The playbook"
+      },
+      "intro": {
+        "fr": "Inès joue la procédure. Répète-la dans l'ordre.",
+        "en": "Inès plays the procedure. Repeat it in order."
+      },
+      "characterId": "ines",
+      "mechanic": {
+        "type": "sequence",
+        "theme": {
+          "fr": "les étapes de réponse à incident",
+          "en": "incident response steps"
+        },
+        "pads": [
+          {
+            "id": "p_detect",
+            "label": {
+              "fr": "Détecter",
+              "en": "Detect"
+            },
+            "color": "#3ad0ff"
+          },
+          {
+            "id": "p_contain",
+            "label": {
+              "fr": "Contenir",
+              "en": "Contain"
+            },
+            "color": "#ffb020"
+          },
+          {
+            "id": "p_eradicate",
+            "label": {
+              "fr": "Éradiquer",
+              "en": "Eradicate"
+            },
+            "color": "#ff4a4a"
+          },
+          {
+            "id": "p_recover",
+            "label": {
+              "fr": "Restaurer",
+              "en": "Recover"
+            },
+            "color": "#33d65a"
+          }
+        ],
+        "rounds": 4,
+        "speedMs": 650,
+        "onSuccess": [
+          {
+            "var": "playbook",
+            "op": "add",
+            "value": 1
+          }
+        ],
+        "onFail": [
+          {
+            "var": "trust",
+            "op": "add",
+            "value": -1
+          }
+        ]
+      },
+      "win": [
+        {
+          "var": "playbook",
+          "op": ">=",
+          "value": 3,
+          "scope": "level"
+        }
+      ],
+      "winLine": {
+        "fr": "Procédure appliquée sans regarder le wiki.",
+        "en": "Procedure done without checking the wiki."
+      },
+      "failJokes": [
+        {
+          "fr": "Restaurer avant de contenir : un grand classique du vendredi.",
+          "en": "Recover before containing: a Friday classic."
+        }
+      ],
+      "hintAfterFails": 2,
+      "hint": {
+        "fr": "Récite les étapes à voix basse pendant que la machine joue.",
+        "en": "Whisper the steps while the machine plays."
+      }
+    }
+  ],
+  "boss": {
+    "name": {
+      "fr": "Le rançongiciel du vendredi soir",
+      "en": "The Friday-night ransomware"
+    },
+    "painPointId": "pp_ransom",
+    "hp": 3,
+    "mechanic": {
+      "type": "gauge",
+      "label": {
+        "fr": "Riposte",
+        "en": "Counter-attack"
+      },
+      "rounds": 6,
+      "speed": 1.3,
+      "zones": [
+        {
+          "id": "b_miss",
+          "from": 0,
+          "to": 40,
+          "label": {
+            "fr": "Raté",
+            "en": "Miss"
+          },
+          "color": "#3a3a4a",
+          "effects": []
+        },
+        {
+          "id": "b_hit",
+          "from": 40,
+          "to": 62,
+          "label": {
+            "fr": "Isolé !",
+            "en": "Isolated!"
+          },
+          "color": "#33d65a",
+          "effects": [
+            {
+              "var": "trust",
+              "op": "add",
+              "value": 3
+            }
+          ]
+        },
+        {
+          "id": "b_late",
+          "from": 62,
+          "to": 100,
+          "label": {
+            "fr": "Trop tard",
+            "en": "Too late"
+          },
+          "color": "#ff4a4a",
+          "effects": []
+        }
+      ]
+    },
+    "taunts": [
+      {
+        "fr": "Tes sauvegardes ? Chiffrées. Enfin, je crois.",
+        "en": "Your backups? Encrypted. Well, I think."
+      },
+      {
+        "fr": "Je reviens lundi. Et mardi. Et…",
+        "en": "Back on Monday. And Tuesday. And…"
+      }
+    ],
+    "defeatLine": {
+      "fr": "Machine isolée, sauvegardes intactes. Bon week-end.",
+      "en": "Host isolated, backups intact. Have a nice weekend."
+    }
+  },
+  "easterEggs": [
+    {
+      "trigger": "konami",
+      "effect": "joke",
+      "content": {
+        "fr": "Accès root accordé. (Non.)",
+        "en": "Root access granted. (No.)"
+      }
+    }
+  ],
+  "ending": {
+    "headline": {
+      "fr": "ATTAQUE REPOUSSÉE",
+      "en": "ATTACK REPELLED"
+    },
+    "skillsUnlocked": [
+      {
+        "requirementId": "req_phishing",
+        "line": {
+          "fr": "Trier les mails piégés sans bloquer la compta",
+          "en": "Sort trapped mail without blocking accounting"
+        }
+      },
+      {
+        "requirementId": "req_triage",
+        "line": {
+          "fr": "Qualifier les alertes vite et bien",
+          "en": "Qualify alerts fast and right"
+        }
+      },
+      {
+        "requirementId": "req_siem",
+        "line": {
+          "fr": "Régler une détection sans sapin de Noël",
+          "en": "Tune detection without a Christmas tree"
+        }
+      },
+      {
+        "requirementId": "req_ir",
+        "line": {
+          "fr": "Dérouler la réponse à incident dans l'ordre",
+          "en": "Run incident response in order"
+        }
+      }
+    ],
+    "shareCard": {
+      "text": {
+        "fr": "J'ai repoussé le rançongiciel du vendredi soir.",
+        "en": "I repelled the Friday-night ransomware."
+      },
+      "showScore": true
+    },
+    "challenge": {
+      "fr": "Fais mieux que mon MTTR.",
+      "en": "Beat my MTTR."
+    }
+  },
+  "review": {
+    "status": "draft",
+    "notes": "Démo des mécaniques d'arcade v0.3."
+  }
+}

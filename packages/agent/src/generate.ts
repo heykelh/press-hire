@@ -6,7 +6,6 @@ import { makeSlug, validateCartridge, type Cartridge, type Issue, type Validatio
 import { autoBalance, assemble, repairBrief } from "./brief";
 import { parseJsonReply, type Llm } from "./llm";
 import { fetchOffer, mergeOffer, type Offer } from "./offer";
-import type { CandidateProfile } from "./profile";
 import { SYSTEM_PROMPT, repairPrompt, userPrompt } from "./prompt";
 
 export interface GenerateInput {
@@ -20,7 +19,6 @@ export interface GenerateInput {
 
 export interface GenerateDeps {
   llm: Llm;
-  profile: CandidateProfile;
   fetchImpl?: typeof fetch;
   now?: Date;
   rand?: () => number;
@@ -72,7 +70,7 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
 
   /* 2. premier jet */
   yield { type: "step", message: `Écriture du jeu par ${deps.llm.name}… (30 s à 2 min)` };
-  const user = userPrompt(offer, deps.profile, input);
+  const user = userPrompt(offer, input);
   let reply: string;
   try {
     reply = await deps.llm.complete(SYSTEM_PROMPT, user);
@@ -100,7 +98,7 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
       slug = makeSlug(company, job, deps.rand);
     }
     if (Object.keys(brief).length) {
-      const assembled = assemble(brief, { slug, profile: deps.profile, offerUrl: input.offerUrl, contact: input.contact, now });
+      const assembled = assemble(brief, { slug, offerUrl: input.offerUrl, contact: input.contact, now });
       const r = validateCartridge(assembled);
       issues = r.issues;
       cartridge = r.cartridge;

@@ -1,7 +1,7 @@
 {
   "meta": {
     "id": "test-supply-retail",
-    "schemaVersion": "0.2",
+    "schemaVersion": "0.3",
     "createdAt": "2026-11-21T18:00:00Z",
     "languages": [
       "fr",
@@ -97,36 +97,6 @@
       "retroNes": true,
       "rationale": "Grand distributeur, poste opérationnel Supply Chain : énergie, humour sur les ruptures et les exports Excel, jamais sur l'enseigne."
     }
-  },
-  "candidate": {
-    "name": "<NOM>",
-    "headline": {
-      "fr": "Data Analyst",
-      "en": "Data Analyst"
-    },
-    "links": {
-      "cv": "<URL_CV>",
-      "portfolio": "https://heykelhachiche.com",
-      "email": "<EMAIL>"
-    },
-    "proofs": [
-      {
-        "id": "proof_palier",
-        "label": "PALIER",
-        "url": "https://palier-sncf.vercel.app",
-        "requirementIds": [
-          "req_sql"
-        ]
-      },
-      {
-        "id": "proof_lastseat",
-        "label": "LAST SEAT",
-        "url": "https://last-seat-game.vercel.app",
-        "requirementIds": [
-          "req_users"
-        ]
-      }
-    ]
   },
   "design": {
     "skin": "comic",
@@ -1201,10 +1171,10 @@
   "easterEggs": [
     {
       "trigger": "konami",
-      "effect": "recruiter_mode",
+      "effect": "joke",
       "content": {
-        "fr": "Mode recruteur activé.",
-        "en": "Recruiter mode on."
+        "fr": "Code Konami accepté. Tu as gagné… notre respect.",
+        "en": "Konami code accepted. You won… our respect."
       }
     }
   ],
@@ -1216,7 +1186,6 @@
     "skillsUnlocked": [
       {
         "requirementId": "req_sql",
-        "proofId": "proof_palier",
         "line": {
           "fr": "SQL et Python sur l'Open Data SNCF",
           "en": "SQL and Python on SNCF Open Data"
@@ -1224,7 +1193,6 @@
       },
       {
         "requirementId": "req_users",
-        "proofId": "proof_lastseat",
         "line": {
           "fr": "Un sujet métier rendu jouable et pédagogique",
           "en": "A business topic made playable and clear"
@@ -1241,25 +1209,7 @@
     "challenge": {
       "fr": "Battez mon taux de disponibilité, le café est pour moi.",
       "en": "Beat my availability rate and coffee's on me."
-    },
-    "cta": [
-      {
-        "type": "cv",
-        "label": {
-          "fr": "Voir mon CV",
-          "en": "See my CV"
-        },
-        "url": "<URL_CV>"
-      },
-      {
-        "type": "contact",
-        "label": {
-          "fr": "Me contacter",
-          "en": "Contact me"
-        },
-        "url": "mailto:<EMAIL>"
-      }
-    ]
+    }
   },
   "tracking": {
     "enabled": true

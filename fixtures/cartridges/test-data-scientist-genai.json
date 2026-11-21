@@ -1,7 +1,7 @@
 {
   "meta": {
     "id": "test-data-scientist-genai",
-    "schemaVersion": "0.2",
+    "schemaVersion": "0.3",
     "createdAt": "2026-11-21T18:00:00Z",
     "languages": [
       "fr",
@@ -97,36 +97,6 @@
       "retroNes": true,
       "rationale": "ESN spécialisée IA, équipe d'AI Lab : ton tech et complice, humour sur les hallucinations et les notebooks, jamais sur l'ESN ou son client."
     }
-  },
-  "candidate": {
-    "name": "<NOM>",
-    "headline": {
-      "fr": "Data Scientist",
-      "en": "Data Scientist"
-    },
-    "links": {
-      "cv": "<URL_CV>",
-      "portfolio": "https://heykelhachiche.com",
-      "email": "<EMAIL>"
-    },
-    "proofs": [
-      {
-        "id": "proof_palier",
-        "label": "PALIER",
-        "url": "https://palier-sncf.vercel.app",
-        "requirementIds": [
-          "req_python"
-        ]
-      },
-      {
-        "id": "proof_portfolio",
-        "label": "Portfolio",
-        "url": "https://heykelhachiche.com",
-        "requirementIds": [
-          "req_ml"
-        ]
-      }
-    ]
   },
   "design": {
     "skin": "synth",
@@ -1021,10 +991,10 @@
   "easterEggs": [
     {
       "trigger": "konami",
-      "effect": "recruiter_mode",
+      "effect": "joke",
       "content": {
-        "fr": "Mode recruteur activé.",
-        "en": "Recruiter mode on."
+        "fr": "Code Konami accepté. Tu as gagné… notre respect.",
+        "en": "Konami code accepted. You won… our respect."
       }
     }
   ],
@@ -1036,7 +1006,6 @@
     "skillsUnlocked": [
       {
         "requirementId": "req_python",
-        "proofId": "proof_palier",
         "line": {
           "fr": "Python et SQL de la collecte au déploiement",
           "en": "Python and SQL from ingestion to deployment"
@@ -1044,7 +1013,6 @@
       },
       {
         "requirementId": "req_ml",
-        "proofId": "proof_portfolio",
         "line": {
           "fr": "15+ projets data et IA en ligne",
           "en": "15+ data and AI projects online"
@@ -1061,25 +1029,7 @@
     "challenge": {
       "fr": "Battez mon score de qualité, le café est pour moi.",
       "en": "Beat my quality score and coffee's on me."
-    },
-    "cta": [
-      {
-        "type": "cv",
-        "label": {
-          "fr": "Voir mon CV",
-          "en": "See my CV"
-        },
-        "url": "<URL_CV>"
-      },
-      {
-        "type": "contact",
-        "label": {
-          "fr": "Me contacter",
-          "en": "Contact me"
-        },
-        "url": "mailto:<EMAIL>"
-      }
-    ]
+    }
   },
   "tracking": {
     "enabled": true

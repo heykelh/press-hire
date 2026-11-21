@@ -6,6 +6,7 @@ import { Chip, finalScore, pickWeighted, rng, SKINS } from "@press-hire/engine";
 import TitleScreen from "../TitleScreen";
 import Ending from "./Ending";
 import { BossFight, Mechanic } from "./mechanics";
+import { HowToCard, TutorialOverlay } from "./Tutorial";
 import { Backdrop, BossSprite, deltaText, Hud, Portrait, useFx, type Ctx, type Lang } from "./ui";
 
 type Phase =
@@ -17,17 +18,10 @@ type Phase =
   | { k: "bossIntro" }
   | { k: "boss" }
   | { k: "bossResult"; won: boolean }
-  | { k: "ending"; recruiter: boolean };
+  | { k: "ending" };
 
 const KONAMI = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "b", "a"];
 
-const HOWTO: Record<string, I18n> = {
-  wheel: { fr: "ROUE", en: "WHEEL" },
-  slider: { fr: "RÉGLAGE", en: "TUNING" },
-  triage: { fr: "TRI", en: "SORTING" },
-  quiz: { fr: "QUIZ", en: "QUIZ" },
-  dialogue: { fr: "ÉCHANGE", en: "TALK" },
-};
 
 /** Envoie un événement de partie (début, fin, clic) sans bloquer le jeu. */
 function sendTrack(slug: string, kind: string, detail?: string) {
@@ -42,7 +36,7 @@ function sendTrack(slug: string, kind: string, detail?: string) {
   }
 }
 
-export default function Game({ c, track = false }: { c: Cartridge; track?: boolean }) {
+export default function Game({ c, track = false, badge = true }: { c: Cartridge; track?: boolean; badge?: boolean }) {
   const [lang, setLang] = useState<Lang>(c.meta.defaultLang);
   const t = useCallback((x: I18n) => x[lang] || x[c.meta.defaultLang], [lang, c.meta.defaultLang]);
   const levels = useMemo(() => [...c.levels].sort((a, b) => a.order - b.order), [c]);
@@ -58,6 +52,7 @@ export default function Game({ c, track = false }: { c: Cartridge; track?: boole
   const [levelFails, setLevelFails] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const [sound, setSound] = useState({ sfx: true, music: false });
+  const [help, setHelp] = useState(false);
   const chip = useRef<Chip | null>(null);
   if (!chip.current && typeof window !== "undefined") chip.current = new Chip();
   const rand = useRef(rng(Date.now() >>> 0)).current;
@@ -81,7 +76,7 @@ export default function Game({ c, track = false }: { c: Cartridge; track?: boole
   const say = (s: string) => { setToast(s); setTimeout(() => setToast(null), 3200); };
 
   useEffect(() => {
-    if (phase.k === "ending" && !phase.recruiter) trackOnce("end");
+    if (phase.k === "ending") trackOnce("end");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
@@ -116,7 +111,6 @@ export default function Game({ c, track = false }: { c: Cartridge; track?: boole
         buf = [];
         chip.current?.sfx("coin");
         say(t(konami.content));
-        if (konami.effect === "recruiter_mode") setPhase({ k: "ending", recruiter: true });
       }
     };
     arm();
@@ -128,6 +122,7 @@ export default function Game({ c, track = false }: { c: Cartridge; track?: boole
 
   /* ---------- enchaînement ---------- */
   const startLevel = (i: number) => {
+    setHelp(false);
     levelStart.current = { ...st.current };
     setLevelFails(0);
     setPhase({ k: "intro", i });
@@ -154,7 +149,7 @@ export default function Game({ c, track = false }: { c: Cartridge; track?: boole
   const goTo = (next: number) => {
     if (next < levels.length) startLevel(next);
     else if (c.boss) { levelStart.current = { ...st.current }; setPhase({ k: "bossIntro" }); }
-    else setPhase({ k: "ending", recruiter: false });
+    else setPhase({ k: "ending" });
   };
   const finishLevel = (i: number) => {
     const won = checkConditions(levels[i]!.win, st.current, levelStart.current);
@@ -196,14 +191,17 @@ export default function Game({ c, track = false }: { c: Cartridge; track?: boole
 
   if (phase.k === "title")
     return (
+      <>
       <TitleScreen
         title={c.design.title} tagline={c.design.tagline} skin={c.design.skin} palette={p}
         scene={scene} animation={ts.logo.animation} shine={ts.logo.shine}
         lang={lang} languages={c.meta.languages} onLang={setLang}
-        onStart={start}
-        onRecruiter={() => { trackOnce("recruiter"); setPhase({ k: "ending", recruiter: true }); }}
+        onStart={help ? undefined : start}
+        onHelp={() => setHelp(true)}
         badge={c.target.company.sector.toUpperCase()}
       />
+      {help && <div className={`g-root-lite gskin-${c.design.skin}`} style={vars}><TutorialOverlay ctx={ctx} levels={levels} onClose={() => setHelp(false)} /></div>}
+      </>
     );
 
   const fr = lang === "fr";
@@ -213,7 +211,7 @@ export default function Game({ c, track = false }: { c: Cartridge; track?: boole
       <button className="g-tool" onClick={() => setSound((s) => ({ ...s, sfx: !s.sfx }))} aria-pressed={sound.sfx} title="SFX">{sound.sfx ? "SFX ●" : "SFX ○"}</button>
       <button className="g-tool" onClick={() => setSound((s) => ({ ...s, music: !s.music }))} aria-pressed={sound.music} title={fr ? "Musique" : "Music"}>{sound.music ? "♪ ●" : "♪ ○"}</button>
       {c.meta.languages.length > 1 && <button className="g-tool" onClick={() => setLang(fr ? "en" : "fr")}>{fr ? "EN" : "FR"}</button>}
-      {phase.k !== "ending" && <button className="g-tool accent" onClick={() => { trackOnce("recruiter"); setPhase({ k: "ending", recruiter: true }); }} title={fr ? "Voir le résumé" : "See the summary"}>{fr ? "RECRUTEUR >" : "RECRUITER >"}</button>}
+      {phase.k === "play" && <button className="g-tool accent" onClick={() => setHelp(true)} title={fr ? "Comment jouer (pause)" : "How to play (pause)"} aria-label={fr ? "Comment jouer" : "How to play"}>?</button>}
     </>
   );
 
@@ -231,7 +229,7 @@ export default function Game({ c, track = false }: { c: Cartridge; track?: boole
       const rq = c.analysis.requirements.find((r) => r.id === level.requirementId);
       body = (
         <div className="g-intro" key={`intro-${phase.i}`}>
-          <p className="g-stage">{fr ? "NIVEAU" : "LEVEL"} {level.order} · {t(HOWTO[level.mechanic.type]!)}</p>
+          <p className="g-stage">{fr ? "NIVEAU" : "LEVEL"} {level.order} / {levels.length}</p>
           <h2 className="g-level-title">{t(level.title)}</h2>
           {ch && (
             <div className="g-speaker">
@@ -240,7 +238,8 @@ export default function Game({ c, track = false }: { c: Cartridge; track?: boole
             </div>
           )}
           {!ch && <p className="g-bubble">{t(level.intro)}</p>}
-          {rq && <p className="g-req">{fr ? "Dans l'offre" : "In the job ad"} : <b>{t(rq.label)}</b></p>}
+          {rq && <p className="g-req">{fr ? "Mission du poste" : "Job mission"} : <b>{t(rq.label)}</b></p>}
+          <HowToCard ctx={ctx} level={level} />
           <button className="g-btn primary big" autoFocus onClick={() => { chip.current?.sfx("click"); setPhase({ k: "play", i: phase.i }); }}>
             {fr ? "C'EST PARTI ▶" : "LET'S GO ▶"}
           </button>
@@ -250,7 +249,20 @@ export default function Game({ c, track = false }: { c: Cartridge; track?: boole
     }
     case "play": {
       const ch = char(level.mechanic.type === "dialogue" ? level.mechanic.characterId ?? level.characterId : level.characterId);
-      body = <Mechanic key={`${phase.i}-${attempt}`} ctx={ctx} m={level.mechanic} character={ch} onDone={() => finishLevel(phase.i)} />;
+      body = (
+        <>
+          <Mechanic key={`${phase.i}-${attempt}`} ctx={ctx} m={level.mechanic} character={ch} paused={help} onDone={() => finishLevel(phase.i)} />
+          {help && (
+            <div className="g-overlay" onClick={() => setHelp(false)}>
+              <div className="g-panel g-tuto" onClick={(e) => e.stopPropagation()}>
+                <p className="g-stage">PAUSE</p>
+                <HowToCard ctx={ctx} level={level} />
+                <button className="g-btn primary big" autoFocus onClick={() => setHelp(false)}>{fr ? "REPRENDRE ▶" : "RESUME ▶"}</button>
+              </div>
+            </div>
+          )}
+        </>
+      );
       break;
     }
     case "result": {
@@ -319,7 +331,7 @@ export default function Game({ c, track = false }: { c: Cartridge; track?: boole
           <p className="g-stamp">{phase.won ? "K.O. !" : fr ? "PERDU…" : "DEFEATED…"}</p>
           <p className="g-bubble">{phase.won ? t(c.boss!.defeatLine) : t(c.boss!.taunts[c.boss!.taunts.length - 1]!)}</p>
           {phase.won ? (
-            <button className="g-btn primary big" autoFocus onClick={() => setPhase({ k: "ending", recruiter: false })}>{fr ? "VICTOIRE ▶" : "VICTORY ▶"}</button>
+            <button className="g-btn primary big" autoFocus onClick={() => setPhase({ k: "ending" })}>{fr ? "VICTOIRE ▶" : "VICTORY ▶"}</button>
           ) : (
             <button className="g-btn primary big" autoFocus onClick={() => { st.current = { ...levelStart.current }; bump(); setAttempt((a) => a + 1); setPhase({ k: "boss" }); }}>{fr ? "↺ REVANCHE" : "↺ REMATCH"}</button>
           )}
@@ -327,11 +339,11 @@ export default function Game({ c, track = false }: { c: Cartridge; track?: boole
       );
       break;
     case "ending": {
-      const perfect = !phase.recruiter && fails === 0 ? c.easterEggs.find((e) => e.trigger === "perfect_run") : undefined;
+      const perfect = fails === 0 ? c.easterEggs.find((e) => e.trigger === "perfect_run") : undefined;
       body = (
-        <Ending ctx={ctx} recruiter={phase.recruiter} fails={fails}
-          score={phase.recruiter ? null : finalScore(c, st.current, fails)}
+        <Ending ctx={ctx} fails={fails} score={finalScore(c, st.current, fails)}
           perfectEgg={perfect ? t(perfect.content) : undefined}
+          badge={badge}
           onReplay={restart} />
       );
       break;

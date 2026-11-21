@@ -37,6 +37,10 @@ function mechanicEffects(m: Mechanic): Array<{ path: string; e: Effect }> {
     m.onCorrect.forEach((e, j) => out.push({ path: `onCorrect[${j}]`, e }));
     m.onWrong.forEach((e, j) => out.push({ path: `onWrong[${j}]`, e }));
   }
+  if (m.type === "catch") (["onGood", "onBad", "onMiss"] as const).forEach((k) => m[k].forEach((e, j) => out.push({ path: `${k}[${j}]`, e })));
+  if (m.type === "whack") (["onHit", "onWrong", "onMiss"] as const).forEach((k) => m[k].forEach((e, j) => out.push({ path: `${k}[${j}]`, e })));
+  if (m.type === "sequence") (["onSuccess", "onFail"] as const).forEach((k) => m[k].forEach((e, j) => out.push({ path: `${k}[${j}]`, e })));
+  if (m.type === "gauge") m.zones.forEach((z, i) => z.effects.forEach((e, j) => out.push({ path: `zones[${i}].effects[${j}]`, e })));
   if (m.type === "dialogue")
     m.nodes.forEach((n, i) => n.choices.forEach((ch, k) => ch.effects.forEach((e, j) => out.push({ path: `nodes[${i}].choices[${k}].effects[${j}]`, e }))));
   return out;
@@ -48,7 +52,8 @@ export function lintCartridge(c: Cartridge, opts: { strict?: boolean } = {}): Is
     issues.push({ rule, severity, path, message });
 
   const reqIds = new Set(c.analysis.requirements.map((r) => r.id));
-  const proofIds = new Set(c.candidate.proofs.map((p) => p.id));
+  const proofs = c.candidate?.proofs ?? [];
+  const proofIds = new Set(proofs.map((p) => p.id));
   const painIds = new Set(c.analysis.painPoints.map((p) => p.id));
   const varIds = new Set(c.state.vars.map((v) => v.id));
   const charIds = new Set(c.characters.map((ch) => ch.id));
@@ -62,7 +67,7 @@ export function lintCartridge(c: Cartridge, opts: { strict?: boolean } = {}): Is
     }
   };
   dup("analysis.requirements", c.analysis.requirements.map((r) => r.id));
-  dup("candidate.proofs", c.candidate.proofs.map((p) => p.id));
+  dup("candidate.proofs", proofs.map((p) => p.id));
   dup("state.vars", c.state.vars.map((v) => v.id));
   dup("levels", c.levels.map((l) => l.id));
 
@@ -109,15 +114,19 @@ export function lintCartridge(c: Cartridge, opts: { strict?: boolean } = {}): Is
   c.events.forEach((ev, i) => ev.effects.forEach((e, j) => checkVar(e.var, `events[${i}].effects[${j}]`)));
 
   /* couverture des exigences */
-  const covered = new Set<string>([...c.levels.map((l) => l.requirementId), ...c.candidate.proofs.flatMap((p) => p.requirementIds)]);
+  const covered = new Set<string>([
+    ...c.levels.map((l) => l.requirementId),
+    ...proofs.flatMap((p) => p.requirementIds),
+    ...c.ending.skillsUnlocked.map((s) => s.requirementId),
+  ]);
   c.analysis.requirements.forEach((r, i) => {
     if (r.priority === "must" && !covered.has(r.id))
-      add("must-coverage", "error", `analysis.requirements[${i}]`, `exigence obligatoire sans niveau ni preuve : ${r.id}`);
+      add("must-coverage", "error", `analysis.requirements[${i}]`, `exigence obligatoire ni jouée dans un niveau ni rappelée en fin de partie : ${r.id}`);
     const words = r.offerQuote.trim().split(/\s+/).length;
     if (words > MAX_QUOTE_WORDS)
       add("quote-length", "error", `analysis.requirements[${i}].offerQuote`, `citation trop longue (${words} > ${MAX_QUOTE_WORDS} mots)`);
   });
-  c.candidate.proofs.forEach((pr, i) =>
+  proofs.forEach((pr, i) =>
     pr.requirementIds.forEach((r) => {
       if (!reqIds.has(r)) add("proof-requirement", "error", `candidate.proofs[${i}]`, `exigence inconnue : ${r}`);
     }),
@@ -126,11 +135,8 @@ export function lintCartridge(c: Cartridge, opts: { strict?: boolean } = {}): Is
   /* écran de fin */
   c.ending.skillsUnlocked.forEach((s, i) => {
     if (!reqIds.has(s.requirementId)) add("ending-ref", "error", `ending.skillsUnlocked[${i}]`, `exigence inconnue : ${s.requirementId}`);
-    if (!proofIds.has(s.proofId)) add("ending-ref", "error", `ending.skillsUnlocked[${i}]`, `preuve inconnue : ${s.proofId}`);
+    if (s.proofId && !proofIds.has(s.proofId)) add("ending-ref", "error", `ending.skillsUnlocked[${i}]`, `preuve inconnue : ${s.proofId}`);
   });
-  const ctaTypes = new Set(c.ending.cta.map((x) => x.type));
-  if (!ctaTypes.has("cv")) add("cta", "error", "ending.cta", "il manque un bouton CV");
-  if (!ctaTypes.has("contact")) add("cta", "error", "ending.cta", "il manque un bouton contact");
 
   /* données réelles sourcées */
   c.data.forEach((d, i) => {
@@ -167,9 +173,11 @@ export function lintCartridge(c: Cartridge, opts: { strict?: boolean } = {}): Is
       if (!r.winnable) add("balance-unwinnable", "error", `levels[${i}]`, `${r.levelId} : impossible à gagner, même en jouant parfaitement`);
       else if (r.wonAtStart) add("balance-trivial", "error", `levels[${i}]`, `${r.levelId} : déjà gagné avant de jouer (utiliser une variable propre au niveau ou scope "level")`);
       else if (r.winRate !== undefined && r.winRate < 0.3)
-        add("balance-luck", "warning", `levels[${i}]`, `${r.levelId} : roue trop punitive, un joueur moyen gagne ${Math.round(r.winRate * 100)} % du temps (viser 30 à 80 %)`);
+        add("balance-luck", "warning", `levels[${i}]`, `${r.levelId} : trop punitif, un joueur moyen gagne ${Math.round(r.winRate * 100)} % du temps (viser 30 à 80 %)`);
+      else if (r.tooHard)
+        add("balance-hard", "warning", `levels[${i}]`, `${r.levelId} : trop exigeant, un joueur qui attrape 75 % des bons objets perd`);
       else if (r.winRate !== undefined && r.winRate > 0.95)
-        add("balance-luck", "warning", `levels[${i}]`, `${r.levelId} : roue sans enjeu, un joueur moyen gagne ${Math.round(r.winRate * 100)} % du temps`);
+        add("balance-luck", "warning", `levels[${i}]`, `${r.levelId} : sans enjeu, un joueur moyen gagne ${Math.round(r.winRate * 100)} % du temps`);
     }
 
   /* emplacements non remplis */
@@ -217,6 +225,37 @@ function checkMechanic(
     }
     case "dialogue":
       break;
+    case "catch":
+    case "whack": {
+      const items = m.type === "catch" ? m.items : m.targets;
+      const key = m.type === "catch" ? "items" : "targets";
+      if (!items.some((x) => x.kind === "good")) add("arcade-balance", "error", `${p}.${key}`, "il faut au moins un objet « good »");
+      if (m.type === "catch" && !items.some((x) => x.kind === "bad")) add("arcade-balance", "error", `${p}.${key}`, "il faut au moins un piège « bad »");
+      const ids = new Set<string>();
+      items.forEach((x, i) => {
+        if (ids.has(x.id)) add("unique-ids", "error", `${p}.${key}[${i}]`, `objet en double : ${x.id}`);
+        ids.add(x.id);
+        if (x.label.fr.length > 16) add("arcade-label", "warning", `${p}.${key}[${i}]`, "étiquette longue (16 caractères conseillés)");
+      });
+      break;
+    }
+    case "gauge": {
+      const zs = [...m.zones].sort((a, b) => a.from - b.from);
+      zs.forEach((z, i) => {
+        if (z.from >= z.to) add("gauge-zones", "error", `${p}.zones`, `zone ${z.id} : from doit être inférieur à to`);
+        const next = zs[i + 1];
+        if (next && next.from < z.to) add("gauge-zones", "error", `${p}.zones`, `zones ${z.id} et ${next.id} se chevauchent`);
+      });
+      break;
+    }
+    case "sequence": {
+      const ids = new Set<string>();
+      m.pads.forEach((x, i) => {
+        if (ids.has(x.id)) add("unique-ids", "error", `${p}.pads[${i}]`, `touche en double : ${x.id}`);
+        ids.add(x.id);
+      });
+      break;
+    }
     case "quiz": {
       m.questions.forEach((q, i) => {
         if (q.correctIndex >= q.options.length)

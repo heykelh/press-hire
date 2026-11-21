@@ -18,15 +18,15 @@ export interface TitleScreenProps {
   languages: Lang[];
   onLang?: (l: Lang) => void;
   onStart?: () => void;
-  /** bouton « mode recruteur » : résumé direct sans jouer */
-  onRecruiter?: () => void;
+  /** bouton « comment jouer » */
+  onHelp?: () => void;
   mode?: "full" | "card";
   /** texte du petit badge (habillage famicom) */
   badge?: string;
 }
 
 export default function TitleScreen(props: TitleScreenProps) {
-  const { title, tagline, skin, palette, scene, animation, shine, lang, languages, onLang, onStart, onRecruiter, mode = "full", badge } = props;
+  const { title, tagline, skin, palette, scene, animation, shine, lang, languages, onLang, onStart, onHelp, mode = "full", badge } = props;
   const root = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const def = SKINS[skin];
@@ -106,15 +106,15 @@ export default function TitleScreen(props: TitleScreenProps) {
           {lang === "fr" ? "EN" : "FR"}
         </button>
       )}
-      {onRecruiter && mode === "full" && (
+      {onHelp && mode === "full" && (
         <button
-          className="ph-recruiter"
+          className="ph-help"
           onClick={(e) => {
             e.stopPropagation();
-            onRecruiter();
+            onHelp();
           }}
         >
-          {lang === "fr" ? "PAS LE TEMPS ? MODE RECRUTEUR >" : "IN A HURRY? RECRUITER MODE >"}
+          {lang === "fr" ? "? COMMENT JOUER" : "? HOW TO PLAY"}
         </button>
       )}
       <div className="ph-overlay">

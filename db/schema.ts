@@ -47,6 +47,31 @@ create table if not exists play_events (
 );
 create index if not exists play_events_slug_idx on play_events (slug, created_at desc);
 create index if not exists play_events_sid_idx on play_events (sid, kind);
+
+-- Préparation SaaS : comptes, propriétaire de chaque jeu, journal des générations (quotas, facturation)
+create table if not exists accounts (
+  id         text primary key,
+  email      text,
+  name       text,
+  plan       text        not null default 'free',
+  created_at timestamptz not null default now()
+);
+insert into accounts (id, name, plan) values ('owner', 'Propriétaire', 'owner') on conflict (id) do nothing;
+
+alter table cartridges add column if not exists owner_id text not null default 'owner';
+create index if not exists cartridges_owner_idx on cartridges (owner_id, created_at desc);
+
+create table if not exists generations (
+  id          bigserial primary key,
+  owner_id    text        not null,
+  slug        text,
+  ok          boolean     not null,
+  provider    text,
+  duration_ms integer,
+  error       text,
+  created_at  timestamptz not null default now()
+);
+create index if not exists generations_owner_idx on generations (owner_id, created_at desc);
 `;
 
 /** Les instructions une par une (sans commentaires). */

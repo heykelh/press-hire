@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { publishGame, refreshProfile, removeGame, unpublishGame } from "@/app/studio/actions";
+import { publishGame, removeGame, unpublishGame } from "@/app/studio/actions";
 import { PublishedLink } from "./NewGame";
 
 export interface Row {
@@ -14,8 +14,6 @@ export interface Row {
   created_at: string;
   plays: number;
   ends: number;
-  cta_clicks: number;
-  recruiter_views: number;
   last_play_at: string | null;
 }
 
@@ -25,17 +23,17 @@ const fmt = (d: string | null) =>
 export default function GameList({ games }: { games: Row[] }) {
   if (!games.length)
     return (
-      <section className="st-card">
+      <section className="st-card" id="jeux">
         <h2>MES JEUX</h2>
         <p className="st-hint">Aucun jeu pour l&apos;instant : colle une offre ci-dessus.</p>
       </section>
     );
   return (
-    <section className="st-card">
+    <section className="st-card" id="jeux">
       <h2>MES JEUX ({games.length})</h2>
       <table className="st-table">
         <thead>
-          <tr><th>JEU</th><th>ÉTAT</th><th>PARTIES</th><th>FINIES</th><th>CLICS CV</th><th>DERNIÈRE</th><th></th></tr>
+          <tr><th>JEU</th><th>ÉTAT</th><th>PARTIES</th><th>FINIES</th><th>DERNIÈRE</th><th></th></tr>
         </thead>
         <tbody>{games.map((g) => <GameRow key={g.slug} g={g} />)}</tbody>
       </table>
@@ -61,11 +59,10 @@ function GameRow({ g }: { g: Row }) {
       <td><span className={`st-chip ${g.status}`}>{g.status === "live" ? "EN LIGNE" : g.status === "draft" ? "BROUILLON" : "ARCHIVÉ"}</span></td>
       <td className="num">{g.plays}</td>
       <td className="num">{g.ends}</td>
-      <td className="num">{g.cta_clicks}</td>
       <td>{fmt(g.last_play_at)}</td>
       <td>
         <div className="st-actions">
-          <a className="st-btn small" href={`/studio/apercu/${g.slug}`} target="_blank" rel="noopener">APERÇU</a>
+          <a className="st-btn small" href={`/studio/apercu/${g.slug}`} target="_blank" rel="noopener">{g.status === "live" ? "JOUER" : "APERÇU"}</a>
           {g.status === "live" ? (
             <>
               <button className="st-btn small blue" onClick={() => navigator.clipboard.writeText(url).then(() => setMsg({ ok: true, text: "Lien copié : " + url }))}>LIEN</button>
@@ -77,10 +74,7 @@ function GameRow({ g }: { g: Row }) {
                 const r = await publishGame(g.slug);
                 setMsg(r.ok ? { ok: true, text: "", url: r.url } : { ok: false, text: r.error ?? "refusé" });
               })}>PUBLIER</button>
-              <button className="st-btn small" disabled={pending} title="Reprend nom, e-mail, CV et liens du profil" onClick={() => start(async () => {
-                const r = await refreshProfile(g.slug);
-                setMsg({ ok: r.ok, text: r.ok ? "Profil mis à jour dans ce jeu." : r.error ?? "échec" });
-              })}>MAJ PROFIL</button>
+
             </>
           )}
           <button className="st-btn small danger" disabled={pending} onClick={() => {

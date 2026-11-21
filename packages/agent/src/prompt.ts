@@ -5,9 +5,8 @@
 import { z } from "zod";
 import type { Issue } from "@press-hire/cartridge";
 import { Brief } from "./brief";
-import { EXAMPLE_BRIEF } from "./example";
+import { EXAMPLE_BRIEF, EXAMPLE_BRIEF_ARCADE } from "./example";
 import type { Offer } from "./offer";
-import type { CandidateProfile } from "./profile";
 
 const SCENES = `airport (aéroport, avions), station (gare souterraine), trading_floor (salle des marchés), data_center (salle serveurs),
 hospital (hôpital), factory (usine), warehouse (entrepôt intérieur : racks, quais, chariot), headquarters (tours de bureaux),
@@ -23,8 +22,8 @@ synth (IA, cloud, médias, innovation) ; corporate (banque, assurance, conseil, 
 comic (logistique, retail, agences : ton très décontracté)`;
 
 export const SYSTEM_PROMPT = `Tu es game designer et recruteur. À partir d'une offre d'emploi, tu écris le « brief » d'un petit jeu web rétro 8-bit (style NES)
-qu'un candidat envoie au recruteur pour se démarquer. Le jeu fait jouer les vraies missions du poste. Il doit être drôle, juste et
-donner envie de rencontrer le candidat.
+qu'un candidat envoie avec sa candidature pour se démarquer. Le jeu fait jouer les vraies missions du poste. Il doit être drôle,
+juste, rappeler les grands jeux d'époque et parler les métriques d'aujourd'hui (SLA, MTTR, précision, rappel, taux de conversion…).
 
 Tu réponds uniquement par un objet JSON conforme au schéma fourni, sans texte autour.
 
@@ -32,21 +31,31 @@ RÈGLES DE CONTENU
 - Tout texte visible est bilingue {"fr": "...", "en": "..."}. Français naturel, phrases courtes.
 - analysis.requirements : 4 à 7 exigences réelles de l'offre ; offerQuote = citation exacte de l'offre, 15 mots maximum.
   priority "must" pour le cœur du poste. kind "soft" pour les qualités humaines.
-- Chaque exigence "must" doit avoir un niveau (levels[].requirementId) ou une preuve (ending.skillsUnlocked).
-- 3 à 6 niveaux, mécaniques variées (pas deux fois la même d'affilée), chacun sur une exigence différente.
-  Choisir la mécanique selon la mission : triage (trier, contrôler, conformité), quiz (savoir technique, SQL, réglementation),
-  slider (régler un seuil, un stock, un budget, un compromis), wheel (aléas du quotidien ; "timing" si le joueur peut viser),
-  dialogue (soft skills : recueillir un besoin, convaincre un comité, gérer un client).
+- Chaque exigence "must" doit être jouée dans un niveau (levels[].requirementId) ou rappelée en fin de partie (ending.skillsUnlocked).
+- 4 à 6 niveaux, mécaniques variées (jamais deux fois la même d'affilée), chacun sur une exigence différente.
+  Au moins deux mécaniques d'arcade (catch, whack, gauge, sequence) et au moins une mécanique de réflexion (triage, quiz, dialogue, slider).
+  Choisir la mécanique selon la mission :
+  · catch (attrape-tout façon Kaboom!) : filtrer un flux (mails, données, tickets, candidatures) ; good = à laisser entrer, bad = à éviter.
+  · whack (tape-taupe) : réagir vite à des incidents, des alertes, des demandes urgentes ; good = à frapper, bad = à épargner.
+  · gauge (jauge de puissance façon golf 8-bit) : doser un seuil, un budget, une fréquence ; une zone étroite et juste, des zones
+    "trop" et "pas assez" avec des noms drôles.
+  · sequence (mémoire façon Simon) : retenir l'ordre d'une procédure (déploiement, réponse à incident, clôture comptable, RGPD).
+  · triage (trier, contrôler, conformité), quiz (savoir technique, SQL, réglementation),
+    slider (régler un compromis), wheel (aléas du quotidien ; "timing" si le joueur peut viser),
+    dialogue (soft skills : recueillir un besoin, convaincre un comité, gérer un client).
+- Chaque niveau peut avoir un "howTo" : un conseil concret pour ce niveau (une phrase), affiché dans la fiche « comment jouer ».
+- Mécaniques d'arcade : étiquettes d'objets de 14 caractères maximum, icônes parmi file, bug, coin, star, bomb, mail, chart,
+  shield, fire, box, cloud, key, warning, heart, ticket, server, cart, clock, drop, bolt.
 - intro d'un niveau : une phrase de 80 caractères maximum. winLine : la réplique de victoire. failJokes : 2 à 4 blagues sur le métier.
 - Humour bienveillant sur les situations du métier ; jamais de moquerie de l'entreprise, ne cite jamais son nom dans failJokes ou taunts.
 - Ne jamais inventer de chiffres sur l'entreprise. Les nombres du jeu sont des ordres de grandeur plausibles du métier.
 - Personnages (characters) : 1 à 4 interlocuteurs crédibles du poste (manager, client interne, comité…), noms fictifs.
 - Boss facultatif : seulement si l'offre laisse voir un vrai problème à résoudre (painPoints). Mécanique quiz (au moins autant de
   questions que de points de vie) ou wheel.
-- ending.skillsUnlocked : relie 2 à 4 exigences aux preuves du candidat fournies (proofId exact), avec une phrase factuelle.
-  N'utilise que les preuves listées, quand leur description correspond vraiment.
+- ending.skillsUnlocked : 3 à 5 missions du poste que le joueur vient de jouer (requirementId + une phrase courte et concrète).
 - Titre du jeu : 1 à 3 mots percutants, en majuscules possibles. Tagline : une phrase drôle.
 - Ne remplis pas meta, candidate, ending.cta, tracking ni review : ils sont ajoutés automatiquement.
+- Boss : mécanique quiz, wheel ou gauge (une zone favorable = un coup porté).
 
 DESIGN
 - design.skin parmi : ${SKINS}
@@ -64,10 +73,18 @@ DESIGN
   Quiz de 4 questions, onCorrect +1 → objectif ≥ 3. Dialogue : la somme des meilleurs choix doit dépasser l'objectif.
   Roue : objectif atteignable en ~60 % des cas par un joueur moyen, jamais garanti.
   Slider : outputs = courbes de la valeur du curseur x ; au moins une valeur de x gagne, beaucoup perdent.
+  Catch et whack : le jeu tire exactement round(durationSec × perSec) objets, répartis selon les poids. Exemple : 30 s × 1,2 = 36 objets,
+  poids good 3 / bad 2 → environ 22 bons. Fixe l'objectif pour qu'un joueur qui attrape 75 % des bons objets gagne de justesse.
+  Gauge : la meilleure zone fait 12 à 18 points de large ; objectif atteignable en touchant la meilleure zone 2 fois sur 3.
+  Sequence : onSuccess par manche réussie ; objectif = rounds - 1.
 - Les objectifs "<=" servent pour les coûts et les risques.
 
-Voici un exemple complet de brief réussi, pour un poste de Data Analyst supply chain :
+Voici deux exemples complets de briefs réussis.
+1. Data Analyst supply chain (mécaniques de réflexion) :
 ${JSON.stringify(EXAMPLE_BRIEF)}
+
+2. Analyste SOC (mécaniques d'arcade) :
+${JSON.stringify(EXAMPLE_BRIEF_ARCADE)}
 `;
 
 let schemaText: string | null = null;
@@ -76,14 +93,9 @@ export function briefSchemaText(): string {
   return schemaText;
 }
 
-export function userPrompt(offer: Offer, profile: CandidateProfile, opts: { company?: string; jobTitle?: string; notes?: string }): string {
-  const proofs = profile.proofs.map((p) => `- ${p.id} « ${p.label} » : ${p.about}`).join("\n");
+export function userPrompt(offer: Offer, opts: { company?: string; jobTitle?: string; notes?: string }): string {
   return `SCHÉMA JSON DU BRIEF :
 ${briefSchemaText()}
-
-PREUVES DU CANDIDAT (proofId à utiliser dans ending.skillsUnlocked) :
-${proofs}
-Le candidat se présente comme : ${profile.headline.fr}
 
 OFFRE D'EMPLOI
 Entreprise : ${opts.company || offer.company || "(à déduire de l'offre)"}
@@ -93,7 +105,7 @@ Texte de l'offre :
 """
 ${offer.text}
 """
-${opts.notes ? `\nCONSIGNES DU CANDIDAT POUR CE JEU :\n${opts.notes}\n` : ""}
+${opts.notes ? `\nCONSIGNES POUR CE JEU :\n${opts.notes}\n` : ""}
 Écris maintenant le brief JSON complet de ce jeu.`;
 }
 
