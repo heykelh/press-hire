@@ -9,7 +9,7 @@ Chaque jeu est une **cartouche** : un fichier JSON qui décrit tout le jeu en do
 | Phase | Contenu | État |
 | --- | --- | --- |
 | 0 · Socle | Monorepo, format de cartouche v0.2, contrôles, app qui lit Neon, scripts | ✅ ce dépôt |
-| 1a · Écran titre | 7 décors pixel animés, 7 habillages, météo, heures du jour, galerie `/gallery` | ✅ |
+| 1a · Écran titre | 14 décors pixel animés, 7 habillages, météo, heures du jour, galerie `/gallery` | ✅ |
 | 1b · Niveaux | Mécaniques `wheel` / `slider` / `triage` / `quiz`, juice, audio, écran de fin | à faire |
 | 2 · Publier | Image d'aperçu, `/api/track`, notifications ntfy, `/studio` | à faire |
 | 3 · Agent | Graphe LangGraph.js sur GitHub Actions : offre → cartouche → URL | à faire |
@@ -101,7 +101,9 @@ Chaque cartouche choisit un décor (`titleScreen.scene`), une heure, une météo
 | `corporate` | carte blanche sobre, bouton plein | banque, assurance, santé, public |
 | `comic` | contour épais, trame de points, bulles | logistique, agences |
 
-Galerie des 8 exemples : `/gallery`.
+Décors : `airport`, `trading_floor`, `data_center`, `port`, `factory`, `hospital`, `headquarters`, et 7 inspirés des grands jeux NES (techniques de dessin, aucun élément repris) : `plains`, `rooftops`, `underground`, `jungle`, `paris`, `lab`, `space`.
+
+Galerie des 15 exemples : `/gallery`.
 
 ## Contrôles d'une cartouche
 

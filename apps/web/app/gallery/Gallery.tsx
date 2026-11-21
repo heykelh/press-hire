@@ -13,7 +13,7 @@ export default function Gallery() {
     <main className="wrap" style={{ maxWidth: 1180 }}>
       <h1 className="logo center" style={{ fontSize: 22 }}>PRESS HIRE · ÉCRANS TITRE</h1>
       <p className="center mut" style={{ fontSize: 10 }}>
-        8 exemples, entreprises fictives. Clique sur un écran pour le voir en grand.{" "}
+        {PRESETS.length} exemples, entreprises fictives. Clique sur un écran pour le voir en grand.{" "}
         <button className="tag" onClick={() => setLang(lang === "fr" ? "en" : "fr")} style={{ cursor: "pointer", color: "inherit", font: "inherit" }}>
           {lang === "fr" ? "EN" : "FR"}
         </button>

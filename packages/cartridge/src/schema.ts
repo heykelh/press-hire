@@ -160,6 +160,14 @@ export const Scene = z.enum([
   "headquarters",
   "port",
   "store",
+  // inspirés des grands jeux NES (techniques, pas éléments)
+  "plains",
+  "rooftops",
+  "underground",
+  "jungle",
+  "paris",
+  "lab",
+  "space",
 ]);
 export type Scene = z.infer<typeof Scene>;
 
@@ -177,6 +185,10 @@ export const Actor = z.enum([
   "clouds",
   "birds",
   "crowd",
+  "hero",
+  "rocket",
+  "satellite",
+  "fireflies",
 ]);
 
 export const TitleScreen = z.object({

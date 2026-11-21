@@ -2,6 +2,7 @@ import { mix, shade, type Painter } from "../pixel/painter";
 import { textWidth } from "../pixel/font";
 import { hash, rng } from "../pixel/rng";
 import type { SceneCtx, SceneDef } from "./context";
+import { SCENES_NES } from "./scenes2";
 
 /* ---------------- briques de décor ---------------- */
 
@@ -483,6 +484,7 @@ const headquarters: SceneDef = {
 };
 
 export const SCENES: Record<string, SceneDef> = {
+  ...SCENES_NES,
   airport,
   trading_floor: tradingFloor,
   data_center: dataCenter,
@@ -491,7 +493,7 @@ export const SCENES: Record<string, SceneDef> = {
   hospital,
   headquarters,
   // en attendant leurs décors dédiés
-  station: headquarters,
+  station: SCENES_NES.underground!,
   warehouse: factory,
-  store: headquarters,
+  store: SCENES_NES.paris!,
 };

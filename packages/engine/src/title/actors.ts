@@ -70,10 +70,12 @@ const drone: ActorFn = (p, s, t, a) => {
 };
 
 const train: ActorFn = (p, s, t, a) => {
-  const y = s.ground - 16;
-  // viaduc
-  p.rect(0, y + 8, s.W, 2, s.tone.bldLo);
-  for (let x = 6; x < s.W; x += 26) p.rect(x, y + 10, 3, s.ground - y - 10, s.tone.bldLo);
+  // en intérieur (quai de métro) : sur les rails ; dehors : sur un viaduc
+  const y = s.indoor ? s.ground + Math.floor((s.H - s.ground) * 0.55) - 9 : s.ground - 16;
+  if (!s.indoor) {
+    p.rect(0, y + 8, s.W, 2, s.tone.bldLo);
+    for (let x = 6; x < s.W; x += 26) p.rect(x, y + 10, 3, s.ground - y - 10, s.tone.bldLo);
+  }
   const P = (s.W + 90) / (30 * a.speed);
   const u = (t % (P + 2)) / P;
   if (u > 1) return;
@@ -164,7 +166,8 @@ const crowd: ActorFn = (p, s, t, a) => {
     const sp = (4 + hash(k) * 6) * a.speed;
     const span = s.W + 10;
     const x = dir > 0 ? ((hash(k * 7) * span + t * sp) % span) - 5 : span - ((hash(k * 7) * span + t * sp) % span) - 5;
-    const y = s.ground + 1 + Math.floor(hash(k * 11) * Math.max(1, (s.H - s.ground) * 0.25));
+    // en intérieur (quai) : sur le quai, pas sur les voies
+    const y = s.indoor ? s.ground - 4 + Math.floor(hash(k * 11) * 3) : s.ground + 1 + Math.floor(hash(k * 11) * Math.max(1, (s.H - s.ground) * 0.25));
     const shirt = s.colors[k % s.colors.length] ?? "#3a6ad8";
     p.sprite(PERSON, x, y, false, { B: shirt });
     if (Math.floor(t * 6 + k) % 2) p.px(x + (dir > 0 ? 2 : 0), y + 4, "#20202a");
@@ -181,7 +184,65 @@ const serverLights: ActorFn = (p, s, t) => {
   }
 };
 
+/* héros original : sweat à capuche, lunettes, ordinateur sous le bras */
+const HERO_A = { rows: ["..HHH...", ".HHHHH..", ".HFGFG..", ".HFFFF..", "..SSSS..", ".SSSSLL.", ".SSSSLL.", "..SSSS..", "..PP.PP.", ".PP...PP", ".KK...KK"], colors: { H: "#2a1a10", F: "#f0c098", G: "#20202a", S: "#3a6ad8", L: "#c8ccd8", P: "#2a2a3a", K: "#101018" } };
+const HERO_B = { rows: ["..HHH...", ".HHHHH..", ".HFGFG..", ".HFFFF..", "..SSSS..", ".SSSSLL.", ".SSSSLL.", "..SSSS..", "...PP...", "...PP...", "...KK..."], colors: HERO_A.colors };
+
+const hero: ActorFn = (p, s, t, a) => {
+  const span = s.W + 20;
+  const x = ((t * 28 * a.speed) % span) - 10;
+  const ph = (t * 0.9) % 2.5;
+  const jump = ph < 0.6 ? Math.round(Math.sin((ph / 0.6) * Math.PI) * 10) : 0; // petit saut régulier
+  const y = (a.lane === 2 ? front(s) : s.ground) - 11 - jump;
+  p.sprite(Math.floor(t * 10) % 2 ? HERO_A : HERO_B, x, y, false, a.color ? { S: a.color } : { S: s.accent });
+};
+
+const rocket: ActorFn = (p, s, t, a) => {
+  const P = 10 / a.speed;
+  const u = (t % P) / P;
+  const x = Math.floor(s.W * 0.88);
+  const y = s.ground - 18 - (u < 0.2 ? 0 : (u - 0.2) ** 2 * (s.ground + 40) * 1.6);
+  if (y < -24) return;
+  p.rect(x, y, 5, 14, "#e8eef8");
+  p.rect(x + 1, y - 3, 3, 3, a.color ?? s.accent);
+  p.px(x + 2, y - 4, a.color ?? s.accent);
+  p.rect(x + 1, y + 4, 3, 2, "#3a5a9a");
+  p.rect(x - 2, y + 10, 2, 4, a.color ?? s.accent);
+  p.rect(x + 5, y + 10, 2, 4, a.color ?? s.accent);
+  if (u >= 0.15)
+    for (let k = 0; k < 6; k++) {
+      const c = ["#ffffff", "#ffe060", "#ffa020", "#e04020"][(k + Math.floor(t * 20)) % 4]!;
+      p.rect(x + 1 + ((k + Math.floor(t * 30)) % 3) - 1, y + 14 + k * 2, 3, 2, c);
+    }
+};
+
+const satellite: ActorFn = (p, s, t, a) => {
+  const span = s.W + 40;
+  const x = ((t * 7 * a.speed) % span) - 20;
+  const y = Math.floor(s.ground * 0.18) + Math.sin(t * 0.3) * 3;
+  p.rect(x, y, 6, 4, "#c8ccd8");
+  p.rect(x - 8, y + 1, 7, 2, "#2a4ab0");
+  p.rect(x + 7, y + 1, 7, 2, "#2a4ab0");
+  if (Math.floor(t * 2) % 2) p.px(x + 2, y - 1, "#ff3a3a");
+};
+
+const fireflies: ActorFn = (p, s, t) => {
+  if (s.time === "day") return;
+  for (let i = 0; i < 14; i++) {
+    const x = (hash(i * 5) * s.W + Math.sin(t * 0.7 + i) * 8 + s.W) % s.W;
+    const y = s.ground - 4 - hash(i * 9) * s.ground * 0.4 + Math.sin(t * 1.1 + i * 2) * 4;
+    if (hash(i + Math.floor(t * 2 + i)) > 0.35) {
+      p.px(x, y, "#f8ff80");
+      p.px(x + 1, y, "#a8c840");
+    }
+  }
+};
+
 const ACTORS: Record<string, ActorFn> = {
+  hero,
+  rocket,
+  satellite,
+  fireflies,
   plane_takeoff: planeTakeoff,
   plane_taxi: planeTaxi,
   clouds,
@@ -198,7 +259,7 @@ const ACTORS: Record<string, ActorFn> = {
 };
 
 /** Ordre de dessin : le ciel d'abord, le premier plan ensuite. */
-const ORDER = ["clouds", "birds", "crane", "plane_takeoff", "drone", "train", "ship", "plane_taxi", "ticker", "server_lights", "crowd", "truck", "ambulance"];
+const ORDER = ["satellite", "clouds", "birds", "fireflies", "rocket", "crane", "plane_takeoff", "drone", "train", "ship", "plane_taxi", "ticker", "server_lights", "crowd", "truck", "ambulance", "hero"];
 
 export function drawActors(p: Painter, s: SceneCtx, actors: ActorCfg[], t: number): void {
   const sorted = actors.map((a, i) => ({ a, i })).sort((x, y) => ORDER.indexOf(x.a.type) - ORDER.indexOf(y.a.type));
