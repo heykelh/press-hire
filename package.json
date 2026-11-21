@@ -1,0 +1,26 @@
+{
+  "name": "press-hire",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @press-hire/web dev",
+    "build": "pnpm --filter @press-hire/web build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "validate": "tsx scripts/validate.ts",
+    "db:init": "tsx scripts/db-init.ts",
+    "publish:cartridge": "tsx scripts/publish.ts"
+  },
+  "devDependencies": {
+    "@neondatabase/serverless": "^1.0.2",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "zod": "^4.1.0",
+    "@press-hire/cartridge": "workspace:*"
+  },
+  "type": "module"
+}

@@ -1,0 +1,250 @@
+{
+  "meta": {
+    "id": "air-france-fuel-demo",
+    "schemaVersion": "0.2",
+    "createdAt": "2026-11-21T10:00:00Z",
+    "languages": ["fr", "en"],
+    "defaultLang": "fr"
+  },
+  "target": {
+    "company": { "name": "Air France", "sector": "Transport aérien" },
+    "job": { "title": "Data Analyst IA Fuel & Efficiency", "url": "<URL_OFFRE>" },
+    "sourcesConsulted": []
+  },
+  "analysis": {
+    "requirements": [
+      { "id": "req_sql", "label": { "fr": "SQL et Python", "en": "SQL and Python" }, "kind": "hard", "priority": "must", "offerQuote": "<EXTRAIT_OFFRE>" },
+      { "id": "req_fuel", "label": { "fr": "Leviers d'économie carburant", "en": "Fuel saving levers" }, "kind": "hard", "priority": "must", "offerQuote": "<EXTRAIT_OFFRE>" },
+      { "id": "req_ops", "label": { "fr": "Travail avec les équipes opérationnelles", "en": "Working with operations teams" }, "kind": "soft", "priority": "must", "offerQuote": "<EXTRAIT_OFFRE>" },
+      { "id": "req_viz", "label": { "fr": "Restitution et pédagogie", "en": "Reporting and teaching" }, "kind": "soft", "priority": "nice", "offerQuote": "<EXTRAIT_OFFRE>" }
+    ],
+    "painPoints": [
+      { "id": "pp_waste", "label": { "fr": "Carburant embarqué en trop", "en": "Excess fuel on board" }, "source": "offer" }
+    ],
+    "tone": {
+      "formality": 3,
+      "humorLevel": 2,
+      "retroNes": true,
+      "rationale": "Grand groupe, poste data innovant : humour léger sur le métier, jamais sur la marque."
+    }
+  },
+  "candidate": {
+    "name": "<NOM>",
+    "headline": { "fr": "Data Analyst", "en": "Data Analyst" },
+    "links": { "cv": "<URL_CV>", "portfolio": "https://heykelhachiche.com", "email": "<EMAIL>" },
+    "proofs": [
+      { "id": "proof_palier", "label": "PALIER", "url": "https://palier-sncf.vercel.app", "requirementIds": ["req_sql"],
+        "fact": { "fr": "Simulateur de tarifs TGV sur l'Open Data SNCF", "en": "TGV fare simulator on SNCF Open Data" } },
+      { "id": "proof_lastseat", "label": "LAST SEAT", "url": "https://last-seat-game.vercel.app", "requirementIds": ["req_viz"],
+        "fact": { "fr": "Jeu pour apprendre le revenue management", "en": "A game to learn revenue management" } }
+    ]
+  },
+  "design": {
+    "title": { "fr": "FUEL FIGHTER", "en": "FUEL FIGHTER" },
+    "tagline": { "fr": "Chaque kilo compte.", "en": "Every kilo counts." },
+    "palette": {
+      "bg": "#0a0b1e",
+      "panel": "#13142e",
+      "ink": "#f4f1ff",
+      "accent": "#1b9fe0",
+      "colors": ["#1b9fe0", "#c8107e", "#ffb612", "#82be00", "#8f86e6", "#e05206"]
+    },
+    "music": { "preset": "upbeat", "bpm": 132 },
+    "juice": 2,
+    "targetMinutes": 6
+  },
+  "titleScreen": {
+    "scene": "airport",
+    "time": "sunset",
+    "weather": "clear",
+    "actors": [
+      { "type": "plane_takeoff", "speed": 1, "lane": 0 },
+      { "type": "plane_taxi", "speed": 0.6, "lane": 2 },
+      { "type": "clouds", "speed": 0.4, "lane": 0 }
+    ],
+    "logo": { "animation": "drop", "shine": true },
+    "detail": { "label": { "fr": "Vol", "en": "Flight" }, "value": "8BIT 001" }
+  },
+  "state": {
+    "vars": [
+      { "id": "savings", "label": { "fr": "Économies", "en": "Savings" }, "start": 0, "min": -5000, "max": 20000, "unit": "€", "display": "counter" },
+      { "id": "safety", "label": { "fr": "Marge de sécurité", "en": "Safety margin" }, "start": 100, "min": 0, "max": 100, "unit": "%", "display": "bar" },
+      { "id": "quality", "label": { "fr": "Qualité des données", "en": "Data quality" }, "start": 50, "min": 0, "max": 100, "unit": "%", "display": "bar" }
+    ]
+  },
+  "characters": [
+    {
+      "id": "captain",
+      "name": "Cdt Dubreuil",
+      "role": { "fr": "Commandant de bord, 22 000 heures de vol", "en": "Captain, 22,000 flight hours" },
+      "palette": { "hair": "#d8d8d8", "skin": "#f2c39b", "body": "#1c1d40", "accent": "#ffb612" },
+      "lines": [
+        { "fr": "Votre modèle, il a déjà vu un orage ?", "en": "Has your model ever seen a thunderstorm?" },
+        { "fr": "Bon. Montrez-moi les chiffres.", "en": "Fine. Show me the numbers." }
+      ]
+    }
+  ],
+  "events": [
+    { "id": "ev_meeting", "text": { "fr": "Réunion « point carburant » qui aurait pu être un mail. Rien ne change.", "en": "A 'fuel sync' meeting that could have been an email. Nothing changes." }, "effects": [] },
+    { "id": "ev_excel", "text": { "fr": "Quelqu'un retrouve un Excel de 2011 avec des colonnes fusionnées. Qualité −10.", "en": "Someone finds a 2011 spreadsheet with merged cells. Quality −10." }, "effects": [{ "var": "quality", "op": "add", "value": -10 }] }
+  ],
+  "data": [],
+  "levels": [
+    {
+      "id": "lvl_fuel",
+      "order": 1,
+      "requirementId": "req_fuel",
+      "title": { "fr": "Le plein juste", "en": "Just enough fuel" },
+      "intro": { "fr": "Le vol 8BIT 001 part dans 30 s. Combien de carburant en plus ?", "en": "Flight 8BIT 001 leaves in 30 s. How much extra fuel?" },
+      "mechanic": {
+        "type": "slider",
+        "control": { "label": { "fr": "Carburant en plus", "en": "Extra fuel" }, "min": 0, "max": 3000, "step": 100, "start": 2500, "unit": "kg" },
+        "rounds": 3,
+        "outputs": [
+          { "var": "savings", "curve": { "family": "linear", "a": -1.2, "b": 1800 } },
+          { "var": "safety", "curve": { "family": "threshold", "t": 600, "above": 0, "below": -40 } }
+        ],
+        "noise": 0
+      },
+      "win": [
+        { "var": "savings", "op": ">=", "value": 2500 },
+        { "var": "safety", "op": ">=", "value": 60 }
+      ],
+      "winLine": { "fr": "Des kilos en moins, et la sécurité intacte.", "en": "Fewer kilos, safety intact." },
+      "failJokes": [
+        { "fr": "Le commandant vous regarde. Longuement.", "en": "The captain is staring at you. For a while." },
+        { "fr": "À ce rythme, on embarque aussi une station-service.", "en": "At this rate we're boarding a gas station too." }
+      ],
+      "hintAfterFails": 2,
+      "hint": { "fr": "Sous 600 kg de marge, la sécurité en prend un coup.", "en": "Below a 600 kg margin, safety takes a hit." },
+      "characterId": "captain"
+    },
+    {
+      "id": "lvl_data",
+      "order": 2,
+      "requirementId": "req_sql",
+      "title": { "fr": "Le tri des vols", "en": "Flight triage" },
+      "intro": { "fr": "Avant d'analyser, on nettoie. Garde seulement les lignes fiables.", "en": "Before analysing, clean up. Keep only reliable rows." },
+      "mechanic": {
+        "type": "triage",
+        "rule": { "fr": "Accepte une ligne seulement si elle est exploitable pour mesurer la consommation.", "en": "Accept a row only if it can be used to measure fuel burn." },
+        "items": [
+          { "id": "r_ok1", "label": { "fr": "Vol 812 · 4 210 kg · A320", "en": "Flight 812 · 4,210 kg · A320" }, "correct": "accept", "why": { "fr": "Ligne complète et plausible.", "en": "Complete and plausible row." } },
+          { "id": "r_neg", "label": { "fr": "Vol 640 · −380 kg · A321", "en": "Flight 640 · −380 kg · A321" }, "correct": "reject", "why": { "fr": "Une consommation négative, c'est un bug de capteur.", "en": "Negative burn is a sensor bug." } },
+          { "id": "r_ok2", "label": { "fr": "Vol 233 · 5 020 kg · A321", "en": "Flight 233 · 5,020 kg · A321" }, "correct": "accept", "why": { "fr": "Rien à signaler.", "en": "Nothing to report." } },
+          { "id": "r_dup", "label": { "fr": "Vol 812 · 4 210 kg · A320 (doublon)", "en": "Flight 812 · 4,210 kg · A320 (duplicate)" }, "correct": "reject", "why": { "fr": "Doublon : il fausserait la moyenne.", "en": "Duplicate: it would skew the average." } },
+          { "id": "r_lbs", "label": { "fr": "Vol 451 · 9 900 lbs · A320", "en": "Flight 451 · 9,900 lbs · A320" }, "correct": "reject", "why": { "fr": "Livres au lieu de kilos : à convertir d'abord.", "en": "Pounds instead of kilos: convert first." } },
+          { "id": "r_ok3", "label": { "fr": "Vol 907 · 3 870 kg · A319", "en": "Flight 907 · 3,870 kg · A319" }, "correct": "accept", "why": { "fr": "Ligne fiable.", "en": "Reliable row." } },
+          { "id": "r_null", "label": { "fr": "Vol 118 · NULL · A320", "en": "Flight 118 · NULL · A320" }, "correct": "reject", "why": { "fr": "Pas de mesure, pas d'analyse.", "en": "No measurement, no analysis." } },
+          { "id": "r_ok4", "label": { "fr": "Vol 560 · 4 480 kg · A320", "en": "Flight 560 · 4,480 kg · A320" }, "correct": "accept", "why": { "fr": "Ligne fiable.", "en": "Reliable row." } }
+        ],
+        "onCorrect": [{ "var": "quality", "op": "add", "value": 8 }],
+        "onWrong": [{ "var": "quality", "op": "add", "value": -12 }],
+        "timeLimitSec": 60
+      },
+      "win": [{ "var": "quality", "op": ">=", "value": 70 }],
+      "winLine": { "fr": "Données propres. Le modèle peut décoller.", "en": "Clean data. The model is cleared for take-off." },
+      "failJokes": [
+        { "fr": "Le dashboard affiche une moyenne de −12 kg. Personne ne pose de question.", "en": "The dashboard shows a −12 kg average. Nobody asks." }
+      ],
+      "hintAfterFails": 2,
+      "hint": { "fr": "Méfie-toi des unités, des doublons et des valeurs vides.", "en": "Watch out for units, duplicates and empty values." }
+    },
+    {
+      "id": "lvl_ops",
+      "order": 3,
+      "requirementId": "req_ops",
+      "title": { "fr": "La roue de l'exploitation", "en": "The operations wheel" },
+      "intro": { "fr": "Trois rotations. Arrête la roue au bon moment.", "en": "Three rotations. Stop the wheel at the right time." },
+      "mechanic": {
+        "type": "wheel",
+        "stop": "timing",
+        "spins": 3,
+        "segments": [
+          { "id": "s_tail", "code": "VENT+", "label": { "fr": "Vent arrière", "en": "Tailwind" }, "color": "#82be00", "weight": 2, "effects": [{ "var": "savings", "op": "add", "value": 600 }] },
+          { "id": "s_head", "code": "VENT-", "label": { "fr": "Vent de face", "en": "Headwind" }, "color": "#e05206", "weight": 2, "effects": [{ "var": "savings", "op": "add", "value": -400 }] },
+          { "id": "s_taxi", "code": "1MOT", "label": { "fr": "Roulage sur un moteur", "en": "Single-engine taxi" }, "color": "#1b9fe0", "weight": 2, "effects": [{ "var": "savings", "op": "add", "value": 700 }] },
+          { "id": "s_atc", "code": "ATC", "label": { "fr": "Attente au sol", "en": "Ground hold" }, "color": "#c8107e", "weight": 2, "effects": [{ "var": "savings", "op": "add", "value": -300 }] },
+          { "id": "s_mass", "code": "MASSE", "label": { "fr": "Masse réduite à bord", "en": "Lighter cabin load" }, "color": "#ffb612", "weight": 1, "effects": [{ "var": "savings", "op": "add", "value": 500 }] },
+          { "id": "s_mail", "code": "MAIL", "label": { "fr": "Réunion qui aurait pu être un mail", "en": "Meeting that could have been an email" }, "color": "#8f86e6", "weight": 1, "effects": [] },
+          { "id": "s_storm", "code": "ORAGE", "label": { "fr": "Orage : détour", "en": "Storm: detour" }, "color": "#3c3c5c", "weight": 1, "effects": [{ "var": "savings", "op": "add", "value": -500 }, { "var": "safety", "op": "add", "value": -10 }] },
+          { "id": "s_pilot", "code": "CDT", "label": { "fr": "Commandant convaincu", "en": "Captain on board" }, "color": "#00b388", "weight": 1, "effects": [{ "var": "savings", "op": "add", "value": 400 }] }
+        ]
+      },
+      "win": [{ "var": "savings", "op": ">=", "value": 4000 }],
+      "winLine": { "fr": "Les équipes au sol vous offrent un café. Un vrai.", "en": "The ground crew buys you a coffee. A real one." },
+      "failJokes": [
+        { "fr": "Prochaine étape : un groupe de travail sur le groupe de travail.", "en": "Next step: a working group about the working group." }
+      ],
+      "hintAfterFails": 2,
+      "hint": { "fr": "La roue freine sur environ trois cases : anticipe.", "en": "The wheel brakes over about three slots: anticipate." },
+      "characterId": "captain"
+    }
+  ],
+  "boss": {
+    "name": { "fr": "LE TANKERING FANTÔME", "en": "THE GHOST TANKERING" },
+    "painPointId": "pp_waste",
+    "hp": 3,
+    "mechanic": {
+      "type": "quiz",
+      "questions": [
+        {
+          "prompt": { "fr": "Emporter plus de carburant que nécessaire…", "en": "Carrying more fuel than needed…" },
+          "options": [
+            { "fr": "alourdit l'avion, qui consomme donc plus", "en": "makes the aircraft heavier, so it burns more" },
+            { "fr": "ne change rien à la consommation", "en": "doesn't change fuel burn" },
+            { "fr": "fait baisser la consommation", "en": "lowers fuel burn" }
+          ],
+          "correctIndex": 0,
+          "explain": { "fr": "Chaque kilo transporté demande du carburant pour être transporté.", "en": "Every kilo carried needs fuel to be carried." }
+        },
+        {
+          "prompt": { "fr": "Le « tankering », c'est…", "en": "'Tankering' means…" },
+          "options": [
+            { "fr": "remplir les réservoirs au départ pour éviter un plein plus cher à l'arrivée", "en": "filling up at departure to avoid pricier fuel at arrival" },
+            { "fr": "vider les réservoirs avant l'atterrissage", "en": "emptying the tanks before landing" },
+            { "fr": "un logiciel de suivi des réservoirs", "en": "tank-monitoring software" }
+          ],
+          "correctIndex": 0,
+          "explain": { "fr": "Moins cher à l'achat, mais plus lourd, donc plus de carburant brûlé et de CO2.", "en": "Cheaper to buy, but heavier, so more fuel burnt and more CO2." }
+        },
+        {
+          "prompt": { "fr": "Rouler au sol sur un seul moteur sert à…", "en": "Taxiing on a single engine is meant to…" },
+          "options": [
+            { "fr": "réduire la consommation au sol", "en": "cut fuel burn on the ground" },
+            { "fr": "tester le second moteur", "en": "test the second engine" },
+            { "fr": "aller plus vite", "en": "go faster" }
+          ],
+          "correctIndex": 0,
+          "explain": { "fr": "Moins de moteurs allumés au roulage, moins de carburant brûlé.", "en": "Fewer engines running while taxiing, less fuel burnt." }
+        }
+      ],
+      "onCorrect": [{ "var": "savings", "op": "add", "value": 300 }],
+      "onWrong": [{ "var": "savings", "op": "add", "value": -200 }]
+    },
+    "taunts": [
+      { "fr": "On a toujours fait comme ça !", "en": "We've always done it this way!" },
+      { "fr": "Au pire, on rajoute une tonne. Pour être sûr.", "en": "Worst case, add a tonne. Just to be safe." }
+    ],
+    "defeatLine": { "fr": "Le fichier Excel de 2011 est archivé.", "en": "The 2011 spreadsheet has been archived." }
+  },
+  "easterEggs": [
+    { "trigger": "konami", "effect": "recruiter_mode", "content": { "fr": "Mode recruteur activé.", "en": "Recruiter mode on." } }
+  ],
+  "ending": {
+    "headline": { "fr": "COMPÉTENCES DÉBLOQUÉES", "en": "SKILLS UNLOCKED" },
+    "skillsUnlocked": [
+      { "requirementId": "req_sql", "proofId": "proof_palier", "line": { "fr": "SQL et Python sur l'Open Data SNCF", "en": "SQL and Python on SNCF Open Data" } },
+      { "requirementId": "req_viz", "proofId": "proof_lastseat", "line": { "fr": "Un sujet métier rendu jouable", "en": "A business topic made playable" } }
+    ],
+    "shareCard": { "text": { "fr": "J'ai battu le tankering fantôme.", "en": "I beat the ghost tankering." }, "showScore": true },
+    "challenge": { "fr": "Battez mon score et le café est pour moi.", "en": "Beat my score and coffee's on me." },
+    "cta": [
+      { "type": "cv", "label": { "fr": "Voir mon CV", "en": "See my CV" }, "url": "<URL_CV>" },
+      { "type": "contact", "label": { "fr": "Me contacter", "en": "Contact me" }, "url": "mailto:<EMAIL>" },
+      { "type": "portfolio", "label": { "fr": "Mon portfolio", "en": "My portfolio" }, "url": "https://heykelhachiche.com" }
+    ]
+  },
+  "tracking": { "enabled": true },
+  "review": { "status": "draft" }
+}
