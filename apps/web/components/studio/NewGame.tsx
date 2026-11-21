@@ -51,7 +51,7 @@ export default function NewGame() {
           if (!raw.trim()) continue;
           const ev = JSON.parse(raw);
           if (ev.type === "step") push({ kind: "s", text: `> ${ev.message}` });
-          else if (ev.type === "warn") push({ kind: "w", text: `! ${ev.message}` });
+          else if (ev.type === "warn") push({ kind: "w", text: `! ${String(ev.message).slice(0, 220)}` });
           else if (ev.type === "fail") {
             push({ kind: "f", text: `✗ ${ev.message}` });
             for (const i of ev.issues ?? []) push({ kind: "f", text: `   [${i.rule}] ${i.path} : ${i.message}` });

@@ -8,7 +8,7 @@
 import { makeSlug, validateCartridge, type Cartridge, type Issue, type ValidationResult } from "@press-hire/cartridge";
 import { applyPlan, autoBalance, assemble, repairBrief } from "./brief";
 import { ANALYZE_SYSTEM, JobModel, jobSchemaJson, repairJob, requirementsFromJob, type JobModel as Job } from "./job";
-import { parseJsonReply, type Llm } from "./llm";
+import { chainHead, estimateTokens, parseJsonReply, type Llm } from "./llm";
 import { fetchOffer, mergeOffer, type Offer } from "./offer";
 import { planGame, type GamePlan } from "./plan";
 import {
@@ -117,8 +117,9 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
   }
 
   /* 3. écriture */
-  yield { type: "step", message: `Écriture du jeu par ${deps.llm.name}… (la plus longue étape)` };
   const user = userPrompt({ offer, job, plan, requirements, company: input.company, jobTitle: input.jobTitle, notes: input.notes });
+  const writeSize = estimateTokens(SYSTEM_PROMPT) + estimateTokens(user);
+  yield { type: "step", message: `Écriture du jeu par ${chainHead(deps.llm, "write", writeSize)}… (la plus longue étape)` };
   let reply: string;
   try {
     reply = await deps.llm.complete(SYSTEM_PROMPT, user, { task: "write" });

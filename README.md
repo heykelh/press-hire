@@ -81,8 +81,18 @@ et quand il le termine. Tes propres parties (connecté au studio) et les robots 
 | --- | --- |
 | `DATABASE_URL` | Neon (déjà réglée) |
 | `STUDIO_PASSWORD` | mot de passe du studio, 8 caractères minimum |
-| `GEMINI_API_KEY` | clé gratuite sur https://aistudio.google.com/apikey (modèle par défaut `gemini-flash-latest`, réglable avec `GEMINI_MODEL`) |
-| `GROQ_API_KEY` | facultatif, secours : https://console.groq.com/keys (`GROQ_MODEL`, défaut `llama-3.3-70b-versatile`) |
+| `GEMINI_API_KEY` | 1er choix, gratuit sans carte : https://aistudio.google.com/apikey — `gemini-flash-latest` puis `gemini-flash-lite-latest` (`GEMINI_MODEL`) |
+| `QWEN_API_KEY` | 2e choix : Alibaba Cloud Model Studio (Singapour), quota gratuit d'environ 1M de jetons par modèle pendant 90 jours, puis payant : régler une alerte de dépense — `qwen-plus` puis `qwen-flash` (`QWEN_MODEL`, `QWEN_BASE_URL`) |
+| `GROQ_API_KEY` | conseillé, gratuit sans carte : https://console.groq.com — très rapide, sert à l'analyse et à la relecture (quota gratuit trop petit pour l'écriture) ; `GROQ_TPM` si plan payant |
+| `OPENROUTER_API_KEY` + `OPENROUTER_MODEL` | facultatif : un modèle `…:free` d'OpenRouter |
+| `MISTRAL_API_KEY`, `NVIDIA_API_KEY` | facultatifs, en fin de file |
+| `LLM_ORDER` | facultatif : ordre des fournisseurs, ex. `qwen,gemini,groq` |
+
+Fiabilité : chaque appel est réessayé 2 fois sur surcharge ou quota (attente croissante, `Retry-After` respecté), puis le fournisseur
+suivant prend le relais ; un fournisseur tombé passe en fin de file pendant 5 minutes. Chaque fournisseur à petit quota par minute
+déclare sa limite : un appel trop gros le saute sans requête (l'écriture d'un jeu pèse environ 30k jetons en entrée), et les petites
+étapes passent par lui en priorité pour économiser les quotas de Gemini et Qwen. Le bouton **Tester les modèles** du studio
+montre en quelques secondes lesquels répondent.
 | `NTFY_TOPIC` | sujet ntfy long et impossible à deviner |
 | `PUBLIC_BASE_URL` | `https://press-hire.vercel.app` |
 

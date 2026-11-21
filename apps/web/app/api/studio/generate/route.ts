@@ -58,7 +58,7 @@ export async function POST(req: Request) {
         const llm =
           process.env.PRESS_HIRE_MOCK_LLM === "1" && process.env.VERCEL !== "1"
             ? mockLlm(input.company, input.jobTitle)
-            : chain(llmsFromEnv(), (from, err) => send({ type: "warn", message: `${from} indisponible (${err.slice(0, 160)}), essai suivant…` }));
+            : chain(llmsFromEnv(), (from, err) => send({ type: "warn", message: `${err.slice(0, 160)} → modèle suivant…` }));
         provider = llm.name;
         const contact = input.contactName ? { name: input.contactName, ...(input.contactRole ? { role: input.contactRole } : {}) } : undefined;
         for await (const e of generate({ ...input, contact }, { llm })) {
