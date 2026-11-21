@@ -1,4 +1,5 @@
 import { countFixtures, countLive, dbConfigured } from "@/lib/cartridges";
+import { ensureSchema } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,7 @@ export async function GET() {
     return Response.json({ ok: true, db: "not_configured", fixtures });
   }
   try {
+    await ensureSchema();
     const live = await countLive();
     return Response.json({ ok: true, db: "connected", live, fixtures });
   } catch (e) {

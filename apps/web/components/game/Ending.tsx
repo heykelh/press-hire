@@ -96,7 +96,7 @@ export default function Ending({ ctx, score, fails, recruiter, perfectEgg, onRep
           return off ? (
             <span key={i} className="g-btn disabled" title={fr ? "Lien à compléter" : "Link to be filled"}>{t(b.label)}</span>
           ) : (
-            <a key={i} className={`g-btn${i === 0 ? " primary" : ""}`} href={href} target="_blank" rel="noopener noreferrer">{t(b.label)}</a>
+            <a key={i} className={`g-btn${i === 0 ? " primary" : ""}`} href={href} target="_blank" rel="noopener noreferrer" onClick={() => ctx.track?.("cta", b.type)}>{t(b.label)}</a>
           );
         })}
       </div>

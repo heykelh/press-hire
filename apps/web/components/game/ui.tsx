@@ -15,6 +15,8 @@ export interface Ctx {
   chip: Chip;
   fx: Fx;
   rand: () => number;
+  /** suivi des parties (facultatif) */
+  track?: (kind: string, detail?: string) => void;
 }
 
 export interface Fx {

@@ -17,7 +17,9 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "server-only": "^0.0.1",
-    "@press-hire/engine": "workspace:*"
+    "zod": "^4.1.0",
+    "@press-hire/engine": "workspace:*",
+    "@press-hire/agent": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

@@ -29,7 +29,20 @@ const HOWTO: Record<string, I18n> = {
   dialogue: { fr: "ÉCHANGE", en: "TALK" },
 };
 
-export default function Game({ c }: { c: Cartridge }) {
+/** Envoie un événement de partie (début, fin, clic) sans bloquer le jeu. */
+function sendTrack(slug: string, kind: string, detail?: string) {
+  try {
+    let sid = sessionStorage.getItem("ph_sid");
+    if (!sid) { sid = Math.random().toString(36).slice(2, 12); sessionStorage.setItem("ph_sid", sid); }
+    const body = JSON.stringify({ slug, kind, sid, detail });
+    if (!navigator.sendBeacon?.("/api/track", new Blob([body], { type: "application/json" })))
+      void fetch("/api/track", { method: "POST", body, headers: { "content-type": "application/json" }, keepalive: true });
+  } catch {
+    /* suivi facultatif */
+  }
+}
+
+export default function Game({ c, track = false }: { c: Cartridge; track?: boolean }) {
   const [lang, setLang] = useState<Lang>(c.meta.defaultLang);
   const t = useCallback((x: I18n) => x[lang] || x[c.meta.defaultLang], [lang, c.meta.defaultLang]);
   const levels = useMemo(() => [...c.levels].sort((a, b) => a.order - b.order), [c]);
@@ -51,13 +64,26 @@ export default function Game({ c }: { c: Cartridge }) {
   const root = useRef<HTMLDivElement>(null);
   const fx = useFx(root, c.design.juice);
 
+  const tracked = useRef(new Set<string>());
+  const trackOnce = (kind: string, detail?: string) => {
+    if (!track || tracked.current.has(kind + (detail ?? ""))) return;
+    tracked.current.add(kind + (detail ?? ""));
+    sendTrack(c.meta.id, kind, detail);
+  };
+
   const ctx: Ctx = {
     c, lang, t, fx, rand,
+    track: trackOnce,
     chip: chip.current ?? new Chip(),
     apply: (effects) => { const d = applyEffects(c, st.current, effects); bump(); return d; },
   };
 
   const say = (s: string) => { setToast(s); setTimeout(() => setToast(null), 3200); };
+
+  useEffect(() => {
+    if (phase.k === "ending" && !phase.recruiter) trackOnce("end");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   /* ---------- son ---------- */
   useEffect(() => {
@@ -151,6 +177,7 @@ export default function Game({ c }: { c: Cartridge }) {
   };
 
   const start = () => {
+    trackOnce("start");
     chip.current?.sfx("coin");
     startLevel(0);
   };
@@ -174,7 +201,7 @@ export default function Game({ c }: { c: Cartridge }) {
         scene={scene} animation={ts.logo.animation} shine={ts.logo.shine}
         lang={lang} languages={c.meta.languages} onLang={setLang}
         onStart={start}
-        onRecruiter={() => setPhase({ k: "ending", recruiter: true })}
+        onRecruiter={() => { trackOnce("recruiter"); setPhase({ k: "ending", recruiter: true }); }}
         badge={c.target.company.sector.toUpperCase()}
       />
     );
@@ -186,7 +213,7 @@ export default function Game({ c }: { c: Cartridge }) {
       <button className="g-tool" onClick={() => setSound((s) => ({ ...s, sfx: !s.sfx }))} aria-pressed={sound.sfx} title="SFX">{sound.sfx ? "SFX ●" : "SFX ○"}</button>
       <button className="g-tool" onClick={() => setSound((s) => ({ ...s, music: !s.music }))} aria-pressed={sound.music} title={fr ? "Musique" : "Music"}>{sound.music ? "♪ ●" : "♪ ○"}</button>
       {c.meta.languages.length > 1 && <button className="g-tool" onClick={() => setLang(fr ? "en" : "fr")}>{fr ? "EN" : "FR"}</button>}
-      {phase.k !== "ending" && <button className="g-tool accent" onClick={() => setPhase({ k: "ending", recruiter: true })} title={fr ? "Voir le résumé" : "See the summary"}>{fr ? "RECRUTEUR >" : "RECRUITER >"}</button>}
+      {phase.k !== "ending" && <button className="g-tool accent" onClick={() => { trackOnce("recruiter"); setPhase({ k: "ending", recruiter: true }); }} title={fr ? "Voir le résumé" : "See the summary"}>{fr ? "RECRUTEUR >" : "RECRUITER >"}</button>}
     </>
   );
 

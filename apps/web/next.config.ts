@@ -5,7 +5,7 @@ const monorepoRoot = fileURLToPath(new URL("../../", import.meta.url));
 
 const config: NextConfig = {
   // le package de cartouche est publié en TypeScript source dans le monorepo
-  transpilePackages: ["@press-hire/cartridge", "@press-hire/engine"],
+  transpilePackages: ["@press-hire/cartridge", "@press-hire/engine", "@press-hire/agent"],
   outputFileTracingRoot: monorepoRoot,
   // cartouches de démo embarquées pour fonctionner même sans base
   outputFileTracingIncludes: {

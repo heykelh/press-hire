@@ -32,6 +32,9 @@ importers:
       '@neondatabase/serverless':
         specifier: ^1.0.2
         version: 1.2.1
+      '@press-hire/agent':
+        specifier: workspace:*
+        version: link:../../packages/agent
       '@press-hire/cartridge':
         specifier: workspace:*
         version: link:../../packages/cartridge
@@ -50,6 +53,9 @@ importers:
       server-only:
         specifier: ^0.0.1
         version: 0.0.1
+      zod:
+        specifier: ^4.1.0
+        version: 4.6.7
     devDependencies:
       '@types/node':
         specifier: ^22.10.0
@@ -63,6 +69,25 @@ importers:
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
+
+  packages/agent:
+    dependencies:
+      '@press-hire/cartridge':
+        specifier: workspace:*
+        version: link:../cartridge
+      zod:
+        specifier: ^4.1.0
+        version: 4.6.7
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.20.5
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.0
+        version: 4.1.12(@types/node@22.20.5)(vite@8.3.8(@types/node@22.20.5)(esbuild@0.28.2)(tsx@4.23.15))
 
   packages/cartridge:
     dependencies:

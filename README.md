@@ -11,8 +11,8 @@ Chaque jeu est une **cartouche** : un fichier JSON qui décrit tout le jeu en do
 | 0 · Socle | Monorepo, format de cartouche v0.2, contrôles, app qui lit Neon, scripts | ✅ ce dépôt |
 | 1a · Écran titre | 15 décors pixel animés, 7 habillages, météo, heures du jour, galerie `/gallery` | ✅ |
 | 1b · Niveaux | 5 mécaniques (`wheel` hasard/adresse, `slider`, `triage`, `quiz`, `dialogue`), boss à PV, imprévus, sons chiptune, écran de fin, mode recruteur, contrôle d'équilibrage | ✅ |
-| 2 · Publier | Image d'aperçu, `/api/track`, notifications ntfy, `/studio` | à faire |
-| 3 · Agent | Graphe LangGraph.js sur GitHub Actions : offre → cartouche → URL | à faire |
+| 2 · Studio | `/studio` : lien d'offre → jeu généré, contrôlé, corrigé → aperçu → publication ; suivi des parties, notifications ntfy, image d'aperçu | ✅ |
+| 3 · Agent | Génération depuis le studio (Gemini, Groq en secours), réparations automatiques, équilibrage de secours | ✅ (première version) |
 
 ## Comment se joue une cartouche
 
@@ -28,16 +28,43 @@ Clavier : Entrée/espace pour valider, 1-4 pour répondre, ← → pour le tri e
 Contrôles d'équilibrage (`pnpm validate`) : chaque niveau doit être gagnable en jouant bien et pas déjà gagné avant de jouer ;
 les roues sont simulées 600 fois avec un joueur moyen (avertissement si moins de 30 % ou plus de 95 % de victoires).
 
+## Le studio (générer un jeu depuis le site)
+
+1. Ouvre `https://press-hire.vercel.app/studio` et entre ton mot de passe (`STUDIO_PASSWORD`).
+2. **Profil** (une fois) : nom, e-mail, lien du CV, portfolio et tes projets avec ce qu'ils démontrent. Stocké dans Neon, jamais dans le dépôt.
+3. **Nouveau jeu** : colle le lien de l'offre. Si le site demande une connexion (APEC…), colle aussi le texte de l'offre.
+   Entreprise, poste, décideur visé et consignes sont facultatifs.
+4. L'agent écrit le jeu, le passe aux contrôles, demande au modèle de corriger ce qui cloche (2 tours au plus) et règle lui-même
+   la difficulté en dernier recours. Le jeu est créé en **brouillon**.
+5. **Jouer l'aperçu**, puis **Publier** : tu obtiens l'URL à envoyer. Tableau des jeux : parties, parties finies, clics sur CV/contact.
+
+Notifications ntfy (abonne-toi au sujet `NTFY_TOPIC` dans l'appli ntfy) : quand quelqu'un lance un jeu (une fois toutes les 10 min par jeu),
+le termine, ou clique sur ton CV / « Me contacter ». Tes propres parties (connecté au studio) et les robots ne comptent pas.
+
+### Variables Vercel
+
+| Variable | Rôle |
+| --- | --- |
+| `DATABASE_URL` | Neon (déjà réglée) |
+| `STUDIO_PASSWORD` | mot de passe du studio, 8 caractères minimum |
+| `GEMINI_API_KEY` | clé gratuite sur https://aistudio.google.com/apikey (modèle par défaut `gemini-flash-latest`, réglable avec `GEMINI_MODEL`) |
+| `GROQ_API_KEY` | facultatif, secours : https://console.groq.com/keys (`GROQ_MODEL`, défaut `llama-3.3-70b-versatile`) |
+| `NTFY_TOPIC` | sujet ntfy long et impossible à deviner |
+| `PUBLIC_BASE_URL` | `https://press-hire.vercel.app` |
+
+Les tables se mettent à jour toutes seules au premier passage dans le studio (`pnpm db:init` fait la même chose en local).
+
 ## Structure
 
 ```
 press-hire/
-  apps/web/                 Next.js : route /[slug], /gallery, /api/health
-  packages/engine/          moteur pixel : décors, acteurs, météo, habillages
-  packages/cartridge/       format de cartouche (Zod), règles de contrôle, slugs, tests
+  apps/web/                 Next.js : /[slug], /studio, /gallery, /api/track, /api/studio/generate
+  packages/agent/           offre → brief (modèle de langue) → cartouche : lecture d'offre, consignes, corrections
+  packages/engine/          moteur pixel : décors, acteurs, météo, habillages, roue, sons, score
+  packages/cartridge/       format de cartouche (Zod), règles de contrôle, équilibrage, slugs, tests
   fixtures/cartridges/      cartouches de démo (air-france-fuel-demo.json)
   config/candidate.json     ton profil : nom, liens, preuves (à remplir une fois)
-  db/schema.sql             table Neon
+  db/schema.ts              tables Neon (idempotent)
   scripts/                  validate, db:init, publish:cartridge
 ```
 
@@ -68,6 +95,8 @@ pnpm db:init
 ```
 
 Tu dois lire : `Base prête : table cartridges (0 jeu(x)).`
+
+En local sans Neon, un proxy HTTP compatible Neon devant un Postgres fonctionne aussi : `NEON_FETCH_ENDPOINT=http://localhost:4444/sql`.
 
 ## Déployer sur Vercel
 

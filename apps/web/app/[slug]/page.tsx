@@ -15,6 +15,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: c.design.title[lang],
     description: c.design.tagline[lang],
     robots: { index: false, follow: false },
+    openGraph: { title: `${c.design.title[lang]} · un jeu de candidature`, description: c.design.tagline[lang], type: "website" },
+    twitter: { card: "summary_large_image" },
   };
 }
 
