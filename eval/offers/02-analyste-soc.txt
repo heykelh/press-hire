@@ -1,0 +1,8 @@
+Analyste SOC N1/N2 (H/F) — CDI — Lyon
+Au sein de notre centre opérationnel de sécurité (24/7), vous :
+- qualifiez et traitez les alertes de sécurité remontées par le SIEM (Splunk)
+- analysez les signalements de phishing des collaborateurs
+- participez à la revue trimestrielle des habilitations
+- améliorez les règles de détection pour réduire les faux positifs
+- appliquez les procédures de réponse à incident et rédigez les rapports
+Astreintes une semaine sur quatre. Rigueur, sang-froid, esprit d'équipe.

@@ -77,3 +77,25 @@ describe("mécaniques d'arcade", () => {
     expect(c.reduce((a, b) => a + b, 0)).toBe(10);
   });
 });
+
+describe("format v0.4", () => {
+  const soc = () => JSON.parse(readFileSync(new URL("../../../fixtures/cartridges/demo-arcade-soc.json", import.meta.url), "utf8"));
+  it("la démo SOC (inspection, enquête, histoire, notions) passe tous les contrôles", () => {
+    const r = validateCartridge(soc());
+    expect(r.issues.filter((i) => i.severity === "error")).toEqual([]);
+  });
+  it("refuse un dossier à rejeter sans champ fautif", () => {
+    const c = soc();
+    const insp = c.levels.find((l: any) => l.mechanic.type === "inspection");
+    insp.mechanic.cases[1].fields.forEach((f: any) => (f.faulty = false));
+    expect(validateCartridge(c).issues.map((i) => i.rule)).toContain("inspection-fields");
+  });
+  it("refuse une notion inconnue et une réponse d'enquête hors limites", () => {
+    const c = soc();
+    c.levels[0].teaches = ["c_inconnue"];
+    c.levels.find((l: any) => l.mechanic.type === "investigation").mechanic.rounds[0].answer = 99;
+    const rules = validateCartridge(c).issues.map((i) => i.rule);
+    expect(rules).toContain("concept-ref");
+    expect(rules).toContain("investigation-answer");
+  });
+});

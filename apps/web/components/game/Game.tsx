@@ -7,10 +7,13 @@ import TitleScreen from "../TitleScreen";
 import Ending from "./Ending";
 import { BossFight, Mechanic } from "./mechanics";
 import { HowToCard, TutorialOverlay } from "./Tutorial";
+import { levelStars, rankIndex, ranksOf } from "./progress";
+import { BannerView, ColdOpen, ConceptChip, Stars, conceptById, type Banner } from "./story";
 import { Backdrop, BossSprite, deltaText, Hud, Portrait, useFx, type Ctx, type Lang } from "./ui";
 
 type Phase =
   | { k: "title" }
+  | { k: "open" }
   | { k: "intro"; i: number }
   | { k: "play"; i: number }
   | { k: "result"; i: number; won: boolean }
@@ -53,6 +56,19 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
   const [toast, setToast] = useState<string | null>(null);
   const [sound, setSound] = useState({ sfx: true, music: false });
   const [help, setHelp] = useState(false);
+  // progression
+  const [stars, setStars] = useState<Record<string, number>>({});
+  const [learned, setLearned] = useState<string[]>([]);
+  const learnedRef = useRef(new Set<string>());
+  const [gained, setGained] = useState<string[]>([]); // cartes gagnées pendant le niveau en cours
+  const reports = useRef<Record<string, Array<{ label: string; value: string }>>>({});
+  const [banners, setBanners] = useState<Banner[]>([]);
+  const twistShown = useRef(false);
+  const lastOops = useRef(0);
+  const combo = useRef({ cur: 0, max: 0 });
+  const [comboShow, setComboShow] = useState(0);
+  const [bossWon, setBossWon] = useState(false);
+  const [rankUp, setRankUp] = useState<string | null>(null);
   const chip = useRef<Chip | null>(null);
   if (!chip.current && typeof window !== "undefined") chip.current = new Chip();
   const rand = useRef(rng(Date.now() >>> 0)).current;
@@ -66,11 +82,50 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
     sendTrack(c.meta.id, kind, detail);
   };
 
+  const pushBanner = (b: Banner) => setBanners((q) => (q.length > 2 ? q : [...q, b]));
+  useEffect(() => {
+    if (!banners.length) return;
+    const ms = banners[0]!.kind === "concept" ? 4800 : 3200;
+    const id = setTimeout(() => setBanners((q) => q.slice(1)), ms);
+    return () => clearTimeout(id);
+  }, [banners]);
+
+  const curLevelRef = useRef(0);
   const ctx: Ctx = {
     c, lang, t, fx, rand,
     track: trackOnce,
     chip: chip.current ?? new Chip(),
     apply: (effects) => { const d = applyEffects(c, st.current, effects); bump(); return d; },
+    assist: levelFails >= 4 ? 2 : levelFails >= 2 ? 1 : 0,
+    twist: () => {
+      const lv = levels[curLevelRef.current];
+      if (twistShown.current || !lv?.twist) return;
+      twistShown.current = true;
+      chip.current?.sfx("tick");
+      pushBanner({ kind: "twist", text: t(lv.twist.text) });
+    },
+    learn: (id) => {
+      if (!id || learnedRef.current.has(id)) return;
+      const concept = conceptById(c, id);
+      if (!concept) return;
+      learnedRef.current.add(id);
+      setLearned([...learnedRef.current]);
+      setGained((g) => [...g, id]);
+      pushBanner({ kind: "concept", concept });
+    },
+    oops: (text) => {
+      if (!text || Date.now() - lastOops.current < 2500) return;
+      lastOops.current = Date.now();
+      pushBanner({ kind: "oops", text });
+    },
+    combo: (good) => {
+      const k = combo.current;
+      k.cur = good ? k.cur + 1 : 0;
+      k.max = Math.max(k.max, k.cur);
+      setComboShow(k.cur);
+      if (good && k.cur >= 3 && k.cur % 3 === 0) chip.current?.blip(880 + k.cur * 20, 0.06);
+    },
+    report: (rows) => { reports.current[levels[curLevelRef.current]?.id ?? "?"] = rows; },
   };
 
   const say = (s: string) => { setToast(s); setTimeout(() => setToast(null), 3200); };
@@ -123,9 +178,19 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
   /* ---------- enchaînement ---------- */
   const startLevel = (i: number) => {
     setHelp(false);
+    curLevelRef.current = i;
     levelStart.current = { ...st.current };
     setLevelFails(0);
+    setGained([]);
+    setRankUp(null);
     setPhase({ k: "intro", i });
+  };
+  const play = (i: number) => {
+    twistShown.current = false;
+    setBanners([]);
+    setComboShow(0);
+    combo.current.cur = 0;
+    setPhase({ k: "play", i });
   };
   const afterLevel = (i: number) => {
     const next = i + 1;
@@ -151,22 +216,43 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
     else if (c.boss) { levelStart.current = { ...st.current }; setPhase({ k: "bossIntro" }); }
     else setPhase({ k: "ending" });
   };
+  const maxStars = levels.length * 3;
   const finishLevel = (i: number) => {
-    const won = checkConditions(levels[i]!.win, st.current, levelStart.current);
-    if (won) { chip.current?.sfx("win"); fx.confetti(); }
-    else { chip.current?.sfx("lose"); fx.shake(); setFails((f) => f + 1); setLevelFails((f) => f + 1); }
+    const lv = levels[i]!;
+    const won = checkConditions(lv.win, st.current, levelStart.current);
+    trackOnce("level", `${lv.id}:${won ? 1 : 0}`);
+    if (won) {
+      chip.current?.sfx("win");
+      fx.confetti();
+      const n = levelStars(lv, st.current, levelStart.current, levelFails);
+      const next = { ...stars, [lv.id]: Math.max(stars[lv.id] ?? 0, n) };
+      const before = rankIndex(Object.values(stars).reduce((a, b) => a + b, 0), maxStars);
+      const after = rankIndex(Object.values(next).reduce((a, b) => a + b, 0), maxStars);
+      setStars(next);
+      if (after > before) setRankUp(t(ranksOf(c)[after]!));
+      // les notions du niveau rejoignent la collection
+      const fresh = lv.teaches.filter((id) => !learnedRef.current.has(id) && conceptById(c, id));
+      fresh.forEach((id) => learnedRef.current.add(id));
+      if (fresh.length) { setLearned([...learnedRef.current]); setGained((g) => [...g, ...fresh]); }
+    } else { chip.current?.sfx("lose"); fx.shake(); setFails((f) => f + 1); setLevelFails((f) => f + 1); }
+    setBanners([]);
     setPhase({ k: "result", i, won });
   };
   const retry = (i: number) => {
     st.current = { ...levelStart.current };
     bump();
     setAttempt((a) => a + 1);
-    setPhase({ k: "play", i });
+    setGained([]);
+    play(i);
   };
   const restart = () => {
     st.current = initState(c);
     levelStart.current = { ...st.current };
     setFails(0);
+    setStars({});
+    reports.current = {};
+    combo.current = { cur: 0, max: 0 };
+    setBossWon(false);
     bump();
     startLevel(0);
   };
@@ -174,7 +260,8 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
   const start = () => {
     trackOnce("start");
     chip.current?.sfx("coin");
-    startLevel(0);
+    if (c.story) setPhase({ k: "open" });
+    else startLevel(0);
   };
 
   const vars = {
@@ -215,21 +302,26 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
     </>
   );
 
-  const levelIdx = "i" in phase ? phase.i : phase.k === "event" ? phase.next - 1 : levels.length - 1;
+  const levelIdx = "i" in phase ? phase.i : phase.k === "event" ? phase.next - 1 : phase.k === "open" ? 0 : levels.length - 1;
   const level = levels[Math.max(0, Math.min(levels.length - 1, levelIdx))]!;
   const inBoss = phase.k === "boss" || phase.k === "bossIntro" || phase.k === "bossResult";
   const goals = inBoss ? [] : level.win;
-  const levelNo = inBoss ? "BOSS" : String(level.order);
+  const levelNo = inBoss ? "BOSS" : level.day ? `${t(level.day)} · ${level.order}` : String(level.order);
+  const totalStars = Object.values(stars).reduce((a, b) => a + b, 0);
 
   let body: React.ReactNode = null;
 
   switch (phase.k) {
+    case "open":
+      body = <ColdOpen ctx={ctx} onDone={() => startLevel(0)} />;
+      break;
     case "intro": {
       const ch = char(level.characterId ?? (level.mechanic.type === "dialogue" ? level.mechanic.characterId : undefined));
       const rq = c.analysis.requirements.find((r) => r.id === level.requirementId);
       body = (
         <div className="g-intro" key={`intro-${phase.i}`}>
-          <p className="g-stage">{fr ? "NIVEAU" : "LEVEL"} {level.order} / {levels.length}</p>
+          {level.day ? <p className="g-day">{t(level.day)}</p> : null}
+          <p className="g-stage">{fr ? "NIVEAU" : "LEVEL"} {level.order} / {levels.length}{stars[level.id] ? <> · <Stars n={stars[level.id]!} /></> : null}</p>
           <h2 className="g-level-title">{t(level.title)}</h2>
           {ch && (
             <div className="g-speaker">
@@ -239,8 +331,14 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
           )}
           {!ch && <p className="g-bubble">{t(level.intro)}</p>}
           {rq && <p className="g-req">{fr ? "Mission du poste" : "Job mission"} : <b>{t(rq.label)}</b></p>}
+          {level.teaches.length > 0 && (
+            <p className="g-learn-row">
+              <span>{fr ? "À découvrir :" : "You'll learn:"}</span>
+              {level.teaches.map((id) => conceptById(c, id)).filter((x) => !!x).map((x) => <ConceptChip key={x!.id} ctx={ctx} concept={x!} />)}
+            </p>
+          )}
           <HowToCard ctx={ctx} level={level} />
-          <button className="g-btn primary big" autoFocus onClick={() => { chip.current?.sfx("click"); setPhase({ k: "play", i: phase.i }); }}>
+          <button className="g-btn primary big" autoFocus onClick={() => { chip.current?.sfx("click"); play(phase.i); }}>
             {fr ? "C'EST PARTI ▶" : "LET'S GO ▶"}
           </button>
         </div>
@@ -271,7 +369,30 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
       body = (
         <div className={`g-result ${phase.won ? "won" : "lost"}`}>
           <p className="g-stamp">{phase.won ? (fr ? "NIVEAU RÉUSSI" : "LEVEL CLEARED") : fr ? "RATÉ !" : "MISSED!"}</p>
+          {phase.won && <Stars n={stars[level.id] ?? 1} animate />}
           <p className="g-bubble">{t(phase.won ? level.winLine : joke)}</p>
+          {phase.won && level.outro && (() => {
+            const oc = char(level.outro.characterId);
+            return (
+              <div className="g-speaker">
+                {oc && <Portrait palette={oc.palette} size={56} talking />}
+                <div>{oc && <p className="g-speaker-name">{oc.name}</p>}<p className="g-bubble small">{t(level.outro.text)}</p></div>
+              </div>
+            );
+          })()}
+          {reports.current[level.id] && (
+            <ul className="g-mini-report">{reports.current[level.id]!.map((r, k) => <li key={k}>{r.label} <b>{r.value}</b></li>)}</ul>
+          )}
+          {phase.won && gained.length > 0 && (
+            <p className="g-learn-row gained">
+              <span>📘 {fr ? "Cartes métier gagnées :" : "Job cards earned:"}</span>
+              {gained.map((id) => conceptById(c, id)).filter((x) => !!x).map((x) => <ConceptChip key={x!.id} ctx={ctx} concept={x!} />)}
+            </p>
+          )}
+          {phase.won && rankUp && <p className="g-rankup">▲ {fr ? "PROMOTION" : "PROMOTED"} : <b>{rankUp}</b></p>}
+          {!phase.won && (levelFails === 2 || levelFails === 4) && (
+            <p className="g-hint">🛟 {fr ? "Coup de pouce activé : un peu plus lent, un peu moins de pièges." : "Assist on: a bit slower, a few fewer traps."}</p>
+          )}
           {showHint && <p className="g-hint">💡 {t(level.hint!)}</p>}
           {phase.won ? (
             <button className="g-btn primary big" autoFocus onClick={() => afterLevel(phase.i)}>{fr ? "CONTINUER ▶" : "CONTINUE ▶"}</button>
@@ -320,7 +441,7 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
       body = (
         <BossFight key={`boss-${attempt}`} ctx={ctx} boss={c.boss!} character={char(c.boss!.characterId)}
           onEnd={(won) => {
-            if (won) { chip.current?.sfx("win"); fx.confetti(); } else { chip.current?.sfx("lose"); setFails((f) => f + 1); }
+            if (won) { chip.current?.sfx("win"); fx.confetti(); setBossWon(true); } else { chip.current?.sfx("lose"); setFails((f) => f + 1); }
             setPhase({ k: "bossResult", won });
           }} />
       );
@@ -341,9 +462,10 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
     case "ending": {
       const perfect = fails === 0 ? c.easterEggs.find((e) => e.trigger === "perfect_run") : undefined;
       body = (
-        <Ending ctx={ctx} fails={fails} score={finalScore(c, st.current, fails)}
+        <Ending ctx={ctx} fails={fails} score={finalScore(c, st.current, fails) + totalStars * 150 + combo.current.max * 15}
           perfectEgg={perfect ? t(perfect.content) : undefined}
-          badge={badge}
+          badge={badge} levels={levels} stars={stars} learned={learned} reports={reports.current}
+          maxCombo={combo.current.max} bossWon={bossWon}
           onReplay={restart} />
       );
       break;
@@ -357,11 +479,14 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
         <header className="g-hud slim"><div className="g-hud-top"><span className="g-hud-title">{t(c.design.title)}</span><span className="g-hud-actions">{toolbar}</span></div></header>
       ) : (
         <Hud ctx={ctx} state={st.current} levelStart={levelStart.current} goals={phase.k === "intro" || phase.k === "play" || phase.k === "result" ? goals : []} levelNo={levelNo} levelCount={levels.length}>
+          <span className="g-tool-stars" title={fr ? "Étoiles · grade" : "Stars · rank"}>★ {totalStars} · {t(ranksOf(c)[rankIndex(totalStars, maxStars)]!)}</span>
           {toolbar}
         </Hud>
       )}
+      {banners[0] && <div className="g-banner-zone"><BannerView ctx={ctx} b={banners[0]} /></div>}
+      {phase.k === "play" && comboShow >= 3 && <div className="g-combo" key={comboShow}>COMBO ×{comboShow}</div>}
       <main className="g-stage-area">
-        <div className="g-panel main" key={phase.k}>{body}</div>
+        {phase.k === "open" ? body : <div className="g-panel main" key={phase.k}>{body}</div>}
       </main>
       {toast && <div className="g-toast" role="status">{toast}</div>}
     </div>

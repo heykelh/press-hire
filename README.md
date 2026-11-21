@@ -12,7 +12,8 @@ Chaque jeu est une **cartouche** : un fichier JSON qui décrit tout le jeu en do
 | 1a · Écran titre | 15 décors pixel animés, 7 habillages, météo, heures du jour, galerie `/gallery` | ✅ |
 | 1b · Niveaux | 9 mécaniques : `wheel` (hasard/adresse), `slider`, `triage`, `quiz`, `dialogue`, et d'arcade `catch` (Kaboom!), `whack` (tape-taupe), `gauge` (jauge de golf), `sequence` (Simon) ; boss à PV, imprévus, sons chiptune, tutoriel et fiche « comment jouer » par niveau, contrôle d'équilibrage | ✅ |
 | 2 · Studio | `/studio` : lien d'offre → jeu généré, contrôlé, corrigé → aperçu → publication ; suivi des parties, notifications ntfy, image d'aperçu | ✅ |
-| 3 · Agent | Génération depuis le studio (Gemini, Groq en secours), réparations automatiques, équilibrage de secours | ✅ (première version) |
+| 3 · Agent | Fiche du poste, bibliothèques métier, plan déterministe verbe → mécanique, écriture guidée, relecture par 3 personnages et révision, contrôles et équilibrage, banc d'essai | ✅ |
+| 3b · Format v0.4 | Semaine racontée (ouverture, jours, réactions), cartes métier, rebondissements, conséquences réelles des erreurs, étoiles et grades, aide adaptative, rapport de la semaine, grille à partager, inspection (Papers, Please), enquête (Où est Charlie) | ✅ |
 
 ## Comment se joue une cartouche
 
@@ -29,6 +30,23 @@ Clavier : Entrée/espace pour valider, 1-9 pour répondre ou frapper, ← → po
 Contrôles d'équilibrage (`pnpm validate`) : chaque niveau doit être gagnable en jouant bien et pas déjà gagné avant de jouer ;
 les roues et les jauges sont simulées 600 fois avec un joueur moyen (avertissement si moins de 30 % ou plus de 95 % de victoires) ;
 pour l'attrape-tout et le tape-alerte, un joueur qui attrape 75 % des bons objets doit gagner.
+
+## Comment l'agent crée un jeu
+
+1. **Lecture de l'offre** (données structurées de la page, sinon texte collé).
+2. **Fiche du poste** : missions réelles, chacune avec son verbe d'action, les documents manipulés, la décision, l'indicateur
+   et les erreurs de débutant ; outils, jargon, vrai problème à résoudre, ESN ou cabinet (secteur du client final).
+3. **Plan déterministe** (`packages/agent/src/plan.ts`) : le verbe choisit la mécanique (filtrer → attrape-tout, réagir → tape-alerte,
+   doser → jauge, procédure → mémoire, contrôler → inspection, trouver l'anomalie → enquête, convaincre → échange…),
+   au moins 2 mécaniques d'arcade et 1 de réflexion, jamais deux fois la même d'affilée, une semaine du lundi au vendredi, un boss si l'offre montre un vrai problème.
+4. **Écriture** guidée par la fiche, le plan et une **bibliothèque du métier** (`packs.ts` : vrais documents conformes et piégés,
+   indicateurs, pièges, jargon, pour 12 familles de métiers).
+5. **Contrôles** (schéma, cohérence, simulation de l'équilibrage), corrections automatiques, tours de correction par le modèle.
+6. **Relecture** par trois personnages (un praticien du métier, un débutant complet, un joueur exigeant), notes sur 10,
+   puis **révision** si une note est sous 7. Les étapes de qualité sautent si la génération dépasse son budget de temps.
+
+**Banc d'essai** : `pnpm eval` génère un jeu pour chaque offre de `eval/offers/` avec le vrai modèle et affiche notes,
+durée, nombre de notions, de rebondissements, de conséquences. À relancer après chaque changement des consignes pour vérifier que l'agent progresse.
 
 ## Le studio (générer un jeu depuis le site)
 

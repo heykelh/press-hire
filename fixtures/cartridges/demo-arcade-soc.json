@@ -1,7 +1,7 @@
 {
   "meta": {
     "id": "demo-arcade-soc",
-    "schemaVersion": "0.3",
+    "schemaVersion": "0.4",
     "createdAt": "2026-11-21T20:00:00Z",
     "languages": [
       "fr",
@@ -61,6 +61,26 @@
         "kind": "hard",
         "priority": "must",
         "offerQuote": "application des procédures de réponse à incident"
+      },
+      {
+        "id": "req_iam",
+        "label": {
+          "fr": "Gestion des accès",
+          "en": "Access management"
+        },
+        "kind": "hard",
+        "priority": "must",
+        "offerQuote": "revue des habilitations et des demandes d'accès"
+      },
+      {
+        "id": "req_hunt",
+        "label": {
+          "fr": "Recherche de menaces",
+          "en": "Threat hunting"
+        },
+        "kind": "hard",
+        "priority": "nice",
+        "offerQuote": "investigation et recherche de signaux faibles"
       }
     ],
     "painPoints": [
@@ -108,7 +128,25 @@
       "bpm": 132
     },
     "juice": 3,
-    "targetMinutes": 5
+    "targetMinutes": 7,
+    "ranks": [
+      {
+        "fr": "Stagiaire SOC",
+        "en": "SOC intern"
+      },
+      {
+        "fr": "Analyste N1",
+        "en": "Tier 1 analyst"
+      },
+      {
+        "fr": "Analyste N2",
+        "en": "Tier 2 analyst"
+      },
+      {
+        "fr": "Lead SOC",
+        "en": "SOC lead"
+      }
+    ]
   },
   "titleScreen": {
     "scene": "data_center",
@@ -174,6 +212,17 @@
         "display": "bar"
       },
       {
+        "id": "access",
+        "label": {
+          "fr": "Accès conformes",
+          "en": "Compliant access"
+        },
+        "start": 0,
+        "min": -40,
+        "max": 40,
+        "display": "bar"
+      },
+      {
         "id": "playbook",
         "label": {
           "fr": "Étapes maîtrisées",
@@ -182,6 +231,17 @@
         "start": 0,
         "min": 0,
         "max": 10,
+        "display": "counter"
+      },
+      {
+        "id": "hunt",
+        "label": {
+          "fr": "Menaces trouvées",
+          "en": "Threats found"
+        },
+        "start": 0,
+        "min": -10,
+        "max": 20,
         "display": "counter"
       },
       {
@@ -281,7 +341,11 @@
             },
             "kind": "good",
             "icon": "mail",
-            "weight": 2
+            "weight": 2,
+            "consequence": {
+              "fr": "La facture a été bloquée : la compta paie 3 jours en retard.",
+              "en": "The invoice was blocked: accounting pays 3 days late."
+            }
           },
           {
             "id": "m_report",
@@ -301,7 +365,12 @@
             },
             "kind": "bad",
             "icon": "coin",
-            "weight": 1
+            "weight": 1,
+            "conceptId": "c_phishing",
+            "consequence": {
+              "fr": "Un collègue a saisi son mot de passe sur un faux site Apple.",
+              "en": "A colleague typed their password on a fake Apple site."
+            }
           },
           {
             "id": "m_parcel",
@@ -311,7 +380,27 @@
             },
             "kind": "bad",
             "icon": "box",
-            "weight": 1
+            "weight": 1,
+            "consequence": {
+              "fr": "Le faux transporteur a installé un logiciel espion.",
+              "en": "The fake carrier installed spyware."
+            }
+          },
+          {
+            "id": "m_qr",
+            "label": {
+              "fr": "QR code colis",
+              "en": "Parcel QR"
+            },
+            "kind": "bad",
+            "icon": "ticket",
+            "weight": 1,
+            "conceptId": "c_quishing",
+            "twist": true,
+            "consequence": {
+              "fr": "Le QR code menait vers un faux portail Microsoft.",
+              "en": "The QR code led to a fake Microsoft portal."
+            }
           }
         ],
         "onGood": [
@@ -325,7 +414,7 @@
           {
             "var": "inbox",
             "op": "add",
-            "value": -4
+            "value": -3
           },
           {
             "var": "trust",
@@ -345,7 +434,7 @@
         {
           "var": "inbox",
           "op": ">=",
-          "value": 15,
+          "value": 10,
           "scope": "level"
         }
       ],
@@ -367,6 +456,27 @@
       "hint": {
         "fr": "Reste sous les mails bleus, écarte-toi des objets clignotants.",
         "en": "Stay under blue mails, step away from flashing items."
+      },
+      "day": {
+        "fr": "LUNDI 9H",
+        "en": "MONDAY 9AM"
+      },
+      "teaches": [
+        "c_phishing",
+        "c_quishing"
+      ],
+      "twist": {
+        "text": {
+          "fr": "Nouvelle arnaque : les QR codes piégés !",
+          "en": "New scam: trapped QR codes!"
+        }
+      },
+      "outro": {
+        "characterId": "ines",
+        "text": {
+          "fr": "Pas mal pour un lundi. Le RSSI a vu passer zéro clic piégé.",
+          "en": "Not bad for a Monday. The CISO saw zero trapped clicks."
+        }
       }
     },
     {
@@ -396,7 +506,8 @@
             },
             "kind": "good",
             "icon": "fire",
-            "weight": 2
+            "weight": 2,
+            "conceptId": "c_mttr"
           },
           {
             "id": "t_ransom",
@@ -406,7 +517,11 @@
             },
             "kind": "good",
             "icon": "bomb",
-            "weight": 1
+            "weight": 1,
+            "consequence": {
+              "fr": "Le rançongiciel a chiffré le partage réseau du service RH.",
+              "en": "The ransomware encrypted the HR file share."
+            }
           },
           {
             "id": "t_exfil",
@@ -416,7 +531,13 @@
             },
             "kind": "good",
             "icon": "drop",
-            "weight": 1
+            "weight": 1,
+            "twist": true,
+            "conceptId": "c_exfil",
+            "consequence": {
+              "fr": "12 Go de fichiers clients sont partis vers un serveur inconnu.",
+              "en": "12 GB of customer files went to an unknown server."
+            }
           },
           {
             "id": "t_pentest",
@@ -426,7 +547,11 @@
             },
             "kind": "bad",
             "icon": "shield",
-            "weight": 1
+            "weight": 1,
+            "consequence": {
+              "fr": "Tu as coupé le pentest payé 15 000 €. Le prestataire facture quand même.",
+              "en": "You cut the €15k pentest. The contractor bills anyway."
+            }
           }
         ],
         "onHit": [
@@ -476,11 +601,364 @@
       "hint": {
         "fr": "Ne frappe pas le bouclier : c'est le pentest autorisé.",
         "en": "Don't hit the shield: it's the authorised pentest."
+      },
+      "day": {
+        "fr": "MARDI 14H",
+        "en": "TUESDAY 2PM"
+      },
+      "teaches": [
+        "c_mttr",
+        "c_exfil"
+      ],
+      "twist": {
+        "text": {
+          "fr": "Alerte : des exfiltrations commencent !",
+          "en": "Alert: exfiltrations are starting!"
+        }
+      },
+      "outro": {
+        "characterId": "ines",
+        "text": {
+          "fr": "Ton MTTR fait pâlir l'équipe de nuit.",
+          "en": "Your MTTR puts the night shift to shame."
+        }
+      }
+    },
+    {
+      "id": "lvl_access",
+      "order": 3,
+      "requirementId": "req_iam",
+      "day": {
+        "fr": "MERCREDI 11H",
+        "en": "WEDNESDAY 11AM"
+      },
+      "title": {
+        "fr": "Guichet des accès",
+        "en": "Access desk"
+      },
+      "intro": {
+        "fr": "Les demandes d'accès s'empilent. Applique le règlement.",
+        "en": "Access requests pile up. Apply the rules."
+      },
+      "howTo": {
+        "fr": "Avant de rejeter, clique sur le champ qui pose problème : bonus de précision.",
+        "en": "Before rejecting, click the faulty field: precision bonus."
+      },
+      "characterId": "ines",
+      "teaches": [
+        "c_least",
+        "c_sod"
+      ],
+      "twist": {
+        "text": {
+          "fr": "Nouveau : certains valident leur propre demande…",
+          "en": "New: some people approve their own request…"
+        }
+      },
+      "mechanic": {
+        "type": "inspection",
+        "document": {
+          "fr": "Demande d'accès",
+          "en": "Access request"
+        },
+        "rules": [
+          {
+            "fr": "Un accès administrateur exige le manager ET le RSSI.",
+            "en": "Admin access requires the manager AND the CISO."
+          },
+          {
+            "fr": "Pas d'accès après la fin de mission d'un prestataire.",
+            "en": "No access after a contractor's end date."
+          },
+          {
+            "fr": "Le demandeur ne valide jamais sa propre demande.",
+            "en": "Requesters never approve their own request."
+          }
+        ],
+        "cases": [
+          {
+            "id": "k1",
+            "title": {
+              "fr": "Léa Martin · Commerciale",
+              "en": "Léa Martin · Sales"
+            },
+            "fields": [
+              {
+                "label": {
+                  "fr": "Accès demandé",
+                  "en": "Access"
+                },
+                "value": "CRM lecture"
+              },
+              {
+                "label": {
+                  "fr": "Validé par",
+                  "en": "Approved by"
+                },
+                "value": "P. Roux (manager)"
+              },
+              {
+                "label": {
+                  "fr": "Fin de mission",
+                  "en": "End date"
+                },
+                "value": "—"
+              }
+            ],
+            "correct": "accept",
+            "why": {
+              "fr": "Accès en lecture, validé par le manager : conforme au moindre privilège.",
+              "en": "Read access, approved by the manager: least privilege respected."
+            },
+            "conceptId": "c_least"
+          },
+          {
+            "id": "k2",
+            "title": {
+              "fr": "Hugo Petit · Dev",
+              "en": "Hugo Petit · Dev"
+            },
+            "fields": [
+              {
+                "label": {
+                  "fr": "Accès demandé",
+                  "en": "Access"
+                },
+                "value": "Admin serveur prod"
+              },
+              {
+                "label": {
+                  "fr": "Validé par",
+                  "en": "Approved by"
+                },
+                "value": "S. Diallo (manager)",
+                "faulty": true
+              },
+              {
+                "label": {
+                  "fr": "Fin de mission",
+                  "en": "End date"
+                },
+                "value": "—"
+              }
+            ],
+            "correct": "reject",
+            "why": {
+              "fr": "Accès admin sans validation du RSSI.",
+              "en": "Admin access without the CISO's approval."
+            }
+          },
+          {
+            "id": "k3",
+            "title": {
+              "fr": "Nora B. · Prestataire",
+              "en": "Nora B. · Contractor"
+            },
+            "fields": [
+              {
+                "label": {
+                  "fr": "Accès demandé",
+                  "en": "Access"
+                },
+                "value": "VPN"
+              },
+              {
+                "label": {
+                  "fr": "Validé par",
+                  "en": "Approved by"
+                },
+                "value": "P. Roux (manager)"
+              },
+              {
+                "label": {
+                  "fr": "Fin de mission",
+                  "en": "End date"
+                },
+                "value": "30/09/2026",
+                "faulty": true
+              }
+            ],
+            "correct": "reject",
+            "why": {
+              "fr": "Mission terminée depuis septembre : plus aucun accès.",
+              "en": "Mission ended in September: no access anymore."
+            }
+          },
+          {
+            "id": "k4",
+            "title": {
+              "fr": "Karim Haddad · DBA",
+              "en": "Karim Haddad · DBA"
+            },
+            "fields": [
+              {
+                "label": {
+                  "fr": "Accès demandé",
+                  "en": "Access"
+                },
+                "value": "Admin base clients"
+              },
+              {
+                "label": {
+                  "fr": "Validé par",
+                  "en": "Approved by"
+                },
+                "value": "M. Leroy + RSSI"
+              },
+              {
+                "label": {
+                  "fr": "Fin de mission",
+                  "en": "End date"
+                },
+                "value": "—"
+              }
+            ],
+            "correct": "accept",
+            "why": {
+              "fr": "Admin validé par le manager et le RSSI : conforme.",
+              "en": "Admin approved by manager and CISO: compliant."
+            }
+          },
+          {
+            "id": "k5",
+            "title": {
+              "fr": "Julie Dupont · Finance",
+              "en": "Julie Dupont · Finance"
+            },
+            "fields": [
+              {
+                "label": {
+                  "fr": "Demandeur",
+                  "en": "Requester"
+                },
+                "value": "J. Dupont"
+              },
+              {
+                "label": {
+                  "fr": "Accès demandé",
+                  "en": "Access"
+                },
+                "value": "Virements > 10 k€"
+              },
+              {
+                "label": {
+                  "fr": "Validé par",
+                  "en": "Approved by"
+                },
+                "value": "J. Dupont",
+                "faulty": true
+              }
+            ],
+            "correct": "reject",
+            "why": {
+              "fr": "Elle valide sa propre demande : séparation des tâches violée.",
+              "en": "She approves her own request: segregation of duties broken."
+            },
+            "conceptId": "c_sod",
+            "twist": true
+          },
+          {
+            "id": "k6",
+            "title": {
+              "fr": "Omar Sy · Support",
+              "en": "Omar Sy · Support"
+            },
+            "fields": [
+              {
+                "label": {
+                  "fr": "Demandeur",
+                  "en": "Requester"
+                },
+                "value": "O. Sy"
+              },
+              {
+                "label": {
+                  "fr": "Accès demandé",
+                  "en": "Access"
+                },
+                "value": "Outil tickets"
+              },
+              {
+                "label": {
+                  "fr": "Validé par",
+                  "en": "Approved by"
+                },
+                "value": "A. Morel (manager)"
+              }
+            ],
+            "correct": "accept",
+            "why": {
+              "fr": "Demandeur et valideur différents, accès utile au poste.",
+              "en": "Different requester and approver, access needed for the job."
+            },
+            "twist": true
+          }
+        ],
+        "onCorrect": [
+          {
+            "var": "access",
+            "op": "add",
+            "value": 2
+          }
+        ],
+        "onWrong": [
+          {
+            "var": "access",
+            "op": "add",
+            "value": -3
+          },
+          {
+            "var": "trust",
+            "op": "add",
+            "value": -1
+          }
+        ],
+        "onSpotted": [
+          {
+            "var": "access",
+            "op": "add",
+            "value": 1
+          }
+        ]
+      },
+      "win": [
+        {
+          "var": "access",
+          "op": ">=",
+          "value": 10,
+          "scope": "level"
+        }
+      ],
+      "winLine": {
+        "fr": "Zéro accès fantôme. L'auditeur va s'ennuyer.",
+        "en": "Zero ghost access. The auditor will be bored."
+      },
+      "failJokes": [
+        {
+          "fr": "Le stagiaire est maintenant administrateur de la paie.",
+          "en": "The intern is now payroll admin."
+        },
+        {
+          "fr": "Un prestataire parti en septembre se connecte encore. Il dit merci.",
+          "en": "A contractor who left in September still logs in. He says thanks."
+        }
+      ],
+      "hintAfterFails": 2,
+      "hint": {
+        "fr": "Relis le règlement : chaque refus vient d'une des trois règles.",
+        "en": "Reread the rules: every rejection comes from one of the three."
+      },
+      "outro": {
+        "characterId": "ines",
+        "text": {
+          "fr": "Revue des accès bouclée avant l'audit. Chapeau.",
+          "en": "Access review done before the audit. Hats off."
+        }
       }
     },
     {
       "id": "lvl_gauge",
-      "order": 3,
+      "order": 4,
       "requirementId": "req_siem",
       "title": {
         "fr": "Seuil d'alerte",
@@ -617,11 +1095,212 @@
       "hint": {
         "fr": "Appuie un peu avant que l'aiguille arrive dans le vert.",
         "en": "Press slightly before the needle reaches green."
+      },
+      "day": {
+        "fr": "JEUDI 10H",
+        "en": "THURSDAY 10AM"
+      },
+      "teaches": [
+        "c_fp"
+      ],
+      "twist": {
+        "text": {
+          "fr": "Le trafic double : l'aiguille accélère !",
+          "en": "Traffic doubles: the needle speeds up!"
+        }
+      },
+      "outro": {
+        "text": {
+          "fr": "Faux positifs en baisse, café de l'équipe en hausse.",
+          "en": "False positives down, team coffee up."
+        }
+      }
+    },
+    {
+      "id": "lvl_hunt",
+      "order": 5,
+      "requirementId": "req_hunt",
+      "day": {
+        "fr": "JEUDI 16H",
+        "en": "THURSDAY 4PM"
+      },
+      "title": {
+        "fr": "Chasse aux signaux faibles",
+        "en": "Weak-signal hunt"
+      },
+      "intro": {
+        "fr": "Quelque chose cloche dans les journaux. Trouve-le.",
+        "en": "Something's off in the logs. Find it."
+      },
+      "howTo": {
+        "fr": "Cherche ce qui sort du lot : un pays, une heure, un volume.",
+        "en": "Look for what stands out: a country, a time, a volume."
+      },
+      "teaches": [
+        "c_travel"
+      ],
+      "mechanic": {
+        "type": "investigation",
+        "timeLimitSec": 40,
+        "rounds": [
+          {
+            "id": "r1",
+            "prompt": {
+              "fr": "Une de ces lignes est une attaque en cours. Laquelle ?",
+              "en": "One of these lines is an ongoing attack. Which one?"
+            },
+            "view": {
+              "kind": "logs",
+              "lines": [
+                "08:01 sshd: Accepted publickey for deploy from 10.0.4.12",
+                "08:03 sshd: Accepted password for l.martin from 10.0.7.31",
+                "08:05 cron: backup job finished (2.1 GB)",
+                "08:06 sshd: Failed password for root from 185.220.101.7 (x214)",
+                "08:07 sshd: Accepted publickey for ci-runner from 10.0.4.20",
+                "08:09 nginx: GET /health 200"
+              ]
+            },
+            "answer": 3,
+            "explain": {
+              "fr": "214 échecs sur le compte root depuis une IP externe : attaque par force brute.",
+              "en": "214 failures on root from an external IP: brute-force attack."
+            }
+          },
+          {
+            "id": "r2",
+            "prompt": {
+              "fr": "Trafic sortant par heure. Où a eu lieu l'exfiltration ?",
+              "en": "Outbound traffic per hour. Where was the exfiltration?"
+            },
+            "view": {
+              "kind": "chart",
+              "unit": "Go",
+              "labels": [
+                "00h",
+                "01h",
+                "02h",
+                "03h",
+                "04h",
+                "05h",
+                "06h",
+                "07h"
+              ],
+              "values": [
+                0.4,
+                0.3,
+                0.3,
+                9.8,
+                0.5,
+                0.4,
+                0.6,
+                1.1
+              ]
+            },
+            "answer": 3,
+            "explain": {
+              "fr": "9,8 Go à 3h du matin, quand personne ne travaille : exfiltration typique.",
+              "en": "9.8 GB at 3 AM, when nobody works: typical exfiltration."
+            },
+            "conceptId": "c_exfil"
+          },
+          {
+            "id": "r3",
+            "prompt": {
+              "fr": "Connexions du jour. Quel compte est compromis ?",
+              "en": "Today's logins. Which account is compromised?"
+            },
+            "view": {
+              "kind": "table",
+              "columns": [
+                "Compte",
+                "Pays",
+                "Heure"
+              ],
+              "rows": [
+                [
+                  "m.bernard",
+                  "France",
+                  "08:12"
+                ],
+                [
+                  "l.martin",
+                  "France",
+                  "08:40"
+                ],
+                [
+                  "m.bernard",
+                  "Brésil",
+                  "08:31"
+                ],
+                [
+                  "k.haddad",
+                  "France",
+                  "09:02"
+                ],
+                [
+                  "o.sy",
+                  "France",
+                  "09:15"
+                ]
+              ]
+            },
+            "answer": 2,
+            "explain": {
+              "fr": "m.bernard se connecte de France à 8h12 puis du Brésil à 8h31 : voyage impossible.",
+              "en": "m.bernard logs in from France at 8:12 then Brazil at 8:31: impossible travel."
+            },
+            "conceptId": "c_travel"
+          }
+        ],
+        "onFound": [
+          {
+            "var": "hunt",
+            "op": "add",
+            "value": 3
+          }
+        ],
+        "onWrong": [
+          {
+            "var": "hunt",
+            "op": "add",
+            "value": -1
+          }
+        ]
+      },
+      "win": [
+        {
+          "var": "hunt",
+          "op": ">=",
+          "value": 6,
+          "scope": "level"
+        }
+      ],
+      "winLine": {
+        "fr": "Trois menaces débusquées avant le café de 16h30.",
+        "en": "Three threats found before the 4:30 coffee."
+      },
+      "failJokes": [
+        {
+          "fr": "Tu as accusé le job de sauvegarde. Il est très vexé.",
+          "en": "You blamed the backup job. It's very upset."
+        }
+      ],
+      "hintAfterFails": 2,
+      "hint": {
+        "fr": "Compare chaque ligne aux autres : l'anomalie est celle qui ne ressemble à aucune.",
+        "en": "Compare each line to the others: the anomaly looks like none of them."
+      },
+      "outro": {
+        "characterId": "ines",
+        "text": {
+          "fr": "Le compte de Marc est bloqué. Il était… au Brésil ? Non.",
+          "en": "Marc's account is locked. Was he… in Brazil? No."
+        }
       }
     },
     {
       "id": "lvl_seq",
-      "order": 4,
+      "order": 6,
       "requirementId": "req_ir",
       "title": {
         "fr": "Le playbook",
@@ -711,6 +1390,20 @@
       "hint": {
         "fr": "Récite les étapes à voix basse pendant que la machine joue.",
         "en": "Whisper the steps while the machine plays."
+      },
+      "day": {
+        "fr": "VENDREDI 17H",
+        "en": "FRIDAY 5PM"
+      },
+      "teaches": [
+        "c_playbook"
+      ],
+      "outro": {
+        "characterId": "ines",
+        "text": {
+          "fr": "Procédure parfaite. Tu peux souffler… presque.",
+          "en": "Perfect procedure. You can breathe… almost."
+        }
       }
     }
   ],
@@ -810,6 +1503,13 @@
         }
       },
       {
+        "requirementId": "req_iam",
+        "line": {
+          "fr": "Appliquer le moindre privilège sans bloquer les équipes",
+          "en": "Apply least privilege without blocking teams"
+        }
+      },
+      {
         "requirementId": "req_triage",
         "line": {
           "fr": "Qualifier les alertes vite et bien",
@@ -829,12 +1529,19 @@
           "fr": "Dérouler la réponse à incident dans l'ordre",
           "en": "Run incident response in order"
         }
+      },
+      {
+        "requirementId": "req_hunt",
+        "line": {
+          "fr": "Repérer une anomalie dans des logs, un graphique, une table",
+          "en": "Spot an anomaly in logs, a chart, a table"
+        }
       }
     ],
     "shareCard": {
       "text": {
-        "fr": "J'ai repoussé le rançongiciel du vendredi soir.",
-        "en": "I repelled the Friday-night ransomware."
+        "fr": "J'ai tenu une semaine au SOC sans laisser passer le rançongiciel.",
+        "en": "I survived a week at the SOC without letting the ransomware in."
       },
       "showScore": true
     },
@@ -846,5 +1553,142 @@
   "review": {
     "status": "draft",
     "notes": "Démo des mécaniques d'arcade v0.3."
-  }
+  },
+  "story": {
+    "coldOpen": {
+      "time": {
+        "fr": "LUNDI, 8H57",
+        "en": "MONDAY, 8:57 AM"
+      },
+      "characterId": "ines",
+      "lines": [
+        {
+          "fr": "1 337 alertes en attente.",
+          "en": "1,337 alerts waiting."
+        },
+        {
+          "fr": "L'équipe de nuit a laissé un post-it : « bon courage ».",
+          "en": "The night shift left a sticky note: \"good luck\"."
+        },
+        {
+          "fr": "Bienvenue au SOC. Ta semaine commence maintenant.",
+          "en": "Welcome to the SOC. Your week starts now."
+        }
+      ]
+    },
+    "epilogue": {
+      "fr": "Vendredi, 23h59. Le rançongiciel est isolé. Lundi, tout recommence.",
+      "en": "Friday, 11:59 PM. The ransomware is isolated. On Monday, it all starts again."
+    }
+  },
+  "concepts": [
+    {
+      "id": "c_phishing",
+      "term": {
+        "fr": "Phishing",
+        "en": "Phishing"
+      },
+      "definition": {
+        "fr": "Faux message qui imite un expéditeur connu pour voler un mot de passe ou faire cliquer sur un lien piégé.",
+        "en": "A fake message imitating a known sender to steal a password or get you to click a trapped link."
+      },
+      "icon": "mail"
+    },
+    {
+      "id": "c_quishing",
+      "term": {
+        "fr": "Quishing",
+        "en": "Quishing"
+      },
+      "definition": {
+        "fr": "Phishing par QR code : le lien piégé est caché dans l'image, invisible pour les filtres classiques.",
+        "en": "QR-code phishing: the trapped link hides in the image, invisible to classic filters."
+      },
+      "icon": "warning"
+    },
+    {
+      "id": "c_mttr",
+      "term": {
+        "fr": "MTTR",
+        "en": "MTTR"
+      },
+      "definition": {
+        "fr": "Temps moyen pour résoudre un incident. Plus il est bas, moins l'attaquant a de temps pour agir.",
+        "en": "Mean time to resolve an incident. The lower it is, the less time the attacker has."
+      },
+      "icon": "clock"
+    },
+    {
+      "id": "c_exfil",
+      "term": {
+        "fr": "Exfiltration",
+        "en": "Exfiltration"
+      },
+      "definition": {
+        "fr": "Sortie discrète de données vers l'extérieur. Souvent la nuit, souvent en petits morceaux.",
+        "en": "Quiet transfer of data out of the company. Often at night, often in small chunks."
+      },
+      "icon": "drop"
+    },
+    {
+      "id": "c_least",
+      "term": {
+        "fr": "Moindre privilège",
+        "en": "Least privilege"
+      },
+      "definition": {
+        "fr": "Donner à chacun uniquement les droits nécessaires à son travail, pas plus.",
+        "en": "Give everyone only the rights their job needs, nothing more."
+      },
+      "icon": "key"
+    },
+    {
+      "id": "c_sod",
+      "term": {
+        "fr": "Séparation des tâches",
+        "en": "Segregation of duties"
+      },
+      "definition": {
+        "fr": "Celui qui demande ne valide pas : deux personnes différentes, pour éviter fraude et erreurs.",
+        "en": "Whoever asks doesn't approve: two different people, to prevent fraud and mistakes."
+      },
+      "icon": "shield"
+    },
+    {
+      "id": "c_fp",
+      "term": {
+        "fr": "Faux positif",
+        "en": "False positive"
+      },
+      "definition": {
+        "fr": "Alerte qui sonne alors qu'il n'y a pas d'attaque. Trop de faux positifs et l'équipe ne regarde plus rien.",
+        "en": "An alert that fires with no attack. Too many and the team stops looking."
+      },
+      "icon": "bomb"
+    },
+    {
+      "id": "c_travel",
+      "term": {
+        "fr": "Voyage impossible",
+        "en": "Impossible travel"
+      },
+      "definition": {
+        "fr": "Deux connexions du même compte depuis deux pays trop éloignés pour le temps écoulé : compte sûrement volé.",
+        "en": "Two logins of one account from countries too far apart for the time elapsed: likely stolen."
+      },
+      "icon": "cloud"
+    },
+    {
+      "id": "c_playbook",
+      "term": {
+        "fr": "Playbook",
+        "en": "Playbook"
+      },
+      "definition": {
+        "fr": "Procédure écrite à suivre pas à pas pendant un incident, pour ne rien oublier sous la pression.",
+        "en": "A written step-by-step procedure for incidents, so nothing is forgotten under pressure."
+      },
+      "icon": "file"
+    }
+  ]
 }

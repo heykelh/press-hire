@@ -81,5 +81,20 @@ export function howTo(m: M): HowTo {
         controls: T("Clic sur les touches, ou 1 à 6", "Click the pads, or keys 1 to 6"),
         retro: T("Façon Simon (1978)", "Simon-style (1978)"),
       };
+    case "inspection":
+      return {
+        name: T("INSPECTION", "INSPECTION"),
+        goal: T(`Lis le règlement, puis examine chaque ${m.document.fr.toLowerCase()}. Valide ou refuse ; avant de refuser, clique sur le champ qui pose problème pour un bonus.`, `Read the rules, then check each ${m.document.en.toLowerCase()}. Approve or reject; before rejecting, click the faulty field for a bonus.`),
+        controls: T("Clic sur un champ, puis VALIDER ou REFUSER (ou → / ←)", "Click a field, then APPROVE or REJECT (or → / ←)"),
+        metric: T("Conformité : part de dossiers bien traités. Précision : champs fautifs repérés.", "Compliance: share of cases handled right. Precision: faulty fields spotted."),
+        retro: T("Façon Papers, Please (2013)", "Papers, Please-style (2013)"),
+      };
+    case "investigation":
+      return {
+        name: T("ENQUÊTE", "INVESTIGATION"),
+        goal: T("Une anomalie se cache dans des journaux, un tableau ou un graphique. Trouve-la et clique dessus. Chaque erreur coûte un peu.", "An anomaly hides in logs, a table or a chart. Find it and click it. Each mistake costs a little."),
+        controls: T("Clic ou tap sur la ligne, la barre ou la cellule suspecte", "Click or tap the suspicious line, bar or row"),
+        retro: T("Façon Où est Charlie ?", "Where's Waldo?-style"),
+      };
   }
 }

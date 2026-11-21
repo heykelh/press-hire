@@ -40,6 +40,8 @@ function mechanicEffects(m: Mechanic): Array<{ path: string; e: Effect }> {
   if (m.type === "catch") (["onGood", "onBad", "onMiss"] as const).forEach((k) => m[k].forEach((e, j) => out.push({ path: `${k}[${j}]`, e })));
   if (m.type === "whack") (["onHit", "onWrong", "onMiss"] as const).forEach((k) => m[k].forEach((e, j) => out.push({ path: `${k}[${j}]`, e })));
   if (m.type === "sequence") (["onSuccess", "onFail"] as const).forEach((k) => m[k].forEach((e, j) => out.push({ path: `${k}[${j}]`, e })));
+  if (m.type === "inspection") (["onCorrect", "onWrong", "onSpotted"] as const).forEach((k) => m[k].forEach((e, j) => out.push({ path: `${k}[${j}]`, e })));
+  if (m.type === "investigation") (["onFound", "onWrong"] as const).forEach((k) => m[k].forEach((e, j) => out.push({ path: `${k}[${j}]`, e })));
   if (m.type === "gauge") m.zones.forEach((z, i) => z.effects.forEach((e, j) => out.push({ path: `zones[${i}].effects[${j}]`, e })));
   if (m.type === "dialogue")
     m.nodes.forEach((n, i) => n.choices.forEach((ch, k) => ch.effects.forEach((e, j) => out.push({ path: `nodes[${i}].choices[${k}].effects[${j}]`, e }))));
@@ -90,8 +92,37 @@ export function lintCartridge(c: Cartridge, opts: { strict?: boolean } = {}): Is
   const orders = c.levels.map((l) => l.order);
   if (new Set(orders).size !== orders.length) add("level-order", "error", "levels", "deux niveaux ont le même ordre");
 
+  /* notions du métier (cartes) */
+  const conceptIds = new Set(c.concepts.map((x) => x.id));
+  dup("concepts", c.concepts.map((x) => x.id));
+  c.concepts.forEach((x, i) => {
+    if (x.definition.fr.length > 180) add("concept-length", "warning", `concepts[${i}].definition`, "définition longue (160 caractères conseillés)");
+  });
+  const usedConcepts = new Set<string>();
+  const conceptRef = (id: string | undefined, path: string) => {
+    if (!id) return;
+    usedConcepts.add(id);
+    if (!conceptIds.has(id)) add("concept-ref", "error", path, `notion inconnue : ${id}`);
+  };
+  if (c.story?.coldOpen.characterId && !charIds.has(c.story.coldOpen.characterId))
+    add("character-ref", "error", "story.coldOpen.characterId", `personnage inconnu : ${c.story.coldOpen.characterId}`);
+
   c.levels.forEach((l, i) => {
     const p = `levels[${i}]`;
+    l.teaches.forEach((id, j) => conceptRef(id, `${p}.teaches[${j}]`));
+    const m = l.mechanic;
+    if (m.type === "triage") m.items.forEach((x, j) => conceptRef(x.conceptId, `${p}.mechanic.items[${j}].conceptId`));
+    if (m.type === "quiz") m.questions.forEach((x, j) => conceptRef(x.conceptId, `${p}.mechanic.questions[${j}].conceptId`));
+    if (m.type === "catch") m.items.forEach((x, j) => conceptRef(x.conceptId, `${p}.mechanic.items[${j}].conceptId`));
+    if (m.type === "whack") m.targets.forEach((x, j) => conceptRef(x.conceptId, `${p}.mechanic.targets[${j}].conceptId`));
+    if (m.type === "inspection") m.cases.forEach((x, j) => conceptRef(x.conceptId, `${p}.mechanic.cases[${j}].conceptId`));
+    if (m.type === "investigation") m.rounds.forEach((x, j) => conceptRef(x.conceptId, `${p}.mechanic.rounds[${j}].conceptId`));
+    if (l.outro?.characterId && !charIds.has(l.outro.characterId)) add("character-ref", "error", `${p}.outro.characterId`, `personnage inconnu : ${l.outro.characterId}`);
+    if (l.day && l.day.fr.length > 18) add("day-length", "warning", `${p}.day`, "moment de la semaine trop long (18 caractères)");
+    const hasTwistItems =
+      (m.type === "catch" && m.items.some((x) => x.twist)) || (m.type === "whack" && m.targets.some((x) => x.twist)) ||
+      (m.type === "triage" && m.items.some((x) => x.twist)) || (m.type === "inspection" && m.cases.some((x) => x.twist));
+    if (hasTwistItems && !l.twist) add("twist", "warning", `${p}.twist`, "des objets « twist » sans annonce de rebondissement");
     if (!reqIds.has(l.requirementId)) add("level-requirement", "error", `${p}.requirementId`, `exigence inconnue : ${l.requirementId}`);
     if (l.characterId && !charIds.has(l.characterId)) add("character-ref", "error", `${p}.characterId`, `personnage inconnu : ${l.characterId}`);
     if (l.mechanic.type === "dialogue" && l.mechanic.characterId && !charIds.has(l.mechanic.characterId))
@@ -165,6 +196,10 @@ export function lintCartridge(c: Cartridge, opts: { strict?: boolean } = {}): Is
   /* ton */
   if (c.analysis.tone.formality === 5 && c.analysis.tone.humorLevel > 1)
     add("tone", "warning", "analysis.tone", "entreprise très formelle : humour 0 ou 1 recommandé");
+
+  c.concepts.forEach((x, i) => {
+    if (!usedConcepts.has(x.id)) add("concept-unused", "warning", `concepts[${i}]`, `notion jamais enseignée : ${x.id}`);
+  });
 
   /* équilibrage : chaque niveau doit être gagnable, et pas gagné d'avance */
   if (!issues.some((i) => i.severity === "error"))
@@ -248,6 +283,25 @@ function checkMechanic(
       });
       break;
     }
+    case "inspection": {
+      m.cases.forEach((k, i) => {
+        const faulty = k.fields.filter((f) => f.faulty).length;
+        if (k.correct === "reject" && !faulty) add("inspection-fields", "error", `${p}.cases[${i}]`, "un dossier à rejeter doit avoir au moins un champ fautif (faulty)");
+        if (k.correct === "accept" && faulty) add("inspection-fields", "error", `${p}.cases[${i}]`, "un dossier à accepter ne peut pas avoir de champ fautif");
+      });
+      const rej = m.cases.filter((k) => k.correct === "reject").length;
+      if (rej === 0 || rej === m.cases.length) add("inspection-balance", "warning", `${p}.cases`, "mélange dossiers conformes et non conformes");
+      break;
+    }
+    case "investigation":
+      m.rounds.forEach((r, i) => {
+        const v = r.view;
+        const n = v.kind === "table" ? v.rows.length : v.kind === "logs" ? v.lines.length : v.values.length;
+        if (r.answer >= n) add("investigation-answer", "error", `${p}.rounds[${i}].answer`, `réponse ${r.answer} hors de la vue (${n} éléments)`);
+        if (v.kind === "table") v.rows.forEach((row, j) => { if (row.length !== v.columns.length) add("investigation-table", "error", `${p}.rounds[${i}].view.rows[${j}]`, `${row.length} cellules pour ${v.columns.length} colonnes`); });
+        if (v.kind === "chart" && v.labels.length !== v.values.length) add("investigation-chart", "error", `${p}.rounds[${i}].view`, "autant d'étiquettes que de valeurs");
+      });
+      break;
     case "sequence": {
       const ids = new Set<string>();
       m.pads.forEach((x, i) => {

@@ -17,6 +17,18 @@ export interface Ctx {
   rand: () => number;
   /** suivi des parties (facultatif) */
   track?: (kind: string, detail?: string) => void;
+  /** aide adaptative : 0 normal, 1 après 2 échecs, 2 après 4 échecs (plus lent, moins de pièges) */
+  assist?: number;
+  /** annonce le rebondissement du niveau (sans effet s'il n'y en a pas, une seule fois) */
+  twist?: () => void;
+  /** explique une notion la première fois qu'elle apparaît, et l'ajoute à la collection */
+  learn?: (conceptId: string | undefined) => void;
+  /** montre la conséquence réelle d'une erreur */
+  oops?: (text: string | undefined) => void;
+  /** série de bonnes décisions (combo) */
+  combo?: (good: boolean) => void;
+  /** métriques du niveau, affichées dans le rapport de fin */
+  report?: (rows: Array<{ label: string; value: string }>) => void;
 }
 
 export interface Fx {

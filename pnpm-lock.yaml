@@ -11,6 +11,9 @@ importers:
       '@neondatabase/serverless':
         specifier: ^1.0.2
         version: 1.2.1
+      '@press-hire/agent':
+        specifier: workspace:*
+        version: link:packages/agent
       '@press-hire/cartridge':
         specifier: workspace:*
         version: link:packages/cartridge

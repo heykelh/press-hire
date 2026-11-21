@@ -10,9 +10,9 @@ export const dynamic = "force-dynamic";
 
 const Body = z.object({
   slug: z.string().regex(/^[a-z0-9-]{3,80}$/),
-  kind: z.enum(["start", "end"]),
+  kind: z.enum(["start", "end", "level"]),
   sid: z.string().regex(/^[a-z0-9]{6,16}$/),
-  detail: z.string().max(20).optional(),
+  detail: z.string().max(60).optional(),
 });
 
 const BOTS = /bot|crawl|spider|slurp|preview|facebookexternalhit|linkedin|whatsapp|telegram|slack|discord|headless|lighthouse|python|curl|wget|node-fetch|axios/i;
@@ -44,6 +44,8 @@ export async function POST(req: Request) {
   const seen = await q("select 1 from play_events where sid = $1 and slug = $2 and kind = $3 and coalesce(detail, '') = coalesce($4, '') limit 1", [sid, slug, kind, detail ?? null]);
   if (seen.length) return ok;
   await q("insert into play_events (slug, sid, kind, detail) values ($1, $2, $3, $4)", [slug, sid, kind, detail ?? null]);
+  // résultat d'un niveau : seulement enregistré, pour les statistiques du studio
+  if (kind === "level") return ok;
   const col = COUNTER[kind]!;
   const [row] = await q<{ plays: number; ends: number }>(
     `update cartridges set ${col} = ${col} + 1${kind === "start" ? ", last_play_at = now()" : ""} where slug = $1 returning plays, ends`,

@@ -12,7 +12,8 @@
     "typecheck": "pnpm -r typecheck",
     "validate": "tsx scripts/validate.ts",
     "db:init": "tsx scripts/db-init.ts",
-    "publish:cartridge": "tsx scripts/publish.ts"
+    "publish:cartridge": "tsx scripts/publish.ts",
+    "eval": "tsx scripts/eval.ts"
   },
   "devDependencies": {
     "@neondatabase/serverless": "^1.0.2",
@@ -20,7 +21,8 @@
     "tsx": "^4.20.0",
     "typescript": "^5.9.0",
     "zod": "^4.1.0",
-    "@press-hire/cartridge": "workspace:*"
+    "@press-hire/cartridge": "workspace:*",
+    "@press-hire/agent": "workspace:*"
   },
   "type": "module"
 }

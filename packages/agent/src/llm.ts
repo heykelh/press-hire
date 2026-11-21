@@ -3,10 +3,16 @@
  * Les identifiants de modèles changent souvent : ils se règlent par variables d'environnement.
  */
 
+export interface CallOpts {
+  /** étape du pipeline (analyze, write, critique, revise, repair) : utile aux modèles simulés et aux journaux */
+  task?: string;
+  temperature?: number;
+}
+
 export interface Llm {
   name: string;
   /** renvoie le texte brut de la réponse (censé être du JSON) */
-  complete(system: string, user: string): Promise<string>;
+  complete(system: string, user: string, opts?: CallOpts): Promise<string>;
 }
 
 export class LlmError extends Error {
@@ -40,14 +46,14 @@ async function post(url: string, headers: Record<string, string>, body: unknown,
 export function gemini(apiKey: string, model = "gemini-flash-latest"): Llm {
   return {
     name: `Gemini (${model})`,
-    async complete(system, user) {
+    async complete(system, user, opts) {
       const data = (await post(
         `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
         { "x-goog-api-key": apiKey },
         {
           systemInstruction: { parts: [{ text: system }] },
           contents: [{ role: "user", parts: [{ text: user }] }],
-          generationConfig: { responseMimeType: "application/json", temperature: 0.9, maxOutputTokens: 32768 },
+          generationConfig: { responseMimeType: "application/json", temperature: opts?.temperature ?? 0.9, maxOutputTokens: 32768 },
         },
         "Gemini",
       )) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> }; finishReason?: string }> };
@@ -62,7 +68,7 @@ export function gemini(apiKey: string, model = "gemini-flash-latest"): Llm {
 export function groq(apiKey: string, model = "llama-3.3-70b-versatile"): Llm {
   return {
     name: `Groq (${model})`,
-    async complete(system, user) {
+    async complete(system, user, opts) {
       const data = (await post(
         "https://api.groq.com/openai/v1/chat/completions",
         { authorization: `Bearer ${apiKey}` },
@@ -70,7 +76,7 @@ export function groq(apiKey: string, model = "llama-3.3-70b-versatile"): Llm {
           model,
           messages: [{ role: "system", content: system }, { role: "user", content: user }],
           response_format: { type: "json_object" },
-          temperature: 0.8,
+          temperature: opts?.temperature ?? 0.8,
           max_tokens: 16000,
         },
         "Groq",
@@ -87,11 +93,11 @@ export function chain(llms: Llm[], onFallback?: (from: string, err: string) => v
   if (!llms.length) throw new LlmError("aucun modèle configuré : ajoute GEMINI_API_KEY ou GROQ_API_KEY", false);
   return {
     name: llms.map((l) => l.name).join(" → "),
-    async complete(system, user) {
+    async complete(system, user, opts) {
       let last: unknown;
       for (const l of llms) {
         try {
-          return await l.complete(system, user);
+          return await l.complete(system, user, opts);
         } catch (e) {
           last = e;
           onFallback?.(l.name, (e as Error).message);

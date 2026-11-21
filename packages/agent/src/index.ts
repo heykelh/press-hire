@@ -3,4 +3,7 @@ export * from "./brief";
 export * from "./llm";
 export * from "./prompt";
 export * from "./generate";
-export { EXAMPLE_BRIEF, EXAMPLE_BRIEF_ARCADE } from "./example";
+export { EXAMPLE_BRIEF, EXAMPLE_BRIEF_ARCADE, EXAMPLE_JOB } from "./example";
+export * from "./job";
+export * from "./packs";
+export * from "./plan";

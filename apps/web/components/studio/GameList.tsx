@@ -15,6 +15,7 @@ export interface Row {
   plays: number;
   ends: number;
   last_play_at: string | null;
+  levels?: Array<{ level: string; won: number; tries: number }>;
 }
 
 const fmt = (d: string | null) =>
@@ -54,6 +55,14 @@ function GameRow({ g }: { g: Row }) {
         <span className="st-game-title">{g.title}</span>
         {g.company} · {g.job_title}
         {g.source_url && <> · <a href={g.source_url} target="_blank" rel="noopener noreferrer">offre</a></>}
+        {g.levels && g.levels.length > 0 && (
+          <div className="st-levels" title="Réussite par niveau (sessions qui l'ont réussi / qui l'ont tenté)">
+            {g.levels.map((l) => {
+              const r = l.tries ? l.won / l.tries : 0;
+              return <span key={l.level} className={r < 0.5 ? "hard" : ""}>{l.level.replace(/^lvl_/, "")} {Math.round(r * 100)} %</span>;
+            })}
+          </div>
+        )}
         {msg && (msg.url ? <div><PublishedLink url={msg.url} /></div> : <p className={msg.ok ? "st-ok" : "st-err"}>{msg.text}</p>)}
       </td>
       <td><span className={`st-chip ${g.status}`}>{g.status === "live" ? "EN LIGNE" : g.status === "draft" ? "BROUILLON" : "ARCHIVÉ"}</span></td>

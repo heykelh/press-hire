@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { simulateBestRun, validateCartridge } from "@press-hire/cartridge";
 import {
+  EXAMPLE_JOB,
+  JobModel,
+  planGame,
   EXAMPLE_BRIEF,
   EXAMPLE_BRIEF_ARCADE,
   briefSchemaText,
@@ -17,7 +20,9 @@ const scripted = (...replies: string[]): Llm & { calls: number } => {
   const l = {
     name: "mock",
     calls: 0,
-    async complete() {
+    async complete(_s: string, _u: string, opts?: { task?: string }) {
+      // ces tests portent sur l'écriture et les corrections : pas de fiche du poste (repli sur l'offre)
+      if (opts?.task === "analyze") return "{}";
       const r = replies[Math.min(l.calls, replies.length - 1)]!;
       l.calls++;
       return r;
@@ -28,7 +33,7 @@ const scripted = (...replies: string[]): Llm & { calls: number } => {
 
 async function run(llm: Llm, extra: Record<string, unknown> = {}) {
   const events: GenerateEvent[] = [];
-  for await (const e of generate({ offerText: OFFER_TEXT, ...extra }, { llm, now: new Date("2026-11-21T12:00:00Z"), rand: () => 0.1 }))
+  for await (const e of generate({ offerText: OFFER_TEXT, ...extra }, { llm, now: new Date("2026-11-21T12:00:00Z"), rand: () => 0.1, skipCritique: true }))
     events.push(e);
   return { events, last: events[events.length - 1]! };
 }
@@ -84,7 +89,7 @@ describe("génération", () => {
     const { last } = await run(scripted(JSON.stringify(EXAMPLE_BRIEF_ARCADE)));
     expect(last.type).toBe("done");
     if (last.type !== "done") return;
-    expect(last.cartridge.levels.map((l) => l.mechanic.type)).toEqual(["catch", "whack", "gauge", "sequence"]);
+    expect(last.cartridge.levels.map((l) => l.mechanic.type)).toEqual(["catch", "whack", "inspection", "gauge", "investigation", "sequence"]);
   });
 
   it("répare seul les petites fautes (codes, intro, traduction, réponse en bloc ```)", async () => {
@@ -139,5 +144,106 @@ describe("génération", () => {
 
   it("parseJsonReply tolère du texte autour", () => {
     expect(parseJsonReply('Voici : {"a": 1} fin')).toEqual({ a: 1 });
+  });
+});
+
+/* ---------------- pipeline complet : fiche du poste, plan, relecture, révision ---------------- */
+
+const SOC_JOB = EXAMPLE_JOB;
+
+
+const tasked = (map: Record<string, string | string[]>) => {
+  const calls: string[] = [];
+  const llm: Llm = {
+    name: "mock",
+    async complete(_s, _u, opts) {
+      const task = opts?.task ?? "?";
+      calls.push(task);
+      const v = map[task] ?? "{}";
+      return Array.isArray(v) ? v[Math.min(calls.filter((c) => c === task).length - 1, v.length - 1)]! : v;
+    },
+  };
+  return { llm, calls };
+};
+
+async function runFull(llm: Llm) {
+  const events: GenerateEvent[] = [];
+  for await (const e of generate({ offerText: OFFER_TEXT }, { llm, now: new Date("2026-11-21T12:00:00Z"), rand: () => 0.1 })) events.push(e);
+  return { events, last: events[events.length - 1]! };
+}
+
+describe("fiche du poste et plan", () => {
+  const job = JobModel.parse(SOC_JOB);
+  const plan = planGame(job);
+
+  it("choisit la mécanique par le verbe du métier", () => {
+    const by = Object.fromEntries(plan.levels.map((l) => [l.missionId, l.mechanic]));
+    expect(by.phishing).toBe("catch");
+    expect(by.triage).toBe("whack");
+    expect(by.iam).toBe("inspection");
+    expect(by.siem).toBe("gauge");
+    expect(by.hunt).toBe("investigation");
+    expect(by.ir).toBe("sequence");
+  });
+
+  it("garantit variété, arcade, réflexion et une semaine du lundi au vendredi", () => {
+    const m = plan.levels.map((l) => l.mechanic);
+    expect(m.length).toBeGreaterThanOrEqual(4);
+    expect(m.filter((x) => ["catch", "whack", "gauge", "sequence"].includes(x)).length).toBeGreaterThanOrEqual(2);
+    expect(m.some((x) => ["inspection", "investigation", "triage", "quiz", "dialogue", "slider"].includes(x))).toBe(true);
+    for (let i = 1; i < m.length; i++) expect(m[i]).not.toBe(m[i - 1]);
+    expect(plan.levels[0]!.day.fr).toBe("LUNDI 9H");
+    expect(plan.levels.at(-1)!.day.fr).toBe("VENDREDI 17H");
+    expect(plan.boss).toBeDefined();
+  });
+
+  it("ajoute un échange quand l'offre demande des qualités humaines", () => {
+    const p = planGame(JobModel.parse({ ...SOC_JOB, softSkills: ["pédagogie"] }));
+    expect(p.levels.some((l) => l.mechanic === "dialogue")).toBe(true);
+  });
+});
+
+describe("pipeline complet", () => {
+  const brief = JSON.stringify(EXAMPLE_BRIEF_ARCADE);
+  const good = JSON.stringify({ scores: { accuracy: 9, pedagogy: 8, fun: 9, wow: 8 }, levels: [], global: ["Rien à redire."] });
+  const weak = JSON.stringify({
+    scores: { accuracy: 6, pedagogy: 5, fun: 8, wow: 6 },
+    levels: [{ id: "lvl_phish", accuracy: 5, pedagogy: 5, fun: 8, problems: ["étiquettes trop vagues"], fix: "montrer de vrais objets de mails" }],
+    global: ["ajouter une notion sur le MFA"],
+  });
+
+  it("analyse, planifie, écrit, relit et livre une cartouche notée", async () => {
+    const { llm, calls } = tasked({ analyze: JSON.stringify(SOC_JOB), write: brief, critique: good });
+    const { events, last } = await runFull(llm);
+    expect(calls).toEqual(["analyze", "write", "critique"]);
+    expect(last.type).toBe("done");
+    if (last.type !== "done") return;
+    expect(last.scores).toEqual({ accuracy: 9, pedagogy: 8, fun: 9, wow: 8 });
+    expect(last.cartridge.analysis.requirements.map((r) => r.id)).toContain("req_iam");
+    expect(last.cartridge.review.notes).toContain("justesse 9/10");
+    expect(events.some((e) => e.type === "step" && e.message.startsWith("Plan : LUNDI 9H attrape-tout"))).toBe(true);
+    expect(last.slug).toMatch(/^demo-cyber-analyste-soc-[a-z2-9]{4}$/);
+  });
+
+  it("révise le jeu quand les relecteurs le jugent faible", async () => {
+    const { llm, calls } = tasked({ analyze: JSON.stringify(SOC_JOB), write: brief, critique: weak, revise: brief });
+    const { events, last } = await runFull(llm);
+    expect(calls).toEqual(["analyze", "write", "critique", "revise"]);
+    expect(last.type).toBe("done");
+    expect(events.some((e) => e.type === "step" && e.message === "Version révisée retenue.")).toBe(true);
+  });
+
+  it("garde la première version si la révision est cassée", async () => {
+    const { llm } = tasked({ analyze: JSON.stringify(SOC_JOB), write: brief, critique: weak, revise: "pas du json", repair: "toujours pas" });
+    const { events, last } = await runFull(llm);
+    expect(last.type).toBe("done");
+    expect(events.some((e) => e.type === "warn" && e.message.includes("on garde la première"))).toBe(true);
+  });
+
+  it("se passe de la fiche du poste si l'analyse échoue", async () => {
+    const { llm } = tasked({ analyze: "n'importe quoi", write: brief, critique: good });
+    const { events, last } = await runFull(llm);
+    expect(last.type).toBe("done");
+    expect(events.some((e) => e.type === "warn" && /Analyse impossible|incomplète/.test(e.message))).toBe(true);
   });
 });

@@ -6,9 +6,9 @@
  */
 import { z } from "zod";
 
-export const SCHEMA_VERSION = "0.3" as const;
+export const SCHEMA_VERSION = "0.4" as const;
 /** versions encore lues (les jeux déjà publiés restent jouables) */
-export const SUPPORTED_VERSIONS = ["0.2", "0.3"] as const;
+export const SUPPORTED_VERSIONS = ["0.2", "0.3", "0.4"] as const;
 
 /* ---------- briques communes ---------- */
 
@@ -117,6 +117,8 @@ const TriageItem = z.object({
   detail: I18n.optional(),
   correct: z.enum(["accept", "reject"]),
   why: I18n,
+  conceptId: Id.optional(), // notion du métier expliquée à la première apparition
+  twist: z.boolean().default(false), // n'apparaît qu'après le rebondissement du niveau
 });
 
 export const TriageMechanic = z.object({
@@ -133,6 +135,7 @@ const QuizQuestion = z.object({
   options: z.array(I18n).min(2).max(4),
   correctIndex: z.number().int().min(0).max(3),
   explain: I18n,
+  conceptId: Id.optional(),
 });
 
 export const QuizMechanic = z.object({
@@ -176,6 +179,11 @@ const ArcadeItem = z.object({
   kind: z.enum(["good", "bad"]),
   icon: Icon.default("box"),
   weight: z.number().positive().default(1),
+  conceptId: Id.optional(),
+  /** ce qui se passerait dans la vraie vie en cas d'erreur sur cet objet (affiché au joueur) */
+  consequence: I18n.optional(),
+  /** n'apparaît qu'après le rebondissement du niveau */
+  twist: z.boolean().default(false),
 });
 
 /** Attrape-tout (façon Kaboom!) : des objets tombent, on déplace le panier. Métriques : précision, rappel. */
@@ -238,6 +246,72 @@ export const SequenceMechanic = z.object({
   onFail: z.array(Effect).default([]),
 });
 
+/* ---------- mécaniques d'observation (v0.4) ---------- */
+
+/** Inspection (façon Papers, Please) : un règlement, des documents ; on tamponne, et on désigne le champ fautif. */
+export const InspectionMechanic = z.object({
+  type: z.literal("inspection"),
+  document: I18n, // le type de document inspecté (« demande d'accès », « facture fournisseur »)
+  rules: z.array(I18n).min(1).max(6), // le règlement affiché à côté du document
+  cases: z
+    .array(
+      z.object({
+        id: Id,
+        title: I18n,
+        fields: z
+          .array(z.object({ label: I18n, value: z.string().min(1).max(80), faulty: z.boolean().default(false) }))
+          .min(2)
+          .max(8),
+        correct: z.enum(["accept", "reject"]),
+        why: I18n,
+        conceptId: Id.optional(),
+        twist: z.boolean().default(false),
+      }),
+    )
+    .min(3)
+    .max(12),
+  onCorrect: z.array(Effect).default([]),
+  onWrong: z.array(Effect).default([]),
+  onSpotted: z.array(Effect).default([]), // bonus : champ fautif désigné sur un rejet
+  timeLimitSec: z.number().int().min(20).max(300).optional(),
+});
+
+const InvestigationView = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("table"),
+    columns: z.array(z.string().min(1).max(24)).min(2).max(6),
+    rows: z.array(z.array(z.string().max(40))).min(3).max(12),
+  }),
+  z.object({ kind: z.literal("logs"), lines: z.array(z.string().min(1).max(120)).min(3).max(14) }),
+  z.object({
+    kind: z.literal("chart"),
+    unit: z.string().max(12).optional(),
+    labels: z.array(z.string().min(1).max(10)).min(4).max(16),
+    values: z.array(z.number()).min(4).max(16),
+  }),
+]);
+
+/** Enquête (façon Où est Charlie) : une table, des logs ou un graphique ; une anomalie à trouver. */
+export const InvestigationMechanic = z.object({
+  type: z.literal("investigation"),
+  rounds: z
+    .array(
+      z.object({
+        id: Id,
+        prompt: I18n,
+        view: InvestigationView,
+        answer: z.number().int().min(0), // index de la ligne ou du point anormal
+        explain: I18n,
+        conceptId: Id.optional(),
+      }),
+    )
+    .min(1)
+    .max(6),
+  onFound: z.array(Effect).default([]),
+  onWrong: z.array(Effect).default([]),
+  timeLimitSec: z.number().int().min(5).max(90).optional(), // par manche
+});
+
 export const Mechanic = z.discriminatedUnion("type", [
   WheelMechanic,
   SliderMechanic,
@@ -248,6 +322,8 @@ export const Mechanic = z.discriminatedUnion("type", [
   WhackMechanic,
   GaugeMechanic,
   SequenceMechanic,
+  InspectionMechanic,
+  InvestigationMechanic,
 ]);
 export type Mechanic = z.infer<typeof Mechanic>;
 export type MechanicType = Mechanic["type"];
@@ -354,8 +430,26 @@ export const Level = z.object({
   characterId: Id.optional(),
   /** conseil propre à ce niveau, affiché dans la fiche « comment jouer » */
   howTo: I18n.optional(),
+  /** moment de la semaine (« LUNDI 9H00 ») : les niveaux racontent une semaine type */
+  day: I18n.optional(),
+  /** notions du métier apprises dans ce niveau (cartes à collectionner) */
+  teaches: z.array(Id).max(4).default([]),
+  /** rebondissement à mi-niveau : nouvelle règle annoncée, objets « twist » qui arrivent */
+  twist: z.object({ text: I18n }).optional(),
+  /** réaction d'un personnage après la victoire */
+  outro: z.object({ characterId: Id.optional(), text: I18n }).optional(),
 });
 export type Level = z.infer<typeof Level>;
+
+/** Notion du métier, gagnée comme une carte à collectionner. */
+export const Concept = z.object({
+  id: Id,
+  term: I18n, // 28 caractères conseillés
+  definition: I18n, // 160 caractères conseillés, pour un débutant complet
+  example: I18n.optional(),
+  icon: Icon.default("star"),
+});
+export type Concept = z.infer<typeof Concept>;
 
 export const Boss = z.object({
   name: I18n,
@@ -446,6 +540,8 @@ export const Cartridge = z.object({
     }),
     juice: z.number().int().min(0).max(3).default(2),
     targetMinutes: z.number().min(1).max(15),
+    /** grades gagnés avec les étoiles, du débutant au confirmé (vrais titres du métier) */
+    ranks: z.array(I18n).length(4).optional(),
   }),
   titleScreen: TitleScreen,
   state: z.object({ vars: z.array(StateVar).min(1).max(8) }),
@@ -462,6 +558,19 @@ export const Cartridge = z.object({
       }),
     )
     .default([]),
+  /** histoire : scène d'ouverture et conclusion */
+  story: z
+    .object({
+      coldOpen: z.object({
+        time: I18n.optional(), // « LUNDI, 8H57 »
+        characterId: Id.optional(),
+        lines: z.array(I18n).min(1).max(4),
+      }),
+      epilogue: I18n.optional(),
+    })
+    .optional(),
+  /** notions du métier à collectionner */
+  concepts: z.array(Concept).max(14).default([]),
   levels: z.array(Level).min(1).max(12),
   boss: Boss.optional(),
   easterEggs: z

@@ -1,0 +1,9 @@
+Data Analyst Supply Chain (H/F) — CDI — Massy
+Enseigne de distribution alimentaire, 300 magasins.
+Missions :
+- Fiabiliser les données de stocks et de ventes remontées par les magasins
+- Construire et maintenir les tableaux de bord de disponibilité en rayon (Power BI)
+- Écrire des requêtes SQL pour analyser les ruptures et le surstock
+- Recueillir les besoins des équipes approvisionnement et les accompagner dans l'usage des outils
+- Proposer des règles de calcul du stock de sécurité par famille de produits
+Profil : SQL, Power BI, Python apprécié, pédagogie, sens du terrain.

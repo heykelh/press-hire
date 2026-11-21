@@ -98,15 +98,22 @@ export interface GameRow {
   plays: number;
   ends: number;
   last_play_at: string | null;
+  /** par niveau : sessions qui l'ont tenté, sessions qui l'ont réussi */
+  levels: Array<{ level: string; won: number; tries: number }>;
 }
 
 export async function listGames(owner: string): Promise<GameRow[]> {
   await ensureSchema();
   return q<GameRow>(
-    `select slug, status, company, job_title, data->'design'->'title'->>'fr' as title, source_url,
-            created_at, plays, ends, last_play_at
-       from cartridges where owner_id = $1
-      order by created_at desc limit 200`,
+    `select c.slug, c.status, c.company, c.job_title, c.data->'design'->'title'->>'fr' as title, c.source_url,
+            c.created_at, c.plays, c.ends, c.last_play_at,
+            (select coalesce(json_agg(json_build_object('level', s.level, 'won', s.won, 'tries', s.tries) order by s.level), '[]'::json)
+               from (select split_part(e.detail, ':', 1) as level,
+                            count(*) filter (where split_part(e.detail, ':', 2) = '1')::int as won,
+                            count(distinct e.sid)::int as tries
+                       from play_events e where e.slug = c.slug and e.kind = 'level' group by 1) s) as levels
+       from cartridges c where c.owner_id = $1
+      order by c.created_at desc limit 200`,
     [owner],
   );
 }

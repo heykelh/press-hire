@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { chain, EXAMPLE_BRIEF, EXAMPLE_BRIEF_ARCADE, generate, llmsFromEnv, type GenerateEvent, type Llm } from "@press-hire/agent";
+import { chain, EXAMPLE_BRIEF, EXAMPLE_BRIEF_ARCADE, EXAMPLE_JOB, generate, llmsFromEnv, type GenerateEvent, type Llm } from "@press-hire/agent";
 import { saveCartridge } from "@/lib/cartridges";
 import { dbConfigured } from "@/lib/db";
 import { generationsThisMonth, getSession, logGeneration } from "@/lib/session";
@@ -23,12 +23,15 @@ const Input = z.object({
 function mockLlm(company?: string, job?: string): Llm {
   return {
     name: "modèle simulé",
-    async complete() {
-      await new Promise((r) => setTimeout(r, 400));
-      // une fois sur deux l'exemple d'arcade, pour tester les deux familles de mécaniques
-      const b = JSON.parse(JSON.stringify(Math.random() < 0.5 ? EXAMPLE_BRIEF : EXAMPLE_BRIEF_ARCADE));
+    async complete(_system, _user, opts) {
+      await new Promise((r) => setTimeout(r, 300));
+      if (opts?.task === "analyze") return JSON.stringify({ ...EXAMPLE_JOB, ...(company ? { company } : {}), ...(job ? { jobTitle: job } : {}) });
+      if (opts?.task === "critique")
+        return JSON.stringify({ scores: { accuracy: 8, pedagogy: 8, fun: 9, wow: 8 }, levels: [], global: ["Ajouter un exemple de MFA."] });
+      const b = JSON.parse(JSON.stringify(EXAMPLE_BRIEF_ARCADE));
       if (company) b.target.company.name = company;
       if (job) b.target.job.title = job;
+      void EXAMPLE_BRIEF;
       return JSON.stringify(b);
     },
   };
@@ -67,6 +70,7 @@ export async function POST(req: Request) {
               slug: e.slug,
               title: e.cartridge.design.title.fr,
               mechanics: e.cartridge.levels.map((l) => l.mechanic.type),
+              scores: e.scores,
               warnings: e.issues.filter((i) => i.severity === "warning").map((i) => i.message),
               attempts: e.attempts,
             });

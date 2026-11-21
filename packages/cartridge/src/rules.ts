@@ -134,6 +134,15 @@ export function playBest(c: Cartridge, m: Mechanic, win: Condition[], start: Gam
     case "sequence":
       for (let i = 0; i < m.rounds; i++) applyEffects(c, s, m.onSuccess);
       break;
+    case "inspection":
+      for (const k of m.cases) {
+        applyEffects(c, s, m.onCorrect);
+        if (k.correct === "reject") applyEffects(c, s, m.onSpotted);
+      }
+      break;
+    case "investigation":
+      for (let i = 0; i < m.rounds.length; i++) applyEffects(c, s, m.onFound);
+      break;
     case "slider": {
       for (let x = m.control.min; x <= m.control.max + 1e-9; x += m.control.step) {
         const t = { ...start };

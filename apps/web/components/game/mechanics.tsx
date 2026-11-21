@@ -6,6 +6,7 @@ import { evalCurve } from "@press-hire/cartridge";
 import { brakeDistance, easeOutCubic, pickWeighted, sliceAt, slices, targetRotation } from "@press-hire/engine";
 import { BossSprite, deltaText, Portrait, type Ctx } from "./ui";
 import { CatchPlay, GaugeMeter, GaugePlay, SequencePlay, WhackPlay } from "./arcade";
+import { InspectionPlay, InvestigationPlay } from "./observe";
 
 type M = Level["mechanic"];
 type Wheel = Extract<M, { type: "wheel" }>;
@@ -47,9 +48,11 @@ export function Mechanic({ ctx, m, character, paused = false, onDone }: { ctx: C
     case "whack": return <WhackPlay ctx={ctx} m={m} paused={paused} onDone={onDone} />;
     case "gauge": return <GaugePlay ctx={ctx} m={m} paused={paused} onDone={onDone} />;
     case "sequence": return <SequencePlay ctx={ctx} m={m} paused={paused} onDone={onDone} />;
+    case "inspection": return <InspectionPlay ctx={ctx} m={m} paused={paused} onDone={onDone} />;
+    case "investigation": return <InvestigationPlay ctx={ctx} m={m} paused={paused} onDone={onDone} />;
     case "wheel": return <WheelPlay ctx={ctx} m={m} onDone={onDone} />;
     case "slider": return <SliderPlay ctx={ctx} m={m} onDone={onDone} />;
-    case "triage": return <TriagePlay ctx={ctx} m={m} onDone={onDone} />;
+    case "triage": return <TriagePlay ctx={ctx} m={m} paused={paused} onDone={onDone} />;
     case "quiz": return <QuizPlay ctx={ctx} m={m} onDone={onDone} />;
     case "dialogue": return <DialoguePlay ctx={ctx} m={m} character={character} onDone={onDone} />;
   }
@@ -179,7 +182,7 @@ export function SpinningWheel({ ctx, m, disabled, onResult }: { ctx: Ctx; m: Whe
       const s = S.current;
       const prev = s.rot;
       const md = modeRef.current;
-      if (md === "free") s.rot += dt * 3.6;
+      if (md === "free") s.rot += dt * 3.6 * (1 - 0.2 * (ctx.assist ?? 0));
       else if (md === "spin" || md === "brake") {
         const k = Math.min(1, (now - s.t0) / s.dur);
         s.rot = s.from + (s.to - s.from) * (md === "spin" ? 1 - Math.pow(1 - k, 4) : easeOutCubic(k));
@@ -240,14 +243,20 @@ export function SpinningWheel({ ctx, m, disabled, onResult }: { ctx: Ctx; m: Whe
 function WheelPlay({ ctx, m, onDone }: { ctx: Ctx; m: Wheel; onDone: () => void }) {
   const [left, setLeft] = useState(m.spins);
   const [last, setLast] = useState<number | null>(null);
+  const goodSpins = useRef(0);
   const toward = (effects: Effect[]) => effects.reduce((t, e) => t + (e.op === "add" ? e.value : 0), 0);
   const onResult = (i: number) => {
     const seg = m.segments[i]!;
     setLast(i);
-    play(ctx, seg.effects, toward(seg.effects) >= 0);
+    const good = toward(seg.effects) >= 0;
+    play(ctx, seg.effects, good);
+    if (good) goodSpins.current++;
     const n = left - 1;
     setLeft(n);
-    if (n <= 0) setTimeout(onDone, 1300);
+    if (n <= 0) {
+      ctx.report?.([{ label: L(ctx, "Lancers favorables", "Good spins"), value: `${goodSpins.current}/${m.spins}` }]);
+      setTimeout(onDone, 1300);
+    }
   };
   const seg = last !== null ? m.segments[last] : undefined;
   return (
@@ -293,7 +302,10 @@ function SliderPlay({ ctx, m, onDone }: { ctx: Ctx; m: Slider; onDone: () => voi
     setLog((l) => [`#${round} ${fmt(x)}${ctl.unit ?? ""} → ${lines.map((z) => z.text).join(" · ") || "="}`, ...l].slice(0, 4));
     setTimeout(() => {
       setBusy(false);
-      if (round >= m.rounds) onDone(); else setRound(round + 1);
+      if (round >= m.rounds) {
+        ctx.report?.([{ label: L(ctx, "Réglage retenu", "Final setting"), value: `${fmt(x)}${ctl.unit ?? ""}` }]);
+        onDone();
+      } else setRound(round + 1);
     }, 700);
   };
   const nudge = (d: number) => setX((v) => Math.min(ctl.max, Math.max(ctl.min, +(v + d * ctl.step).toFixed(6))));
@@ -325,23 +337,35 @@ function SliderPlay({ ctx, m, onDone }: { ctx: Ctx; m: Slider; onDone: () => voi
 
 /* ======================= TRI ======================= */
 
-function TriagePlay({ ctx, m, onDone }: { ctx: Ctx; m: Triage; onDone: () => void }) {
-  const items = useRef([...m.items].sort(() => ctx.rand() - 0.5)).current;
+function TriagePlay({ ctx, m, paused, onDone }: { ctx: Ctx; m: Triage; paused: boolean; onDone: () => void }) {
+  // cartes ordinaires mélangées d'abord, rebondissement (« twist ») à la fin
+  const items = useRef([
+    ...m.items.filter((x) => !x.twist).sort(() => ctx.rand() - 0.5),
+    ...m.items.filter((x) => x.twist).sort(() => ctx.rand() - 0.5),
+  ]).current;
   const [i, setI] = useState(0);
   const [feedback, setFeedback] = useState<{ ok: boolean; why: string } | null>(null);
   const [score, setScore] = useState(0);
-  const [time, setTime] = useState(m.timeLimitSec ?? 0);
+  const limit = m.timeLimitSec ? Math.round(m.timeLimitSec * (1 + 0.5 * (ctx.assist ?? 0))) : 0;
+  const [time, setTime] = useState(limit);
   const done = useRef(false);
+  const scoreRef = useRef(0);
 
-  const finish = () => { if (!done.current) { done.current = true; setTimeout(onDone, 400); } };
+  const finish = () => {
+    if (done.current) return;
+    done.current = true;
+    ctx.report?.([{ label: L(ctx, "Bonnes décisions", "Right calls"), value: `${scoreRef.current}/${items.length}` }]);
+    setTimeout(onDone, 400);
+  };
+  useEffect(() => { if (items[i]?.twist) ctx.twist?.(); }, [i, items, ctx]);
 
   useEffect(() => {
-    if (!m.timeLimitSec) return;
+    if (!limit || paused) return;
     const id = setInterval(() => setTime((t) => t - 1), 1000);
     return () => clearInterval(id);
-  }, [m.timeLimitSec]);
+  }, [limit, paused]);
   useEffect(() => {
-    if (!m.timeLimitSec || time > 0 || done.current) return;
+    if (!limit || time > 0 || done.current) return;
     // temps écoulé : chaque carte restante compte comme une erreur
     const rest = items.length - i;
     for (let k = 0; k < rest; k++) ctx.apply(m.onWrong);
@@ -355,8 +379,10 @@ function TriagePlay({ ctx, m, onDone }: { ctx: Ctx; m: Triage; onDone: () => voi
     if (feedback || done.current) return;
     const it = items[i]!;
     const ok = it.correct === choice;
-    if (ok) setScore((s) => s + 1);
+    if (ok) { setScore((s) => s + 1); scoreRef.current++; }
     play(ctx, ok ? m.onCorrect : m.onWrong, ok);
+    ctx.combo?.(ok);
+    ctx.learn?.(it.conceptId);
     setFeedback({ ok, why: ctx.t(it.why) });
   };
   const next = () => {
@@ -375,7 +401,7 @@ function TriagePlay({ ctx, m, onDone }: { ctx: Ctx; m: Triage; onDone: () => voi
       <div className="g-triage-meta">
         <span className="g-chip">{i + 1} / {items.length}</span>
         <span className="g-chip">✓ {score}</span>
-        {m.timeLimitSec ? <span className={`g-chip${time <= 5 ? " hot" : ""}`}>⏱ {Math.max(0, time)}s</span> : null}
+        {limit ? <span className={`g-chip${time <= 5 ? " hot" : ""}`}>⏱ {Math.max(0, time)}s</span> : null}
       </div>
       <div key={it.id} className={`g-card${feedback ? (feedback.ok ? " ok" : " ko") : ""}`}>
         <p className="g-card-label">{ctx.t(it.label)}</p>
@@ -400,15 +426,23 @@ function QuizPlay({ ctx, m, onDone }: { ctx: Ctx; m: Quiz; onDone: () => void })
   const [q, setQ] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
   const cur = m.questions[q]!;
+  const right = useRef(0);
   const choose = (k: number) => {
     if (picked !== null) return;
     setPicked(k);
-    play(ctx, k === cur.correctIndex ? m.onCorrect : m.onWrong, k === cur.correctIndex);
+    const ok = k === cur.correctIndex;
+    if (ok) right.current++;
+    play(ctx, ok ? m.onCorrect : m.onWrong, ok);
+    ctx.combo?.(ok);
+    ctx.learn?.(cur.conceptId);
   };
   const next = () => {
     if (picked === null) return;
     setPicked(null);
-    if (q + 1 >= m.questions.length) onDone(); else setQ(q + 1);
+    if (q + 1 >= m.questions.length) {
+      ctx.report?.([{ label: L(ctx, "Bonnes réponses", "Right answers"), value: `${right.current}/${m.questions.length}` }]);
+      onDone();
+    } else setQ(q + 1);
   };
   useKeys(picked === null
     ? Object.fromEntries(cur.options.map((_, k) => [String(k + 1), () => choose(k)]))
@@ -444,6 +478,7 @@ function QuizCard({ ctx, q, picked, onPick, counter }: { ctx: Ctx; q: Quiz["ques
 /* ======================= DIALOGUE ======================= */
 
 function DialoguePlay({ ctx, m, character, onDone }: { ctx: Ctx; m: Dialogue; character?: Character; onDone: () => void }) {
+  const convinced = useRef(0);
   const [n, setN] = useState(0);
   const [choice, setChoice] = useState<number | null>(null);
   const node = m.nodes[n]!;
@@ -455,12 +490,18 @@ function DialoguePlay({ ctx, m, character, onDone }: { ctx: Ctx; m: Dialogue; ch
     setChoice(k);
     const ch = node.choices[k]!;
     const sum = ch.effects.reduce((t, e) => t + (e.op === "add" ? e.value : 0), 0);
+    const best = Math.max(...node.choices.map((x) => x.effects.reduce((t, e) => t + (e.op === "add" ? e.value : 0), 0)));
+    if (sum >= best) convinced.current++;
+    ctx.combo?.(sum >= best);
     play(ctx, ch.effects, sum >= 0);
   };
   const next = () => {
     if (choice === null) return;
     setChoice(null);
-    if (n + 1 >= m.nodes.length) onDone(); else setN(n + 1);
+    if (n + 1 >= m.nodes.length) {
+      ctx.report?.([{ label: L(ctx, "Réponses convaincantes", "Convincing replies"), value: `${convinced.current}/${m.nodes.length}` }]);
+      onDone();
+    } else setN(n + 1);
   };
   useKeys(choice === null
     ? Object.fromEntries(node.choices.map((_, k) => [String(k + 1), () => choose(k)]))

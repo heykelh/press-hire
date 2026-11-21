@@ -7,7 +7,7 @@ import type { Ctx } from "./ui";
 
 const ICON_OF: Record<string, string> = {
   wheel: "star", slider: "chart", triage: "file", quiz: "key", dialogue: "heart",
-  catch: "box", whack: "warning", gauge: "bolt", sequence: "clock",
+  catch: "box", whack: "warning", gauge: "bolt", sequence: "clock", inspection: "shield", investigation: "chart",
 };
 
 /** « Disponibilité ≥ 96 », « Score +15 pendant ce niveau ». */
@@ -56,6 +56,8 @@ export function TutorialOverlay({ ctx, levels, onClose }: { ctx: Ctx; levels: Le
           <li>{fr ? "En haut de l'écran, la barre d'objectif : remplis-la jusqu'au repère pour réussir le niveau." : "At the top, the goal bar: fill it up to the marker to clear the level."}</li>
           <li>{fr ? "Raté ? Tu recommences le niveau. Un indice arrive après quelques essais." : "Missed? Replay the level. A hint shows up after a few tries."}</li>
           <li>{fr ? "Souris, doigt ou clavier : Entrée et espace valident, les chiffres choisissent, les flèches déplacent." : "Mouse, finger or keyboard: Enter and space confirm, numbers pick, arrows move."}</li>
+          <li>{fr ? "Jusqu'à 3 étoiles par niveau : réussi, du premier coup, et largement au-dessus de l'objectif. Les étoiles font monter ton grade." : "Up to 3 stars per level: cleared, first try, and well above the goal. Stars raise your rank."}</li>
+          <li>{fr ? "Les notions du métier deviennent des cartes à collectionner. Les erreurs te montrent ce qui se passerait dans la vraie vie." : "Job concepts become collectible cards. Mistakes show what would happen in real life."}</li>
           <li>{fr ? "Le bouton ? en haut rouvre la fiche du niveau à tout moment (le jeu se met en pause)." : "The ? button at the top reopens the level card anytime (the game pauses)."}</li>
         </ol>
         <h3 className="g-h3">{fr ? "AU PROGRAMME" : "ON THE MENU"}</h3>

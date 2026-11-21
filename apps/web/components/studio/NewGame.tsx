@@ -57,6 +57,7 @@ export default function NewGame() {
             for (const i of ev.issues ?? []) push({ kind: "f", text: `   [${i.rule}] ${i.path} : ${i.message}` });
           } else if (ev.type === "done") {
             push({ kind: "d", text: `★ « ${ev.title} » est prêt (brouillon) : ${(ev.mechanics ?? []).join(", ")}. ${ev.attempts > 1 ? `${ev.attempts} passes.` : ""}` });
+            if (ev.scores) push({ kind: "d", text: `  Notes des relecteurs : justesse ${ev.scores.accuracy}/10 · pédagogie ${ev.scores.pedagogy}/10 · plaisir ${ev.scores.fun}/10 · waouh ${ev.scores.wow}/10` });
             for (const w of ev.warnings ?? []) push({ kind: "w", text: `! ${w}` });
             setDone(ev);
             router.refresh();
@@ -112,7 +113,7 @@ export default function NewGame() {
         </label>
         <div className="full st-row">
           <button className="st-btn go" disabled={busy}>{busy ? "GÉNÉRATION…" : "GÉNÉRER LE JEU ▶"}</button>
-          <span className="st-hint">30 s à 2 min. Le jeu est créé en brouillon : tu le testes avant de publier.</span>
+          <span className="st-hint">1 à 4 min : analyse du poste, plan, écriture, relecture par trois personnages, révision. Le jeu est créé en brouillon.</span>
         </div>
       </form>
 

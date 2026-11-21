@@ -29,6 +29,27 @@ function deck(items: Array<{ weight: number }>, total: number, rand: () => numbe
   return out;
 }
 
+/**
+ * Paquet en 4 temps : DÉCOUVRIR (deux bons objets d'abord), PRATIQUER, REBONDISSEMENT (les objets « twist »
+ * n'arrivent qu'en seconde moitié), MAÎTRISER (le rythme accélère, géré à l'affichage).
+ * L'aide adaptative retire une partie des pièges, jamais des bons objets (la difficulté vérifiée reste valable).
+ */
+function phasedDeck(items: Array<{ weight: number; kind: string; twist?: boolean }>, total: number, rand: () => number, assist = 0): number[] {
+  let order = deck(items, total, rand);
+  if (assist > 0) {
+    let drop = Math.round(order.filter((i) => items[i]!.kind === "bad").length * 0.25 * assist);
+    order = order.filter((i) => !(items[i]!.kind === "bad" && drop-- > 0));
+  }
+  const base = order.filter((i) => !items[i]!.twist);
+  const tw = order.filter((i) => items[i]!.twist);
+  for (let k = 0, placed = 0; k < base.length && placed < 2; k++) {
+    if (items[base[k]!]!.kind === "good") { const [g] = base.splice(k, 1); base.splice(placed, 0, g!); placed++; }
+  }
+  const half = Math.floor((base.length + tw.length) / 2);
+  for (const t of tw) base.splice(Math.min(base.length, half + Math.floor(rand() * (base.length - half + 1))), 0, t);
+  return base;
+}
+
 /** Applique des effets sans bulle flottante (trop d'événements en arcade). */
 const quiet = (ctx: Ctx, effects: Effect[]) => { if (effects.length) ctx.apply(effects); };
 
@@ -82,8 +103,10 @@ export function CatchPlay({ ctx, m, paused, onDone }: { ctx: Ctx; m: Catch; paus
     const g = cv.getContext("2d")!;
     const p = new Painter(g, CW, CH);
     const pal = ctx.c.design.palette;
-    const order = deck(m.items, arcadeTotal(m.durationSec, m.perSec), ctx.rand);
+    const assist = ctx.assist ?? 0;
+    const order = phasedDeck(m.items, arcadeTotal(m.durationSec, m.perSec), ctx.rand, assist);
     const gap = 1 / m.perSec;
+    const seenConcept = new Set<string>();
     const st = { t: 0, next: 0.2, spawned: 0, x: CW / 2, target: CW / 2, left: false, right: false, good: 0, bad: 0, miss: 0, flash: 0, flashGood: true, ended: false };
     const falling: Array<{ i: number; x: number; y: number; vy: number; wob: number }> = [];
     const floats: Array<{ x: number; y: number; t: number; s: string; good: boolean }> = [];
@@ -114,9 +137,16 @@ export function CatchPlay({ ctx, m, paused, onDone }: { ctx: Ctx; m: Catch; paus
       st.x = Math.max(BUCKET / 2, Math.min(CW - BUCKET / 2, st.x));
       // apparitions
       if (st.spawned < order.length && st.t >= st.next) {
-        falling.push({ i: order[st.spawned]!, x: 14 + ctx.rand() * (CW - 28), y: -12, vy: 34 + 26 * (st.spawned / order.length), wob: ctx.rand() * 6 });
+        const idx = order[st.spawned]!;
+        const it0 = m.items[idx]!;
+        const prog = st.spawned / order.length;
+        // découvrir : lent ; maîtriser : rapide ; aide : plus lent
+        const pace = (st.spawned < 3 ? 0.7 : prog > 0.75 ? 1.2 : 1) * (1 - 0.15 * assist);
+        falling.push({ i: idx, x: 14 + ctx.rand() * (CW - 28), y: -12, vy: (30 + 24 * prog) * pace, wob: ctx.rand() * 6 });
+        if (it0.twist || prog >= 0.5) ctx.twist?.();
+        if (it0.conceptId && !seenConcept.has(it0.conceptId)) { seenConcept.add(it0.conceptId); ctx.learn?.(it0.conceptId); }
         st.spawned++;
-        st.next += gap * (0.75 + ctx.rand() * 0.5);
+        st.next += gap * (st.spawned <= 3 ? 1.3 : 0.75 + ctx.rand() * 0.5);
       }
       const by = CH - 16;
       for (let k = falling.length - 1; k >= 0; k--) {
@@ -126,16 +156,22 @@ export function CatchPlay({ ctx, m, paused, onDone }: { ctx: Ctx; m: Catch; paus
         const inX = Math.abs(f.x - st.x) <= BUCKET / 2 + 3;
         if (f.y + 5 >= by && f.y + 5 <= by + 8 && inX) {
           falling.splice(k, 1);
-          if (it.kind === "good") { st.good++; quiet(ctx, m.onGood); ctx.chip.sfx("coin"); floats.push({ x: f.x, y: by - 8, t: 0, s: "+", good: true }); }
-          else { st.bad++; quiet(ctx, m.onBad); ctx.chip.sfx("bad"); ctx.fx.shake(); st.flash = 0.25; st.flashGood = false; floats.push({ x: f.x, y: by - 8, t: 0, s: "!", good: false }); }
+          if (it.kind === "good") { st.good++; quiet(ctx, m.onGood); ctx.chip.sfx("coin"); ctx.combo?.(true); floats.push({ x: f.x, y: by - 8, t: 0, s: "+", good: true }); }
+          else { st.bad++; quiet(ctx, m.onBad); ctx.chip.sfx("bad"); ctx.fx.shake(); ctx.combo?.(false); ctx.oops?.(it.consequence && ctx.t(it.consequence)); st.flash = 0.25; st.flashGood = false; floats.push({ x: f.x, y: by - 8, t: 0, s: "!", good: false }); }
           setStats({ good: st.good, bad: st.bad, miss: st.miss, left: Math.max(0, Math.ceil(order.length * gap - st.t)) });
         } else if (f.y > CH + 6) {
           falling.splice(k, 1);
-          if (it.kind === "good") { st.miss++; quiet(ctx, m.onMiss); ctx.chip.blip(180, 0.06); setStats({ good: st.good, bad: st.bad, miss: st.miss, left: Math.max(0, Math.ceil(order.length * gap - st.t)) }); }
+          if (it.kind === "good") { st.miss++; quiet(ctx, m.onMiss); ctx.chip.blip(180, 0.06); ctx.combo?.(false); ctx.oops?.(it.consequence && ctx.t(it.consequence)); setStats({ good: st.good, bad: st.bad, miss: st.miss, left: Math.max(0, Math.ceil(order.length * gap - st.t)) }); }
         }
       }
       if (st.spawned >= order.length && falling.length === 0 && !st.ended) {
         st.ended = true;
+        const caught = st.good + st.bad;
+        ctx.report?.([
+          { label: L(ctx, "Précision", "Precision"), value: pct(st.good, caught) },
+          { label: L(ctx, "Rappel", "Recall"), value: pct(st.good, st.good + st.miss) },
+          { label: L(ctx, "Pièges attrapés", "Traps caught"), value: String(st.bad) },
+        ]);
         setTimeout(onDone, 700);
       }
 
@@ -204,7 +240,7 @@ export function CatchPlay({ ctx, m, paused, onDone }: { ctx: Ctx; m: Catch; paus
 
 /* ============================ TAPE-ALERTE ============================ */
 
-type Hole = { item: number; upAt: number; state: "up" | "hit" | "wrong" | "gone" } | null;
+type Hole = { item: number; upAt: number; state: "up" | "hit" | "wrong" | "gone"; life?: number } | null;
 
 export function WhackPlay({ ctx, m, paused, onDone }: { ctx: Ctx; m: Whack; paused: boolean; onDone: () => void }) {
   const count = useCountdown(ctx, paused);
@@ -219,7 +255,10 @@ export function WhackPlay({ ctx, m, paused, onDone }: { ctx: Ctx; m: Whack; paus
   useEffect(() => {
     if (!live) return;
     const s = S.current;
-    s.order = deck(m.targets, arcadeTotal(m.durationSec, m.perSec), ctx.rand);
+    const assist = ctx.assist ?? 0;
+    s.order = phasedDeck(m.targets, arcadeTotal(m.durationSec, m.perSec), ctx.rand, assist);
+    const seenConcept = new Set<string>();
+    const upFor = (n: number) => m.upMs * (1 + 0.25 * assist) * (n < 3 ? 1.4 : n / s.order.length > 0.75 ? 0.85 : 1);
     let raf = 0, last = performance.now();
     const push = () => {
       setHoles([...s.holes]);
@@ -236,18 +275,23 @@ export function WhackPlay({ ctx, m, paused, onDone }: { ctx: Ctx; m: Whack; paus
       s.holes.forEach((h, i) => {
         if (!h) return;
         const age = (s.t - h.upAt) * 1000;
-        if (h.state === "up" && age > m.upMs) {
-          if (m.targets[h.item]!.kind === "good") { s.miss++; quiet(ctx, m.onMiss); ctx.chip.blip(200, 0.06); }
+        if (h.state === "up" && age > (h.life ?? m.upMs)) {
+          const it = m.targets[h.item]!;
+          if (it.kind === "good") { s.miss++; quiet(ctx, m.onMiss); ctx.chip.blip(200, 0.06); ctx.combo?.(false); ctx.oops?.(it.consequence && ctx.t(it.consequence)); }
           s.holes[i] = { ...h, state: "gone" };
           changed = true;
-        } else if (h.state !== "up" && age > m.upMs + 300) { s.holes[i] = null; changed = true; }
+        } else if (h.state !== "up" && age > (h.life ?? m.upMs) + 300) { s.holes[i] = null; changed = true; }
       });
       // apparitions
       if (s.spawned < s.order.length && s.t >= s.next) {
         const free = s.holes.map((h, i) => (h ? -1 : i)).filter((i) => i >= 0);
         if (free.length) {
           const i = free[Math.floor(ctx.rand() * free.length)]!;
-          s.holes[i] = { item: s.order[s.spawned]!, upAt: s.t, state: "up" };
+          const idx = s.order[s.spawned]!;
+          const it0 = m.targets[idx]!;
+          s.holes[i] = { item: idx, upAt: s.t, state: "up", life: upFor(s.spawned) };
+          if (it0.twist || s.spawned / s.order.length >= 0.5) ctx.twist?.();
+          if (it0.conceptId && !seenConcept.has(it0.conceptId)) { seenConcept.add(it0.conceptId); ctx.learn?.(it0.conceptId); }
           s.spawned++;
           s.next = s.t + gap * (0.7 + ctx.rand() * 0.6);
           ctx.chip.blip(520, 0.03);
@@ -256,6 +300,11 @@ export function WhackPlay({ ctx, m, paused, onDone }: { ctx: Ctx; m: Whack; paus
       }
       if (s.spawned >= s.order.length && s.holes.every((h) => !h || h.state !== "up") && !s.ended) {
         s.ended = true;
+        ctx.report?.([
+          { label: "SLA", value: pct(s.hit, s.hit + s.miss) },
+          { label: "MTTR", value: s.hit ? `${(s.react / 1000).toFixed(2)} s` : "—" },
+          { label: L(ctx, "Fausses alertes frappées", "Wrong hits"), value: String(s.wrong) },
+        ]);
         setTimeout(onDone, 800);
       }
       if (changed || Math.floor(s.t * 4) !== Math.floor((s.t - dt) * 4)) push();
@@ -276,12 +325,15 @@ export function WhackPlay({ ctx, m, paused, onDone }: { ctx: Ctx; m: Whack; paus
       s.hit++;
       quiet(ctx, m.onHit);
       ctx.chip.sfx("hit");
+      ctx.combo?.(true);
       s.holes[i] = { ...h, state: "hit" };
     } else {
       s.wrong++;
       quiet(ctx, m.onWrong);
       ctx.chip.sfx("bad");
       ctx.fx.shake();
+      ctx.combo?.(false);
+      ctx.oops?.(it.consequence && ctx.t(it.consequence));
       s.holes[i] = { ...h, state: "wrong" };
     }
     setHoles([...s.holes]);
@@ -336,7 +388,9 @@ export function WhackPlay({ ctx, m, paused, onDone }: { ctx: Ctx; m: Whack; paus
 /* ============================ JAUGE ============================ */
 
 /** Jauge réutilisable (niveau ou boss) : renvoie l'index de la zone, ou -1 hors zone. */
-export function GaugeMeter({ ctx, m, disabled, paused, onResult }: { ctx: Ctx; m: Gauge; disabled?: boolean; paused?: boolean; onResult: (zone: number, pos: number) => void }) {
+export function GaugeMeter({ ctx, m, disabled, paused, speedMul = 1, onResult }: { ctx: Ctx; m: Gauge; disabled?: boolean; paused?: boolean; speedMul?: number; onResult: (zone: number, pos: number) => void }) {
+  const mulRef = useRef(speedMul);
+  mulRef.current = speedMul * (1 - 0.2 * (ctx.assist ?? 0));
   const needle = useRef<HTMLDivElement>(null);
   const S = useRef({ t: ctx.rand(), pos: 0, stopped: false, lastTick: -1 });
   const pausedRef = useRef(paused);
@@ -351,7 +405,7 @@ export function GaugeMeter({ ctx, m, disabled, paused, onResult }: { ctx: Ctx; m
       last = now;
       const s = S.current;
       if (s.stopped || pausedRef.current || disabled) return;
-      s.t += dt * m.speed;
+      s.t += dt * m.speed * mulRef.current;
       const ph = s.t % 1;
       s.pos = (ph < 0.5 ? ph * 2 : 2 - ph * 2) * 100;
       const tick = Math.floor(s.pos / 10);
@@ -403,23 +457,35 @@ export function GaugePlay({ ctx, m, paused, onDone }: { ctx: Ctx; m: Gauge; paus
   const [round, setRound] = useState(1);
   const [log, setLog] = useState<string[]>([]);
   const done = useRef(false);
+  const bestId = useRef([...m.zones].sort((a, b) => b.effects.reduce((t, e) => t + (e.op === "add" ? e.value : 0), 0) - a.effects.reduce((t, e) => t + (e.op === "add" ? e.value : 0), 0))[0]!.id).current;
+  const bestHits = useRef(0);
+  // rebondissement : seconde moitié des manches plus rapide
+  const late = m.rounds > 1 && round > Math.ceil(m.rounds / 2);
+  useEffect(() => { if (late) ctx.twist?.(); }, [late, ctx]);
   const onResult = (zi: number) => {
     const z = m.zones[zi];
     const sum = z ? z.effects.reduce((t, e) => t + (e.op === "add" ? e.value : 0), 0) : -1;
     if (z) ctx.apply(z.effects);
+    if (z?.id === bestId) bestHits.current++;
+    ctx.combo?.(sum > 0);
     ctx.chip.sfx(sum > 0 ? "good" : "bad");
     if (sum > 0) ctx.fx.pop(ctx.t(z!.label), true); else ctx.fx.shake();
     setLog((l) => [`#${round} ${z ? ctx.t(z.label) : L(ctx, "hors zone", "off")}`, ...l].slice(0, 5));
     setTimeout(() => {
-      if (round >= m.rounds) { if (!done.current) { done.current = true; onDone(); } }
-      else setRound(round + 1);
+      if (round >= m.rounds) {
+        if (!done.current) {
+          done.current = true;
+          ctx.report?.([{ label: L(ctx, "Zone idéale atteinte", "Sweet spot hits"), value: `${bestHits.current}/${m.rounds}` }]);
+          onDone();
+        }
+      } else setRound(round + 1);
     }, 1150);
   };
   return (
     <div className="g-mech g-mech-gauge">
       <p className="g-rule">{ctx.t(m.label)}</p>
       <span className="g-chip">{L(ctx, "Manche", "Round")} {round} / {m.rounds}</span>
-      <GaugeMeter ctx={ctx} m={m} paused={paused} disabled={done.current} onResult={onResult} />
+      <GaugeMeter ctx={ctx} m={m} paused={paused} disabled={done.current} speedMul={late ? 1.3 : 1} onResult={onResult} />
       {log.length > 0 && <ul className="g-log">{log.map((l, i) => <li key={i}>{l}</li>)}</ul>}
     </div>
   );
@@ -435,11 +501,13 @@ export function SequencePlay({ ctx, m, paused, onDone }: { ctx: Ctx; m: Sequence
   const [score, setScore] = useState(0);
   const seq = useRef<number[]>([]);
   const done = useRef(false);
+  const okCount = useRef(0);
 
   // nouvelle manche : séquence de 3 + manche notes, sans triple répétition
   useEffect(() => {
     if (paused) return;
-    const len = 3 + round;
+    const len = Math.max(2, 3 + round - ((ctx.assist ?? 0) >= 2 ? 1 : 0));
+    const speed = m.speedMs * (1 + 0.3 * (ctx.assist ?? 0));
     const s: number[] = [];
     while (s.length < len) {
       const n = Math.floor(ctx.rand() * m.pads.length);
@@ -452,10 +520,10 @@ export function SequencePlay({ ctx, m, paused, onDone }: { ctx: Ctx; m: Sequence
     const timers: ReturnType<typeof setTimeout>[] = [];
     timers.push(setTimeout(() => setPhase("show"), 700));
     s.forEach((n, i) => {
-      timers.push(setTimeout(() => { setLit(n); ctx.chip.pad(n, m.speedMs / 1000 * 0.8); }, 700 + i * m.speedMs));
-      timers.push(setTimeout(() => setLit(null), 700 + i * m.speedMs + m.speedMs * 0.7));
+      timers.push(setTimeout(() => { setLit(n); ctx.chip.pad(n, speed / 1000 * 0.8); }, 700 + i * speed));
+      timers.push(setTimeout(() => setLit(null), 700 + i * speed + speed * 0.7));
     });
-    timers.push(setTimeout(() => setPhase("input"), 700 + s.length * m.speedMs));
+    timers.push(setTimeout(() => setPhase("input"), 700 + s.length * speed));
     return () => timers.forEach(clearTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round]);
@@ -463,10 +531,17 @@ export function SequencePlay({ ctx, m, paused, onDone }: { ctx: Ctx; m: Sequence
   const finishRound = (ok: boolean) => {
     if (ok) { setScore((x) => x + 1); ctx.apply(m.onSuccess); ctx.chip.sfx("good"); ctx.fx.pop("✓", true); }
     else { ctx.apply(m.onFail); ctx.chip.sfx("bad"); ctx.fx.shake(); }
+    ctx.combo?.(ok);
+    if (ok) okCount.current++;
     setPhase(ok ? "ok" : "ko");
     setTimeout(() => {
-      if (round + 1 >= m.rounds) { if (!done.current) { done.current = true; onDone(); } }
-      else setRound(round + 1);
+      if (round + 1 >= m.rounds) {
+        if (!done.current) {
+          done.current = true;
+          ctx.report?.([{ label: L(ctx, "Séquences parfaites", "Perfect sequences"), value: `${okCount.current}/${m.rounds}` }]);
+          onDone();
+        }
+      } else setRound(round + 1);
     }, 1100);
   };
 

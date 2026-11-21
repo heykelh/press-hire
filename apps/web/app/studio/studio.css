@@ -70,3 +70,6 @@
 .st-usage { margin: 0 0 0 auto; font-size: 14px; color: var(--mut); }
 .st-usage b { color: var(--ink); font-weight: 400; font-family: "Press Start 2P", monospace; font-size: 9px; }
 .st { padding-top: 12px; }
+.st-levels { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.st-levels span { font-family: "Press Start 2P", monospace; font-size: 7px; padding: 3px 5px; background: #1d1f44; border: 1px solid var(--line); }
+.st-levels span.hard { background: #4a1020; border-color: #ff6a6a; }

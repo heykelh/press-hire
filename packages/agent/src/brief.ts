@@ -146,6 +146,30 @@ export function repairBrief(raw: unknown): unknown {
   return b;
 }
 
+/* ---------------- plan imposé ---------------- */
+
+/**
+ * Applique la fiche du poste et le plan au brief : exigences fixées (le modèle ne garde que la traduction),
+ * jours de la semaine repris du plan s'ils manquent.
+ */
+export function applyPlan(brief: Obj, requirements: Array<{ id: string; label: { fr: string; en: string } }> | undefined, days: Array<{ fr: string; en: string }> | undefined): Obj {
+  if (requirements?.length) {
+    const analysis = (isObj(brief.analysis) ? brief.analysis : {}) as Obj;
+    const theirs = (Array.isArray(analysis.requirements) ? analysis.requirements : []) as Obj[];
+    analysis.requirements = requirements.map((r) => {
+      const t = theirs.find((x) => x.id === r.id);
+      const en = isObj(t?.label) && typeof (t!.label as Obj).en === "string" ? String((t!.label as Obj).en) : r.label.en;
+      return { ...r, label: { fr: r.label.fr, en } };
+    });
+    brief.analysis = analysis;
+  }
+  if (days?.length && Array.isArray(brief.levels)) {
+    const ordered = [...(brief.levels as Obj[])].sort((a, b) => Number(a.order) - Number(b.order));
+    ordered.forEach((l, i) => { if (!isObj(l.day) && days[i]) l.day = days[i]; });
+  }
+  return brief;
+}
+
 /* ---------------- assemblage ---------------- */
 
 export function assemble(brief: Obj, ctx: AssembleCtx): CartridgeInput {
@@ -208,6 +232,10 @@ function bestDelta(c: Cartridge, l: Level, varId: string, start: GameState, dir:
       const best = [...m.zones].sort((a, b) => gain(b.effects) - gain(a.effects))[0]!;
       return run((s) => { for (let i = 0; i < m.rounds; i++) applyEffects(c, s, best.effects); });
     }
+    case "inspection":
+      return run((s) => m.cases.forEach((k) => { applyEffects(c, s, m.onCorrect); if (k.correct === "reject") applyEffects(c, s, m.onSpotted); }));
+    case "investigation":
+      return run((s) => m.rounds.forEach(() => applyEffects(c, s, m.onFound)));
     case "slider": {
       let top = -Infinity;
       for (let x = m.control.min; x <= m.control.max + 1e-9; x += m.control.step)
