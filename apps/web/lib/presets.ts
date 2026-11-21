@@ -107,13 +107,13 @@ export const PRESETS: Preset[] = [
   },
   {
     company: "Logistique",
-    note: "famicom · entrepôt · nuit, pluie",
+    note: "famicom · zone industrielle · nuit, pluie",
     title: { fr: "LAST MILE", en: "LAST MILE" },
     tagline: { fr: "Livré avant la pluie. Presque.", en: "Delivered before the rain. Almost." },
     skin: "famicom",
     palette: { bg: "#03040c", ink: "#ffffff", accent: "#f0a020", colors: ["#f0a020", "#2a7ac8", "#d84a2a"] },
     scene: {
-      scene: "warehouse", time: "night", weather: "rain", seed: "lastmile",
+      scene: "factory", time: "night", weather: "rain", seed: "lastmile",
       actors: [{ type: "truck", speed: 1.2, lane: 2 }, { type: "crane", speed: 1, lane: 1 }],
       colors: ["#f0a020", "#2a7ac8", "#d84a2a"], accent: "#f0a020",
     },

@@ -213,7 +213,9 @@
 /* ============================================================
    5. SYNTH : néon chromé, années 80 futuristes
    ============================================================ */
-.skin-synth { font-family: "Sixtyfour", "Press Start 2P", monospace; }
+.skin-synth { font-family: "Press Start 2P", monospace; }
+/* Sixtyfour (rayée) réservée aux titres courts : illisible sur les phrases */
+.skin-synth .ph-logo { font-family: "Press Start 2P", monospace; }
 .skin-synth .ph-logo { font-size: clamp(14px, min(7cqw, 13cqh), 84px); transform: skewX(-8deg); filter: drop-shadow(0 0 0.12em #ff3cd0) drop-shadow(0.05em 0.06em 0 #2a0a4a); }
 .skin-synth .ph-logo .l {
   color: transparent;

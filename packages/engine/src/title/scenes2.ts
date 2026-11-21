@@ -505,4 +505,78 @@ const space: SceneDef = {
   },
 };
 
-export const SCENES_NES: Record<string, SceneDef> = { plains, rooftops, underground, jungle, paris, lab, space };
+/* ---------- WAREHOUSE : entrepôt logistique, racks et quais de chargement ---------- */
+
+const warehouse: SceneDef = {
+  groundRatio: 0.8,
+  indoor: true,
+  still(p, s) {
+    // charpente métallique et bardage
+    p.rect(0, 0, s.W, s.H, "#2a2e3a");
+    for (let x = 0; x < s.W; x += 4) p.rect(x, 0, 2, s.ground, "#323746");
+    for (let x = 10; x < s.W; x += 48) {
+      p.line(x, 0, x + 24, 12, "#4a5060");
+      p.line(x + 48, 0, x + 24, 12, "#4a5060");
+    }
+    p.rect(0, 12, s.W, 2, "#4a5060");
+    for (let x = 20; x < s.W; x += 60) {
+      p.rect(x, 14, 18, 2, "#f0f4d8");
+      p.dither(x - 6, 16, 30, 10, "rgba(0,0,0,0)", "#f0f4d8", 2);
+    }
+    // racks de palettes
+    const top = 26, rackH = s.ground - top - 4;
+    const cols = s.colors.length ? s.colors : ["#c84a2a", "#2a7ac8", "#e8b020"];
+    const r = rng(s.seed + 3);
+    for (let x = 6; x + 40 < s.W * 0.72; x += 46) {
+      p.rect(x, top, 2, rackH, "#e86a1a");
+      p.rect(x + 40, top, 2, rackH, "#e86a1a");
+      for (let y = top + 4; y < s.ground - 6; y += 14) {
+        p.rect(x, y + 10, 42, 2, "#2a5ab8");
+        for (let k = 0; k < 3; k++) {
+          if (r() < 0.18) continue;
+          const c = r() < 0.45 ? "#c89a5a" : cols[Math.floor(r() * cols.length)]!;
+          p.rect(x + 3 + k * 13, y + 2, 11, 8, c);
+          p.rect(x + 3 + k * 13, y + 2, 11, 1, shade(c, 0.3));
+          p.rect(x + 8 + k * 13, y + 2, 1, 8, shade(c, -0.25));
+          p.rect(x + 3 + k * 13, y + 9, 11, 1, "#7a5a3a");
+        }
+      }
+    }
+    // quais de chargement
+    for (let x = Math.floor(s.W * 0.76); x + 22 < s.W; x += 26) {
+      p.rect(x, s.ground - 30, 22, 30, "#1a1c24");
+      for (let y = s.ground - 30; y < s.ground; y += 3) p.rect(x + 1, y, 20, 1, "#5a6070");
+      p.rect(x, s.ground - 32, 22, 2, "#e8c020");
+    }
+    // sol béton et marquage
+    p.rect(0, s.ground, s.W, s.H - s.ground, "#8a8c90");
+    p.rect(0, s.ground, s.W, 1, "#a8aab0");
+    for (let x = 0; x < s.W; x += 10) p.rect(x, s.ground + Math.floor((s.H - s.ground) * 0.5), 6, 1, "#e8c020");
+  },
+  live(p, s, t) {
+    // chariot élévateur qui fait l'aller-retour
+    const span = s.W * 0.6;
+    const u = (t * 0.15) % 2;
+    const k = u < 1 ? u : 2 - u;
+    const x = 10 + k * span;
+    const y = s.ground - 2;
+    const flip = u >= 1;
+    p.rect(x, y - 9, 12, 7, "#e8b020");
+    p.rect(x + 2, y - 15, 7, 6, "#30303a");
+    p.rect(x + 3, y - 14, 5, 3, "#9ad0e8");
+    const fx = flip ? x - 6 : x + 12;
+    p.rect(flip ? x - 1 : x + 12, y - 16, 1, 14, "#30303a");
+    p.rect(fx, y - 4, 6, 1, "#30303a");
+    p.rect(fx, y - 9, 6, 5, "#c89a5a");
+    p.disc(x + 3, y, 2, "#101018");
+    p.disc(x + 10, y, 2, "#101018");
+    if (Math.floor(t * 3) % 2) p.rect(x + 5, y - 17, 2, 2, "#ff8a20");
+    // écran de suivi des flux
+    const msg = (s.detail?.value ?? "OTIF 97%").toUpperCase().slice(0, 12);
+    const bw = textWidth(msg) + 6, bx = Math.floor(s.W * 0.76), by = 18;
+    p.rect(bx, by, bw, 9, "#050508");
+    p.text(msg, bx + 3, by + 2, Math.floor(t * 2) % 2 ? "#3af06a" : "#2ac050");
+  },
+};
+
+export const SCENES_NES: Record<string, SceneDef> = { plains, rooftops, underground, jungle, paris, lab, space, warehouse };

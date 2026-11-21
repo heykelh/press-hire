@@ -494,6 +494,6 @@ export const SCENES: Record<string, SceneDef> = {
   headquarters,
   // en attendant leurs décors dédiés
   station: SCENES_NES.underground!,
-  warehouse: factory,
+  warehouse: SCENES_NES.warehouse!,
   store: SCENES_NES.paris!,
 };
