@@ -11,3 +11,4 @@ export * from "./idea";
 export * from "./design";
 export * from "./pitch";
 export * from "./company";
+export * from "./explain";

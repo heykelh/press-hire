@@ -290,7 +290,11 @@ ${brief}`;
 }
 
 export function repairPrompt(previous: string, issues: Issue[]): string {
-  const list = issues.slice(0, 40).map((i) => `- [${i.rule}] ${i.path || "(racine)"} : ${i.message}`).join("\n");
+  const list = issues.slice(0, 40).map((i) => {
+    const few = i.message.match(/expected array to have >=(\d+) items/);
+    const hint = few ? ` → AJOUTE des éléments à cette liste pour en avoir au moins ${few[1]} (des cas nouveaux, crédibles et différents, pas des copies)` : "";
+    return `- [${i.rule}] ${i.path || "(racine)"} : ${i.message}${hint}`;
+  }).join("\n");
   return `Ton brief JSON a été refusé par les contrôles. Erreurs :
 ${list}
 

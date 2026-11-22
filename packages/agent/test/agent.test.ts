@@ -151,6 +151,25 @@ describe("génération", () => {
     expect(simulateBestRun(last.cartridge).every((r) => r.winnable)).toBe(true);
   });
 
+  it("sauve le jeu quand un seul niveau reste malformé après les corrections (liste trop courte)", async () => {
+    const b = clone(EXAMPLE_BRIEF_ARCADE) as any;
+    const insp = b.levels.find((l: any) => l.mechanic.type === "inspection");
+    insp.mechanic.cases = insp.mechanic.cases.slice(0, 2); // « Too small: expected array to have >=3 items »
+    const n = b.levels.length;
+    const { events, last } = await run(scripted(JSON.stringify(b), JSON.stringify(b), JSON.stringify(b)), {});
+    expect(last.type).toBe("done");
+    if (last.type !== "done") return;
+    expect(last.cartridge.levels).toHaveLength(n - 1);
+    expect(last.issues.some((i) => i.rule === "salvage")).toBe(true);
+    expect(events.some((e) => e.type === "warn" && /Sauvetage/.test(e.message) && /trop peu de dossiers/.test(e.message))).toBe(true);
+  });
+
+  it("explique un échec en français quand rien n'est récupérable", async () => {
+    const { last } = await run(scripted("pas du json", "toujours pas", "non"), {});
+    expect(last.type).toBe("fail");
+    if (last.type === "fail") expect(last.message).toMatch(/JSON/);
+  });
+
   it("refuse un niveau qui se gagne sans réfléchir, et fait tourner les bonnes réponses", async () => {
     const b = clone(EXAMPLE_BRIEF) as any;
     const quiz = b.levels.find((l: any) => l.mechanic.type === "quiz").mechanic;

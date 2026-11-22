@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { chain, EXAMPLE_BRIEF, EXAMPLE_BRIEF_ARCADE, EXAMPLE_JOB, generate, IdeaOptions, llmsFromEnv, type GenerateEvent, type Llm } from "@press-hire/agent";
 import { recentDesign, saveCartridge } from "@/lib/cartridges";
+import { ntfy } from "@/lib/notify";
 import { dbConfigured } from "@/lib/db";
 import { generationsThisMonth, getSession, logGeneration } from "@/lib/session";
 
@@ -58,6 +59,19 @@ export async function POST(req: Request) {
   if (!parsed.success)
     return Response.json({ error: `formulaire invalide : ${parsed.error.issues.slice(0, 2).map((i) => `${i.path.join(".")} ${i.message}`).join(" ; ")}`, issues: parsed.error.issues }, { status: 400 });
   const input = parsed.data;
+  const base = process.env.PUBLIC_BASE_URL?.replace(/\/+$/, "") ?? new URL(req.url).origin;
+  const what = input.mode === "idea" ? input.idea?.title || "idée" : [input.company, input.jobTitle].filter(Boolean).join(" · ") || input.offerUrl || "offre collée";
+  /** fin de génération : réussie ou non, on prévient (l'onglet a pu être fermé entre-temps) */
+  const notifyEnd = async (ok: boolean, lines: string[], minutes: number) => {
+    if (!session.plan.notifications) return;
+    await ntfy({
+      title: ok ? "✅ Jeu généré, prêt à relire" : "❌ Génération échouée",
+      message: [what, ...lines, `Durée : ${minutes.toFixed(1)} min`].join("\n"),
+      click: `${base}/studio`,
+      tags: [ok ? "white_check_mark" : "x"],
+      priority: ok ? 3 : 4,
+    });
+  };
 
   const enc = new TextEncoder();
   const stream = new ReadableStream({
@@ -90,14 +104,25 @@ export async function POST(req: Request) {
               warnings: e.issues.filter((i) => i.severity === "warning").map((i) => i.message),
               attempts: e.attempts,
             });
+            const warns = e.issues.filter((i) => i.severity === "warning");
+            const salvage = warns.filter((i) => i.rule === "salvage").map((i) => `⚠ ${i.message}`);
+            await notifyEnd(true, [
+              `« ${e.cartridge.design.title.fr} » (${e.slug}), brouillon dans le studio.`,
+              `${e.cartridge.levels.length} niveaux${e.cartridge.boss ? " + boss" : ""} · ${e.attempts > 1 ? `${e.attempts - 1} tour(s) de correction` : "accepté du premier coup"}.`,
+              ...(salvage.length ? salvage : warns.length ? [`${warns.length} remarque(s) mineure(s), rien de bloquant.`] : ["Tous les contrôles passent."]),
+            ], (Date.now() - t0) / 60000);
           } else {
-            if (e.type === "fail") await logGeneration({ accountId: session.accountId, ok: false, provider, durationMs: Date.now() - t0, error: e.message });
+            if (e.type === "fail") {
+              await logGeneration({ accountId: session.accountId, ok: false, provider, durationMs: Date.now() - t0, error: e.message });
+              await notifyEnd(false, [`Pourquoi : ${e.message}`, "Relance la génération : le modèle écrit un jeu différent à chaque fois."], (Date.now() - t0) / 60000);
+            }
             send(e);
           }
         }
       } catch (e) {
         send({ type: "fail", message: (e as Error).message });
         await logGeneration({ accountId: session.accountId, ok: false, provider, durationMs: Date.now() - t0, error: (e as Error).message }).catch(() => {});
+        await notifyEnd(false, [`Pourquoi : erreur inattendue (${(e as Error).message.slice(0, 200)})`], (Date.now() - t0) / 60000).catch(() => {});
       } finally {
         ctrl.close();
       }

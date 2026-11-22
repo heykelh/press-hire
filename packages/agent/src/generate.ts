@@ -13,6 +13,7 @@ import { IDEA_ANALYZE_SYSTEM, analyzeIdeaPrompt, ideaOffer, ideaWriteRules, type
 import { fetchOffer, mergeOffer, type Offer } from "./offer";
 import { companyText, researchCompany, type CompanyFacts } from "./company";
 import { coerceToSchema } from "./coerce";
+import { explainIssue, explainIssues } from "./explain";
 import { designBrief } from "./design";
 import { PACKS } from "./packs";
 import { PITCH_SYSTEM, Pitch, pitchPrompt, pitchText } from "./pitch";
@@ -66,6 +67,40 @@ const pick = (o: unknown, ...path: string[]): string | undefined => {
 };
 
 const errorsOf = (issues: Issue[]) => issues.filter((i) => i.severity === "error");
+
+/**
+ * Retire les niveaux (au plus 2, il en reste au moins 2) ou la phase de boss (il en reste au moins 2)
+ * qui portent toutes les erreurs restantes. Rien si une erreur touche autre chose.
+ */
+export function salvageBrief(brief: Obj, issues: Issue[]): { brief: Obj; dropped: string[]; reasons: string[] } | null {
+  const errs = errorsOf(issues);
+  if (!errs.length) return null;
+  const lv = new Set<number>();
+  const ph = new Set<number>();
+  for (const e of errs) {
+    const l = e.path.match(/^levels[.[](\d+)/);
+    const p = e.path.match(/^boss[.[]phases[.[](\d+)/);
+    if (l) lv.add(Number(l[1]));
+    else if (p) ph.add(Number(p[1]));
+    else return null;
+  }
+  const levels = Array.isArray(brief.levels) ? (brief.levels as Obj[]) : [];
+  const boss = (brief.boss ?? {}) as Obj;
+  const phases = Array.isArray(boss.phases) ? (boss.phases as Obj[]) : [];
+  if (lv.size > 2 || levels.length - lv.size < 2) return null;
+  if (ph.size && phases.length - ph.size < 2) return null;
+  const name = (o: Obj | undefined, fb: string) => {
+    const t = (o?.title as Obj | undefined)?.fr;
+    return typeof t === "string" && t ? `« ${t} »` : fb;
+  };
+  const dropped = [
+    ...[...lv].map((i) => `le niveau ${i + 1} ${name(levels[i], "")}`.trim()),
+    ...[...ph].map((i) => `la phase ${i + 1} du boss`),
+  ];
+  const out: Obj = { ...brief, levels: levels.filter((_, i) => !lv.has(i)) };
+  if (ph.size) out.boss = { ...boss, phases: phases.filter((_, i) => !ph.has(i)) };
+  return { brief: out, dropped, reasons: [...new Set(errs.map(explainIssue))].slice(0, 2) };
+}
 const isBalance = (i: Issue) => i.rule.startsWith("balance-") || i.rule === "naive-win";
 const onlyBalance = (issues: Issue[]) => errorsOf(issues).every(isBalance);
 const anyBalance = (issues: Issue[]) => errorsOf(issues).some(isBalance);
@@ -168,7 +203,10 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
         pitch = parsed.data;
         plan = variants[pitch.choice] ?? variants[0]!;
         yield { type: "step", message: `Concept : « ${pitch.title} » — ${pitch.hook.slice(0, 160)}` };
-      } else yield { type: "warn", message: "Concept illisible : on garde la première variante." };
+      } else {
+        const why = parsed.error.issues[0];
+        yield { type: "warn", message: `Concept illisible${why ? ` (${why.path.join(".") || "réponse"} : ${why.message.slice(0, 80)})` : ""} : on garde la première variante.` };
+      }
     } catch (e) {
       yield { type: "warn", message: `Concept impossible (${(e as Error).message.slice(0, 100)}) : on garde la première variante.` };
     }
@@ -210,6 +248,8 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
     let briefText = text;
     // dernière version valide : une correction qui abîme le jeu ne doit pas faire perdre un jeu jouable
     let lastGood: { cartridge: Cartridge; issues: Issue[]; brief: Obj; attempts: number } | undefined;
+    let lastBrief: Obj | undefined;
+    let lastIssues: Issue[] = [];
     for (let attempt = 0; attempt <= repairs; attempt++) {
       let brief: Obj = {};
       try {
@@ -276,6 +316,8 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
           }
         }
         briefText = JSON.stringify(brief);
+        lastBrief = brief;
+        lastIssues = issues;
       }
       if (attempt === repairs || elapsed() > budget * 0.85) break;
       const n = errorsOf(issues).length;
@@ -287,12 +329,28 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
         break;
       }
     }
-    return lastGood ?? { issues, attempts: repairs + 1 };
+    if (lastGood) return lastGood;
+    // dernier recours sans le modèle : si seuls un ou deux niveaux (ou une phase de boss) sont abîmés, on les retire
+    const saved = lastBrief && salvageBrief(lastBrief, lastIssues);
+    if (saved && slug) {
+      let r = validateCartridge(assemble(saved.brief, { slug, offerUrl: input.offerUrl, contact: input.contact, now }));
+      if (!r.ok && r.cartridge && anyBalance(r.issues)) {
+        const c = r.cartridge;
+        r = validateCartridge(autoBalance(c, c.levels.map((l) => l.id).concat((c.boss?.phases ?? []).map((_, k) => `boss-phase-${k + 1}`)), { singleGoal: true }));
+      }
+      if (r.ok && r.cartridge) {
+        yield { type: "warn", message: `Sauvetage : ${saved.dropped.join(", ")} retiré${saved.dropped.length > 1 ? "s" : ""} (${saved.reasons.join(" ; ")}). Le reste du jeu est complet.` };
+        const note: Issue[] = saved.dropped.map((d) => ({ rule: "salvage", severity: "warning", path: "", message: `${d} retiré : ${saved.reasons.join(" ; ")}` }));
+        return { cartridge: r.cartridge, issues: [...r.issues, ...note], brief: saved.brief, attempts: repairs + 1 };
+      }
+    }
+    return { issues, attempts: repairs + 1 };
   }
 
   const first = yield* toCartridge(reply, maxRepairs);
   if (!first.cartridge) {
-    yield { type: "fail", message: "Le jeu n'a pas passé les contrôles après corrections.", issues: errorsOf(first.issues) };
+    const why = explainIssues(first.issues);
+    yield { type: "fail", message: `Le jeu n'a pas passé les contrôles après corrections${why.length ? ` : ${why.join(" ; ")}` : ""}.`, issues: errorsOf(first.issues) };
     return;
   }
   let best = first;
