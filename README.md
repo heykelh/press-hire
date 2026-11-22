@@ -36,14 +36,39 @@ pour l'attrape-tout et le tape-alerte, un joueur qui attrape 75 % des bons objet
 1. **Lecture de l'offre** (données structurées de la page, sinon texte collé).
 2. **Fiche du poste** : missions réelles, chacune avec son verbe d'action, les documents manipulés, la décision, l'indicateur
    et les erreurs de débutant ; outils, jargon, vrai problème à résoudre, ESN ou cabinet (secteur du client final).
-3. **Plan déterministe** (`packages/agent/src/plan.ts`) : le verbe choisit la mécanique (filtrer → attrape-tout, réagir → tape-alerte,
-   doser → jauge, procédure → mémoire, contrôler → inspection, trouver l'anomalie → enquête, convaincre → échange…),
-   au moins 2 mécaniques d'arcade et 1 de réflexion, jamais deux fois la même d'affilée, une semaine du lundi au vendredi, un boss si l'offre montre un vrai problème.
-4. **Écriture** guidée par la fiche, le plan et une **bibliothèque du métier** (`packs.ts` : vrais documents conformes et piégés,
-   indicateurs, pièges, jargon, pour 12 familles de métiers).
-5. **Contrôles** (schéma, cohérence, simulation de l'équilibrage), corrections automatiques, tours de correction par le modèle.
-6. **Relecture** par trois personnages (un praticien du métier, un débutant complet, un joueur exigeant), notes sur 10,
+3. **Plan varié** (`packages/agent/src/plan.ts`) : tirage pondéré, guidé par le métier et pénalisé par ce qui a servi dans les
+   8 derniers jeux du compte (anti-répétition) :
+   - un **format narratif** parmi 12 (semaine, nuit blanche, braquage, tournoi, émission de télé, boucle temporelle, survie, enquête,
+     speedrun, quête en mondes, premier jour, simulateur), avec ses propres étiquettes de niveaux ;
+   - une **mécanique** par niveau, fidèle au verbe du métier (au moins 2 d'arcade, 1 de réflexion, au plus un quiz, jamais deux fois d'affilée) ;
+   - des **entrées** variées : briefing, **embuscade** (ça démarre sans écran) ou **appel entrant** ;
+   - des **modificateurs** NES sur 1 à 3 niveaux : turbo, brouillard, miroir, séisme, coupure de courant ;
+   - un **boss à 2 ou 3 formes** selon un archétype (hydre, négociateur, saboteur, avalanche, audit final, faux boss, horloge),
+     chaque phase avec sa propre mécanique.
+4. **Directeur créatif** (étape « pitch ») : trois variantes de plan sont proposées au modèle, qui choisit la plus juste et la plus fun
+   et écrit le concept (titre, accroche, running gag, angle et rebondissement de chaque niveau, répliques du boss).
+5. **Écriture** guidée par la fiche, le plan, le concept, la **bibliothèque du métier** (`packs.ts`) et la
+   **bibliothèque de game design** (voir plus bas). Si le modèle ne respecte pas le plan (mécanique remplacée), on lui redemande.
+6. **Contrôles** (schéma, cohérence, simulation de l'équilibrage), corrections automatiques, tours de correction par le modèle.
+7. **Relecture** par trois personnages (un praticien du métier, un débutant complet, un joueur exigeant), notes sur 10,
    puis **révision** si une note est sous 7. Les étapes de qualité sautent si la génération dépasse son budget de temps.
+
+### Bibliothèque de game design (les « fichiers skills » de l'agent)
+
+`packages/agent/design/*.md` contient le savoir-faire du studio, en français, modifiable sans toucher au code :
+
+| Fichier | Contenu |
+| --- | --- |
+| `role.md` | le rôle (game designer, level designer, scénariste, auteur comique, formateur) et les règles d'or |
+| `formats.md` | les 12 formats narratifs : résumé, étiquettes, ouverture, boss, moment troll |
+| `mechanics.md` | chaque mécanique : geste du métier, comment la rendre juste, réglages, rebondissements, trolls ; entrées et modificateurs |
+| `boss.md` | les archétypes de boss et les règles des phases |
+| `humor.md` | la boîte à outils comique et les limites |
+| `level-design.md` | le rythme d'un jeu, comment faire apprendre, les réglages de difficulté |
+
+L'agent n'envoie au modèle que les sections utiles au jeu en cours (format choisi, mécaniques du plan, archétype du boss).
+Après une modification : `pnpm --filter @press-hire/agent design` (les tests vérifient que c'est à jour). Pour ajouter un format
+ou un boss, ajouter aussi sa ligne dans `STAGES` / `BOSS_TEMPLATES` de `plan.ts`.
 
 **Banc d'essai** : `pnpm eval` génère un jeu pour chaque offre de `eval/offers/` avec le vrai modèle et affiche notes,
 durée, nombre de notions, de rebondissements, de conséquences. À relancer après chaque changement des consignes pour vérifier que l'agent progresse.

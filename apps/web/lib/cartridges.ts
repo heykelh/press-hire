@@ -133,3 +133,30 @@ export async function listDemos(): Promise<CartridgeT[]> {
   }
   return out;
 }
+
+/**
+ * Ce qui a servi dans les derniers jeux du compte (du plus récent au plus ancien) :
+ * formats, mécaniques (niveaux et phases de boss) et archétypes de boss, pour que l'agent varie.
+ */
+export async function recentDesign(owner: string, limit = 8): Promise<{ formats: string[]; mechanics: string[]; bosses: string[] }> {
+  await ensureSchema();
+  const rows = await q<{ format: string | null; boss: string | null; mechs: string[] | null }>(
+    `select c.data->'design'->>'format' as format,
+            c.data->'boss'->>'archetype' as boss,
+            (select array_agg(x) from (
+               select l->'mechanic'->>'type' as x from jsonb_array_elements(coalesce(c.data->'levels', '[]'::jsonb)) l
+               union all
+               select p->'mechanic'->>'type' from jsonb_array_elements(coalesce(c.data->'boss'->'phases', '[]'::jsonb)) p
+               union all
+               select c.data->'boss'->'mechanic'->>'type' where c.data->'boss'->'mechanic' is not null
+             ) t) as mechs
+       from cartridges c where c.owner_id = $1
+      order by c.created_at desc limit $2`,
+    [owner, limit],
+  );
+  return {
+    formats: rows.map((r) => r.format).filter((x): x is string => !!x),
+    bosses: rows.map((r) => r.boss).filter((x): x is string => !!x),
+    mechanics: rows.flatMap((r) => r.mechs ?? []).filter(Boolean),
+  };
+}

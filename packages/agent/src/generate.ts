@@ -11,7 +11,10 @@ import { ANALYZE_SYSTEM, JobModel, jobSchemaJson, repairJob, requirementsFromJob
 import { chainHead, estimateTokens, parseJsonReply, type Llm } from "./llm";
 import { IDEA_ANALYZE_SYSTEM, analyzeIdeaPrompt, ideaOffer, ideaWriteRules, type IdeaOptions } from "./idea";
 import { fetchOffer, mergeOffer, type Offer } from "./offer";
-import { planGame, type GamePlan } from "./plan";
+import { designBrief } from "./design";
+import { PACKS } from "./packs";
+import { PITCH_SYSTEM, Pitch, pitchPrompt, pitchText } from "./pitch";
+import { planGame, planSummary, type GamePlan, type Recent } from "./plan";
 import {
   CRITIC_SYSTEM, Critique, SYSTEM_PROMPT, analyzePrompt, criticPrompt, needsRevision, repairPrompt, revisePrompt, userPrompt,
   type Critique as CritiqueT,
@@ -39,6 +42,8 @@ export interface GenerateDeps {
   budgetMs?: number;
   /** désactive la relecture (tests, générations rapides) */
   skipCritique?: boolean;
+  /** ce qui a servi dans les derniers jeux du compte : formats, mécaniques et boss à ne pas resservir */
+  recent?: Recent;
 }
 
 export interface Scores { accuracy: number; pedagogy: number; fun: number; wow: number }
@@ -98,6 +103,7 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
   /* 2. fiche du poste */
   let job: Job | undefined;
   let plan: GamePlan | undefined;
+  let pitch: Pitch | undefined;
   yield {
     type: "step",
     message: idea ? "Analyse de l'idée : actions du héros, vrais objets du thème, notions à apprendre, grand méchant…" : "Analyse du poste : missions, documents manipulés, indicateurs, pièges…",
@@ -114,19 +120,37 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
   }
   let requirements: ReturnType<typeof requirementsFromJob> | undefined;
   if (job) {
-    plan = idea
-      ? planGame(job, { levels: idea.levels, mechanics: idea.mechanics, skin: idea.skin, scene: idea.scene, boss: idea.boss, stages: "worlds" })
-      : planGame(job);
-    requirements = requirementsFromJob(job);
     yield {
       type: "step",
       message: idea
         ? `Univers : « ${job.company} », le joueur est ${job.jobTitle} ; ${job.missions.length} actions, ${job.jargon.length} notion${job.jargon.length > 1 ? "s" : ""} à apprendre.`
-        : `Fiche du poste : ${job.missions.length} missions, famille « ${plan.pack.label} »${job.intermediary ? `, client final : ${job.clientSector ?? "à déduire"}` : ""}.`,
+        : `Fiche du poste : ${job.missions.length} missions, famille « ${(PACKS[job.family] ?? PACKS.generic).label} »${job.intermediary ? `, client final : ${job.clientSector ?? "à déduire"}` : ""}.`,
     };
+    // trois variantes de structure, de formats différents ; le directeur créatif choisit
+    const rnd = deps.rand ?? Math.random;
+    const base = idea
+      ? { levels: idea.levels, mechanics: idea.mechanics, skin: idea.skin, scene: idea.scene, boss: idea.boss, idea: true, difficulty: idea.difficulty }
+      : {};
+    const variants: GamePlan[] = [];
+    for (let k = 0; k < 3; k++)
+      variants.push(planGame(job, { ...base, recent: deps.recent, rand: rnd, avoidFormats: variants.map((v) => v.format) }));
+    plan = variants[0]!;
+    yield { type: "step", message: `Directeur créatif : choix entre ${variants.map((v) => `« ${v.format} »`).join(", ")} et écriture du concept…` };
+    try {
+      const raw = await deps.llm.complete(PITCH_SYSTEM, pitchPrompt(job, variants, idea ? offer.text : "", idea ? "idea" : "job"), { task: "pitch", temperature: 0.95 });
+      const parsed = Pitch.safeParse(parseJsonReply(raw));
+      if (parsed.success) {
+        pitch = parsed.data;
+        plan = variants[pitch.choice] ?? variants[0]!;
+        yield { type: "step", message: `Concept : « ${pitch.title} » — ${pitch.hook.slice(0, 160)}` };
+      } else yield { type: "warn", message: "Concept illisible : on garde la première variante." };
+    } catch (e) {
+      yield { type: "warn", message: `Concept impossible (${(e as Error).message.slice(0, 100)}) : on garde la première variante.` };
+    }
+    requirements = requirementsFromJob(job);
     yield {
       type: "step",
-      message: `Plan : ${plan.levels.map((l) => `${l.day.fr} ${MECH_FR[l.mechanic]}`).join(" · ")}${plan.boss ? ` · boss ${MECH_FR[plan.boss.mechanic]}` : ""}`,
+      message: `Plan « ${plan.format} » : ${plan.levels.map((l) => `${l.day.fr} ${MECH_FR[l.mechanic]}${l.entry === "ambush" ? " (embuscade)" : l.entry === "call" ? " (appel)" : ""}${l.modifiers.length ? ` +${l.modifiers.join("+")}` : ""}`).join(" · ")}${plan.boss ? ` · boss ${plan.boss.archetype} : ${plan.boss.phases.map((p) => MECH_FR[p.mechanic]).join(" → ")}` : ""}`,
     };
   }
 
@@ -134,6 +158,12 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
   const user = userPrompt({
     offer, job, plan, requirements, company: input.company, jobTitle: input.jobTitle, notes: input.notes,
     idea: idea ? { rules: ideaWriteRules(idea) } : undefined,
+    design: plan ? designBrief({
+      format: plan.format,
+      mechanics: [...plan.levels.map((l) => l.mechanic), ...(plan.boss?.phases.map((p) => p.mechanic) ?? [])],
+      bossArchetype: plan.boss?.archetype,
+    }) : undefined,
+    concept: pitch ? pitchText(pitch) : undefined,
   });
   const writeSize = estimateTokens(SYSTEM_PROMPT) + estimateTokens(user);
   yield { type: "step", message: `Écriture du jeu par ${chainHead(deps.llm, "write", writeSize)}… (la plus longue étape)` };
@@ -152,13 +182,16 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
   async function* toCartridge(text: string, repairs: number): AsyncGenerator<GenerateEvent, { cartridge?: Cartridge; issues: Issue[]; brief?: Obj; attempts: number }> {
     let issues: Issue[] = [];
     let briefText = text;
+    // dernière version valide : une correction qui abîme le jeu ne doit pas faire perdre un jeu jouable
+    let lastGood: { cartridge: Cartridge; issues: Issue[]; brief: Obj; attempts: number } | undefined;
     for (let attempt = 0; attempt <= repairs; attempt++) {
       let brief: Obj = {};
       try {
         brief = applyPlan(repairBrief(parseJsonReply(briefText)) as Obj, requirements, days, {
-          days: !!idea && !!plan,
+          days: !!plan,
           skin: plan?.forcedSkin ? plan.skin : undefined,
           scene: plan?.forcedScene ? plan.scene : undefined,
+          plan,
         });
       } catch (e) {
         issues = [{ rule: "json", severity: "error", path: "", message: (e as Error).message }];
@@ -172,7 +205,22 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
       if (Object.keys(brief).length) {
         const r = validateCartridge(assemble(brief, { slug, offerUrl: input.offerUrl, contact: input.contact, now }));
         issues = r.issues;
-        if (r.ok) return { cartridge: r.cartridge, issues, brief, attempts: attempt + 1 };
+        const off = r.cartridge && plan ? planIssues(r.cartridge, plan) : [];
+        // le plan n'est pas respecté (mécanique remplacée, boss classique) : on redemande tant qu'il reste des tours
+        if (r.ok && off.length && attempt < repairs && elapsed() < budget * 0.7) {
+          lastGood = { cartridge: r.cartridge!, issues: [...r.issues, ...off.map((i) => ({ ...i, severity: "warning" as const }))], brief, attempts: attempt + 1 };
+          issues = [...r.issues, ...off];
+          briefText = JSON.stringify(brief);
+          yield { type: "step", message: `${off.length} écart${off.length > 1 ? "s" : ""} au plan à corriger (variété des mécaniques)…` };
+          try {
+            briefText = await deps.llm.complete(SYSTEM_PROMPT, `${user}\n\n${repairPrompt(briefText, off)}`, { task: "repair" });
+          } catch (e) {
+            yield { type: "warn", message: (e as Error).message };
+            return { cartridge: r.cartridge, issues: [...r.issues, ...off.map((i) => ({ ...i, severity: "warning" as const }))], brief, attempts: attempt + 1 };
+          }
+          continue;
+        }
+        if (r.ok) return { cartridge: r.cartridge, issues: [...issues, ...off.map((i) => ({ ...i, severity: "warning" as const }))], brief, attempts: attempt + 1 };
         // il ne reste que l'équilibrage : on règle les objectifs nous-mêmes
         if (r.cartridge && onlyBalance(r.issues)) {
           yield { type: "step", message: "Réglage automatique de la difficulté…" };
@@ -180,7 +228,11 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
           let balanced: ValidationResult = r;
           for (let round = 0; round < 3; round++) {
             const ids = errorsOf(balanced.issues)
-              .map((i) => cur.levels[Number(i.path.match(/levels\[(\d+)\]/)?.[1] ?? -1)]?.id)
+              .map((i) => {
+                const ph = i.path.match(/boss\.phases\[(\d+)\]/);
+                if (ph) return `boss-phase-${Number(ph[1]) + 1}`;
+                return cur.levels[Number(i.path.match(/levels\[(\d+)\]/)?.[1] ?? -1)]?.id;
+              })
               .filter((x): x is string => !!x);
             cur = autoBalance(cur, ids, { singleGoal: round > 0 });
             balanced = validateCartridge(cur);
@@ -202,7 +254,7 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
         break;
       }
     }
-    return { issues, attempts: repairs + 1 };
+    return lastGood ?? { issues, attempts: repairs + 1 };
   }
 
   const first = yield* toCartridge(reply, maxRepairs);
@@ -258,6 +310,27 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
     attempts: best.attempts,
     scores,
     job,
-    plan: plan?.levels.map((l) => `${l.day.fr} ${l.mechanic}`),
+    plan: plan ? [planSummary(plan)] : undefined,
   };
+}
+
+/** Écarts entre la cartouche écrite et le plan imposé (mécaniques des niveaux et du boss). */
+export function planIssues(c: Cartridge, plan: GamePlan): Issue[] {
+  const out: Issue[] = [];
+  const levels = [...c.levels].sort((a, b) => a.order - b.order);
+  plan.levels.forEach((pl, i) => {
+    const l = levels[i];
+    if (l && l.mechanic.type !== pl.mechanic)
+      out.push({ rule: "plan", severity: "error", path: `levels[${c.levels.indexOf(l)}].mechanic`, message: `le plan impose la mécanique "${pl.mechanic}" pour le niveau ${i + 1} (écrit : "${l.mechanic.type}") : réécris ce niveau avec "${pl.mechanic}"` });
+  });
+  if (plan.boss) {
+    if (!c.boss) out.push({ rule: "plan", severity: "error", path: "boss", message: "le plan impose un boss à plusieurs formes (boss.phases)" });
+    else if (!c.boss.phases) out.push({ rule: "plan", severity: "error", path: "boss.phases", message: `le plan impose un boss à ${plan.boss.phases.length} phases (${plan.boss.phases.map((p) => p.mechanic).join(", ")}), pas une mécanique unique` });
+    else plan.boss.phases.forEach((pp, i) => {
+      const ph = c.boss!.phases![i];
+      if (ph && ph.mechanic.type !== pp.mechanic)
+        out.push({ rule: "plan", severity: "error", path: `boss.phases[${i}].mechanic`, message: `le plan impose "${pp.mechanic}" pour la phase ${i + 1} du boss (écrit : "${ph.mechanic.type}")` });
+    });
+  }
+  return out;
 }

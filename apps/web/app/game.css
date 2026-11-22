@@ -485,3 +485,40 @@
 .g-bar2.ok i { background: #5aff8a; }
 .g-chart-unit { position: absolute; left: 8px; top: 4px; font-family: "Press Start 2P", monospace; font-size: 7px; color: #889; }
 @media (max-width: 560px) { .g-banner-zone { top: 150px; } .g-combo { top: 154px; } }
+
+/* ---- entrées de niveau ---- */
+.g-intro.ambush { animation: g-ambush 0.35s steps(2) 3; }
+.g-intro.ambush .g-level-title { color: var(--bad); }
+@keyframes g-ambush { 50% { transform: translateX(-6px); filter: invert(0.15); } }
+.g-intro.call .g-phone { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 22px; border: 3px solid var(--accent); box-shadow: 0 4px 0 #000; animation: g-ringshake 0.5s steps(2) infinite; }
+.g-phone-icon { font-size: 54px; line-height: 1; }
+.g-ring { font-family: var(--head); font-size: 10px; color: var(--accent); animation: g-blink 0.5s steps(1) infinite; }
+@keyframes g-ringshake { 0%, 100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.5deg); } }
+.g-intro.call .g-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+/* ---- modificateurs ---- */
+.g-modtags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 0; }
+.g-modtag { font-size: 13px; padding: 4px 8px; border: 2px solid #000; background: var(--bad); color: #fff; box-shadow: 0 2px 0 #000; }
+.g-modtag b { font-family: var(--head); font-size: 9px; margin-right: 4px; }
+.g-modtag.mod-turbo { background: #ff8a00; color: #000; }
+.g-modtag.mod-fog { background: #6b7a8f; }
+.g-modtag.mod-mirror { background: #8a3cff; }
+.g-modtag.mod-quake { background: #a3162a; }
+.g-modtag.mod-blackout { background: #111; }
+.g-modframe { position: relative; width: 100%; }
+/* brouillard : le haut de la zone de jeu (toile de l'attrape-tout, trous du tape-alerte) disparaît */
+.g-modframe.mod-fog canvas, .g-modframe.mod-fog .g-holes {
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.06) 0%, rgba(0, 0, 0, 0.12) 34%, #000 62%);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.06) 0%, rgba(0, 0, 0, 0.12) 34%, #000 62%);
+  animation: g-fog 6s ease-in-out infinite alternate;
+}
+@keyframes g-fog { from { opacity: 0.85; } to { opacity: 1; } }
+.g-modframe.mod-blackout::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 6; background: #000; opacity: 0;
+  animation: g-blackout 7s steps(1) infinite;
+}
+@keyframes g-blackout { 0%, 70% { opacity: 0; } 71%, 76% { opacity: 0.94; } 77%, 80% { opacity: 0; } 81%, 84% { opacity: 0.94; } 85%, 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .g-modframe.mod-blackout::before { animation: none; }
+  .g-intro.call .g-phone, .g-intro.ambush { animation: none; }
+}

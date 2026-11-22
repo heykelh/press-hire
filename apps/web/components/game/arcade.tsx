@@ -116,9 +116,12 @@ export function CatchPlay({ ctx, m, paused, onDone }: { ctx: Ctx; m: Catch; paus
       const r = cv.getBoundingClientRect();
       return ((clientX - r.left) / r.width) * CW;
     };
-    const move = (e: PointerEvent) => { st.target = toInternal(e.clientX); };
-    const down = (e: KeyboardEvent) => { if (e.key === "ArrowLeft") { st.left = true; e.preventDefault(); } if (e.key === "ArrowRight") { st.right = true; e.preventDefault(); } };
-    const up = (e: KeyboardEvent) => { if (e.key === "ArrowLeft") st.left = false; if (e.key === "ArrowRight") st.right = false; };
+    // miroir : la main va à gauche, le panier part à droite (et inversement)
+    const mir = !!ctx.mirror;
+    const KL = mir ? "ArrowRight" : "ArrowLeft", KR = mir ? "ArrowLeft" : "ArrowRight";
+    const move = (e: PointerEvent) => { const x = toInternal(e.clientX); st.target = mir ? CW - x : x; };
+    const down = (e: KeyboardEvent) => { if (e.key === KL) { st.left = true; e.preventDefault(); } if (e.key === KR) { st.right = true; e.preventDefault(); } };
+    const up = (e: KeyboardEvent) => { if (e.key === KL) st.left = false; if (e.key === KR) st.right = false; };
     cv.addEventListener("pointermove", move);
     cv.addEventListener("pointerdown", move);
     window.addEventListener("keydown", down);
@@ -141,7 +144,7 @@ export function CatchPlay({ ctx, m, paused, onDone }: { ctx: Ctx; m: Catch; paus
         const it0 = m.items[idx]!;
         const prog = st.spawned / order.length;
         // découvrir : lent ; maîtriser : rapide ; aide : plus lent
-        const pace = (st.spawned < 3 ? 0.7 : prog > 0.75 ? 1.2 : 1) * (1 - 0.15 * assist);
+        const pace = (st.spawned < 3 ? 0.7 : prog > 0.75 ? 1.2 : 1) * (1 - 0.15 * assist) * (ctx.speed ?? 1);
         falling.push({ i: idx, x: 14 + ctx.rand() * (CW - 28), y: -12, vy: (30 + 24 * prog) * pace, wob: ctx.rand() * 6 });
         if (it0.twist || prog >= 0.5) ctx.twist?.();
         if (it0.conceptId && !seenConcept.has(it0.conceptId)) { seenConcept.add(it0.conceptId); ctx.learn?.(it0.conceptId); }
@@ -258,7 +261,7 @@ export function WhackPlay({ ctx, m, paused, onDone }: { ctx: Ctx; m: Whack; paus
     const assist = ctx.assist ?? 0;
     s.order = phasedDeck(m.targets, arcadeTotal(m.durationSec, m.perSec), ctx.rand, assist);
     const seenConcept = new Set<string>();
-    const upFor = (n: number) => m.upMs * (1 + 0.25 * assist) * (n < 3 ? 1.4 : n / s.order.length > 0.75 ? 0.85 : 1);
+    const upFor = (n: number) => m.upMs * (1 + 0.25 * assist) * (n < 3 ? 1.4 : n / s.order.length > 0.75 ? 0.85 : 1) / (ctx.speed ?? 1);
     let raf = 0, last = performance.now();
     const push = () => {
       setHoles([...s.holes]);
@@ -390,7 +393,7 @@ export function WhackPlay({ ctx, m, paused, onDone }: { ctx: Ctx; m: Whack; paus
 /** Jauge réutilisable (niveau ou boss) : renvoie l'index de la zone, ou -1 hors zone. */
 export function GaugeMeter({ ctx, m, disabled, paused, speedMul = 1, onResult }: { ctx: Ctx; m: Gauge; disabled?: boolean; paused?: boolean; speedMul?: number; onResult: (zone: number, pos: number) => void }) {
   const mulRef = useRef(speedMul);
-  mulRef.current = speedMul * (1 - 0.2 * (ctx.assist ?? 0));
+  mulRef.current = speedMul * (1 - 0.2 * (ctx.assist ?? 0)) * (ctx.speed ?? 1);
   const needle = useRef<HTMLDivElement>(null);
   const S = useRef({ t: ctx.rand(), pos: 0, stopped: false, lastTick: -1 });
   const pausedRef = useRef(paused);
@@ -507,7 +510,7 @@ export function SequencePlay({ ctx, m, paused, onDone }: { ctx: Ctx; m: Sequence
   useEffect(() => {
     if (paused) return;
     const len = Math.max(2, 3 + round - ((ctx.assist ?? 0) >= 2 ? 1 : 0));
-    const speed = m.speedMs * (1 + 0.3 * (ctx.assist ?? 0));
+    const speed = m.speedMs * (1 + 0.3 * (ctx.assist ?? 0)) / (ctx.speed ?? 1);
     const s: number[] = [];
     while (s.length < len) {
       const n = Math.floor(ctx.rand() * m.pads.length);

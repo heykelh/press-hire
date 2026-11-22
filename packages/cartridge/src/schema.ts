@@ -8,7 +8,7 @@ import { z } from "zod";
 
 export const SCHEMA_VERSION = "0.4" as const;
 /** versions encore lues (les jeux déjà publiés restent jouables) */
-export const SUPPORTED_VERSIONS = ["0.2", "0.3", "0.4"] as const;
+export const SUPPORTED_VERSIONS = ["0.2", "0.3", "0.4", "0.5"] as const;
 
 /* ---------- briques communes ---------- */
 
@@ -415,6 +415,14 @@ export const GameEvent = z.object({
 
 /* ---------- progression ---------- */
 
+export const LevelEntry = z.enum(["briefing", "ambush", "call"]);
+/**
+ * turbo : tout va plus vite ; fog : brouillard sur le haut de l'écran ; mirror : commandes inversées (attrape-tout) ;
+ * quake : l'écran tremble par moments ; blackout : la lumière saute par moments.
+ */
+export const Modifier = z.enum(["turbo", "fog", "mirror", "quake", "blackout"]);
+export type Modifier = z.infer<typeof Modifier>;
+
 export const Level = z.object({
   id: Id,
   order: z.number().int().min(1),
@@ -438,6 +446,13 @@ export const Level = z.object({
   twist: z.object({ text: I18n }).optional(),
   /** réaction d'un personnage après la victoire */
   outro: z.object({ characterId: Id.optional(), text: I18n }).optional(),
+  /**
+   * Façon d'entrer dans le niveau : briefing (écran d'explication), ambush (pas d'écran : ça démarre
+   * avec une alerte), call (un personnage appelle, le téléphone sonne).
+   */
+  entry: LevelEntry.default("briefing"),
+  /** modificateurs façon NES qui changent la sensation de jeu (2 au plus) */
+  modifiers: z.array(Modifier).max(2).default([]),
 });
 export type Level = z.infer<typeof Level>;
 
@@ -451,15 +466,34 @@ export const Concept = z.object({
 });
 export type Concept = z.infer<typeof Concept>;
 
-export const Boss = z.object({
-  name: I18n,
-  painPointId: Id,
-  characterId: Id.optional(),
-  hp: z.number().int().min(1).max(20),
-  mechanic: z.discriminatedUnion("type", [QuizMechanic, WheelMechanic, GaugeMechanic]),
-  taunts: z.array(I18n).min(1).max(6),
-  defeatLine: I18n,
+/** Phase d'un boss à plusieurs formes : n'importe quelle mécanique, avec sa propre condition de victoire. */
+export const BossPhase = z.object({
+  /** ce que fait le boss dans cette phase (« Il lance 300 tickets à la fois ! ») */
+  intro: I18n,
+  mechanic: Mechanic,
+  win: z.array(Condition).min(1),
+  /** réplique quand le joueur rate la phase */
+  taunt: I18n.optional(),
+  modifiers: z.array(Modifier).max(2).default([]),
 });
+export type BossPhase = z.infer<typeof BossPhase>;
+
+export const Boss = z
+  .object({
+    name: I18n,
+    /** archétype (hydre, négociateur, saboteur…) */
+    archetype: z.string().max(30).optional(),
+    painPointId: Id,
+    characterId: Id.optional(),
+    hp: z.number().int().min(1).max(20),
+    /** boss classique (une seule mécanique, un coup par bonne action) */
+    mechanic: z.discriminatedUnion("type", [QuizMechanic, WheelMechanic, GaugeMechanic]).optional(),
+    /** boss à plusieurs formes : 2 ou 3 phases, chacune une mécanique différente (chaque phase gagnée = un coup) */
+    phases: z.array(BossPhase).min(2).max(3).optional(),
+    taunts: z.array(I18n).min(1).max(6),
+    defeatLine: I18n,
+  })
+  .refine((b) => !!b.mechanic || !!b.phases, { message: "le boss a besoin d'une mécanique ou de phases", path: ["phases"] });
 export type Boss = z.infer<typeof Boss>;
 
 /* ---------- cartouche ---------- */
@@ -525,6 +559,8 @@ export const Cartridge = z.object({
   design: z.object({
     /** habillage complet (police, logo, cadres, filtre d'image) : chaque jeu doit avoir sa propre identité */
     skin: z.enum(["arcade", "famicom", "gameboy", "terminal", "synth", "corporate", "comic"]).default("arcade"),
+    /** format narratif du jeu (semaine, nuit-blanche, braquage, tournoi…) : sert aussi à varier d'un jeu à l'autre */
+    format: z.string().max(30).optional(),
     title: I18n,
     tagline: I18n,
     palette: z.object({

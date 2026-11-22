@@ -2893,3 +2893,40 @@ export const EXAMPLE_JOB = {
   painPoints: [{ label: "Les attaques du vendredi soir", evidence: "astreinte" }], softSkills: [],
   tone: { formality: 2, humor: 3 },
 };
+/* v0.5 : l'exemple montre aussi les entrées de niveau, un modificateur et un boss à plusieurs formes. */
+{
+  type O = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const ex = EXAMPLE_BRIEF_ARCADE as O;
+  const levels = ex.levels as O[];
+  const whack = levels.find((l) => l.mechanic.type === "whack")!;
+  const catchL = levels.find((l) => l.mechanic.type === "catch")!;
+  const talk = levels.find((l) => l.characterId && l.mechanic.type !== "whack" && l !== levels[0]);
+  whack.entry = "ambush";
+  catchL.modifiers = ["turbo"];
+  if (talk) talk.entry = "call";
+  const old = ex.boss as O;
+  ex.design.format = "semaine";
+  ex.boss = {
+    name: old.name,
+    archetype: "hydre",
+    painPointId: old.painPointId,
+    hp: 2,
+    phases: [
+      {
+        intro: { fr: "Il chiffre un serveur par seconde. Isole-les !", en: "It encrypts a server a second. Isolate them!" },
+        mechanic: structuredClone(whack.mechanic),
+        win: structuredClone(whack.win),
+        taunt: { fr: "Trop lent. J'ai déjà le serveur de la paie.", en: "Too slow. I already have the payroll server." },
+        modifiers: ["turbo"],
+      },
+      {
+        intro: { fr: "Dernière forme : coupe le réseau au bon moment.", en: "Final form: cut the network at the right moment." },
+        mechanic: old.mechanic,
+        win: [{ var: "trust", op: ">=", value: 9, scope: "level" }],
+        taunt: { fr: "Raté. Je me réplique.", en: "Missed. I'm replicating." },
+      },
+    ],
+    taunts: old.taunts,
+    defeatLine: old.defeatLine,
+  };
+}

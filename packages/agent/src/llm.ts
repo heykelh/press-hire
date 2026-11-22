@@ -35,9 +35,9 @@ export class LlmError extends Error {
 /** Estimation grossière du nombre de jetons (français + JSON : environ 3,2 caractères par jeton). */
 export const estimateTokens = (s: string) => Math.ceil(s.length / 3.2);
 /** Sortie minimale à réserver selon l'étape. */
-const MIN_OUT: Record<string, number> = { write: 7000, revise: 7000, repair: 7000, analyze: 1800, critique: 1200, check: 800 };
+const MIN_OUT: Record<string, number> = { write: 7000, revise: 7000, repair: 7000, analyze: 1800, pitch: 1500, critique: 1200, check: 800 };
 /** Étapes courtes où l'on préfère le fournisseur le plus rapide. */
-const SMALL_TASKS = new Set(["analyze", "critique", "check"]);
+const SMALL_TASKS = new Set(["analyze", "pitch", "critique", "check"]);
 
 const TIMEOUT = 150_000;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

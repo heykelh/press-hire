@@ -3,6 +3,7 @@
  * que l'on connaît déjà (métadonnées, suivi, relecture).
  * On l'assemble ensuite de façon déterministe, puis on corrige les petites fautes courantes.
  */
+import type { GamePlan } from "./plan";
 import {
   arcadeSplit,
   Cartridge,
@@ -131,6 +132,12 @@ export function repairBrief(raw: unknown): unknown {
   if (isObj(b.boss)) {
     fixWheel(b.boss.mechanic as Obj);
     fixQuiz(b.boss.mechanic as Obj);
+    if (Array.isArray(b.boss.phases)) {
+      b.boss.phases = (b.boss.phases as Obj[]).slice(0, 3);
+      for (const ph of b.boss.phases as Obj[]) { fixWheel(ph.mechanic as Obj); fixQuiz(ph.mechanic as Obj); fixGauge(ph.mechanic as Obj); }
+      // un boss à phases n'a pas besoin de mécanique classique ; ses points de vie = nombre de phases
+      if ((b.boss.phases as Obj[]).length >= 2) { delete b.boss.mechanic; b.boss.hp = (b.boss.phases as Obj[]).length; }
+    }
   }
 
   // écran titre : détail ≤ 24 caractères, 2 à 5 acteurs
@@ -156,7 +163,7 @@ export function applyPlan(
   brief: Obj,
   requirements: Array<{ id: string; label: { fr: string; en: string } }> | undefined,
   days: Array<{ fr: string; en: string }> | undefined,
-  force: { days?: boolean; skin?: string; scene?: string } = {},
+  force: { days?: boolean; skin?: string; scene?: string; plan?: GamePlan } = {},
 ): Obj {
   if (requirements?.length) {
     const analysis = (isObj(brief.analysis) ? brief.analysis : {}) as Obj;
@@ -171,6 +178,23 @@ export function applyPlan(
   if (days?.length && Array.isArray(brief.levels)) {
     const ordered = [...(brief.levels as Obj[])].sort((a, b) => Number(a.order) - Number(b.order));
     ordered.forEach((l, i) => { if ((force.days || !isObj(l.day)) && days[i]) l.day = days[i]; });
+  }
+  // ce qui ne change pas le contenu se recopie directement depuis le plan
+  const plan = force.plan;
+  if (plan && Array.isArray(brief.levels)) {
+    const ordered = [...(brief.levels as Obj[])].sort((a, b) => Number(a.order) - Number(b.order));
+    ordered.forEach((l, i) => {
+      const pl = plan.levels[i];
+      if (!pl) return;
+      l.entry = pl.entry;
+      l.modifiers = pl.modifiers;
+    });
+  }
+  if (plan) brief.design = { ...(isObj(brief.design) ? brief.design : {}), format: plan.format };
+  if (plan?.boss && isObj(brief.boss)) {
+    brief.boss.archetype = plan.boss.archetype;
+    if (Array.isArray(brief.boss.phases))
+      (brief.boss.phases as Obj[]).forEach((ph, i) => { if (plan.boss!.phases[i]) ph.modifiers = plan.boss!.phases[i]!.modifiers; });
   }
   if (force.skin) brief.design = { ...(isObj(brief.design) ? brief.design : {}), skin: force.skin };
   if (force.scene) brief.titleScreen = { ...(isObj(brief.titleScreen) ? brief.titleScreen : {}), scene: force.scene };
@@ -209,7 +233,7 @@ export function assemble(brief: Obj, ctx: AssembleCtx): CartridgeInput {
 /* ---------------- équilibrage de secours ---------------- */
 
 /** Meilleure variation atteignable d'une variable pendant un niveau (en jouant pour elle seule). */
-function bestDelta(c: Cartridge, l: Level, varId: string, start: GameState, dir: 1 | -1): number {
+function bestDelta(c: Cartridge, l: Pick<Level, "mechanic">, varId: string, start: GameState, dir: 1 | -1): number {
   const m = l.mechanic;
   const gain = (effects: Array<{ var: string; op: string; value: number }>) =>
     effects.filter((e) => e.var === varId && e.op === "add").reduce((t, e) => t + e.value * dir, 0);
@@ -264,7 +288,12 @@ export function autoBalance(c: Cartridge, levelIds: string[], opts: { singleGoal
   const out = structuredClone(c);
   const ordered = [...out.levels].sort((a, b) => a.order - b.order);
   const state: GameState = Object.fromEntries(out.state.vars.map((v) => [v.id, v.start]));
-  for (const l of ordered) {
+  // les phases du boss se règlent comme des niveaux, après eux
+  const units: Array<{ id: string; mechanic: Level["mechanic"]; win: Condition[] }> = [
+    ...ordered,
+    ...(out.boss?.phases ?? []).map((ph, i) => Object.assign(ph, { id: `boss-phase-${i + 1}` })),
+  ];
+  for (const l of units) {
     if (levelIds.includes(l.id)) {
       // plusieurs objectifs contradictoires sur une roue : on garde le principal
       if (opts.singleGoal && l.win.length > 1) l.win = l.win.slice(0, 1);
@@ -283,5 +312,7 @@ export function autoBalance(c: Cartridge, levelIds: string[], opts: { singleGoal
       if (Number.isFinite(d)) applyEffects(out, state, [{ var: w.var, op: "add", value: d * dir }]);
     }
   }
+  // retire l'identifiant technique ajouté aux phases
+  for (const ph of out.boss?.phases ?? []) delete (ph as { id?: string }).id;
   return out;
 }

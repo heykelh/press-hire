@@ -29,6 +29,10 @@ export interface Ctx {
   combo?: (good: boolean) => void;
   /** métriques du niveau, affichées dans le rapport de fin */
   report?: (rows: Array<{ label: string; value: string }>) => void;
+  /** modificateur « turbo » : multiplicateur de vitesse des mécaniques d'arcade */
+  speed?: number;
+  /** modificateur « miroir » : commandes gauche/droite inversées */
+  mirror?: boolean;
 }
 
 export interface Fx {

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { simulateBestRun, validateCartridge } from "@press-hire/cartridge";
 import {
+  BOSS_TEMPLATES,
+  STAGES,
+  VERB_MECHANICS,
   EXAMPLE_JOB,
   JobModel,
   planGame,
@@ -22,7 +25,7 @@ const scripted = (...replies: string[]): Llm & { calls: number } => {
     calls: 0,
     async complete(_s: string, _u: string, opts?: { task?: string }) {
       // ces tests portent sur l'écriture et les corrections : pas de fiche du poste (repli sur l'offre)
-      if (opts?.task === "analyze") return "{}";
+      if (opts?.task === "analyze" || opts?.task === "pitch") return "{}";
       const r = replies[Math.min(l.calls, replies.length - 1)]!;
       l.calls++;
       return r;
@@ -176,25 +179,56 @@ describe("fiche du poste et plan", () => {
   const job = JobModel.parse(SOC_JOB);
   const plan = planGame(job);
 
-  it("choisit la mécanique par le verbe du métier", () => {
-    const by = Object.fromEntries(plan.levels.map((l) => [l.missionId, l.mechanic]));
-    expect(by.phishing).toBe("catch");
-    expect(by.triage).toBe("whack");
-    expect(by.iam).toBe("inspection");
-    expect(by.siem).toBe("gauge");
-    expect(by.hunt).toBe("investigation");
-    expect(by.ir).toBe("sequence");
+  it("choisit la mécanique parmi celles qui correspondent au verbe du métier", () => {
+    const faithful = plan.levels.filter((l) => VERB_MECHANICS[l.verb].includes(l.mechanic)).length;
+    expect(faithful).toBeGreaterThanOrEqual(plan.levels.length - 2);
   });
 
-  it("garantit variété, arcade, réflexion et une semaine du lundi au vendredi", () => {
-    const m = plan.levels.map((l) => l.mechanic);
-    expect(m.length).toBeGreaterThanOrEqual(4);
-    expect(m.filter((x) => ["catch", "whack", "gauge", "sequence"].includes(x)).length).toBeGreaterThanOrEqual(2);
-    expect(m.some((x) => ["inspection", "investigation", "triage", "quiz", "dialogue", "slider"].includes(x))).toBe(true);
-    for (let i = 1; i < m.length; i++) expect(m[i]).not.toBe(m[i - 1]);
-    expect(plan.levels[0]!.day.fr).toBe("LUNDI 9H");
-    expect(plan.levels.at(-1)!.day.fr).toBe("VENDREDI 17H");
-    expect(plan.boss).toBeDefined();
+  it("garantit variété, arcade, réflexion, format, entrées et boss à plusieurs formes", () => {
+    for (let seed = 1; seed <= 25; seed++) {
+      let x = seed;
+      const rand = () => ((x = (x * 16807) % 2147483647) / 2147483647);
+      const p = planGame(job, { rand });
+      const m = p.levels.map((l) => l.mechanic);
+      expect(m.length).toBeGreaterThanOrEqual(4);
+      expect(m.filter((x) => ["catch", "whack", "gauge", "sequence"].includes(x)).length).toBeGreaterThanOrEqual(2);
+      expect(m.some((x) => ["inspection", "investigation", "triage", "quiz", "dialogue", "slider"].includes(x))).toBe(true);
+      expect(m.filter((x) => x === "quiz").length).toBeLessThanOrEqual(1);
+      for (let i = 1; i < m.length; i++) expect(m[i]).not.toBe(m[i - 1]);
+      expect(STAGES[p.format]).toBeDefined();
+      for (const l of p.levels) expect(l.day.fr.length).toBeLessThanOrEqual(18);
+      expect(p.levels[0]!.entry).toBe("briefing");
+      expect(p.levels.some((l) => l.entry !== "briefing")).toBe(true);
+      expect(p.levels[0]!.modifiers).toEqual([]);
+      const b = p.boss!;
+      expect(b.phases.length).toBeGreaterThanOrEqual(2);
+      expect(b.phases.some((ph) => ["catch", "whack", "gauge", "sequence"].includes(ph.mechanic))).toBe(true);
+      for (let i = 1; i < b.phases.length; i++) expect(b.phases[i]!.mechanic).not.toBe(b.phases[i - 1]!.mechanic);
+    }
+  });
+
+  it("varie vraiment d'un jeu à l'autre, et évite ce qui a servi récemment", () => {
+    const formats = new Set<string>(), bosses = new Set<string>(), shapes = new Set<string>();
+    let x = 42;
+    const rand = () => ((x = (x * 16807) % 2147483647) / 2147483647);
+    for (let k = 0; k < 40; k++) {
+      const p = planGame(job, { rand });
+      formats.add(p.format); bosses.add(p.boss!.archetype); shapes.add(p.levels.map((l) => l.mechanic).join(","));
+    }
+    expect(formats.size).toBeGreaterThanOrEqual(5);
+    expect(bosses.size).toBeGreaterThanOrEqual(3);
+    expect(shapes.size).toBeGreaterThanOrEqual(8);
+    expect(Object.keys(BOSS_TEMPLATES).length).toBeGreaterThanOrEqual(7);
+    // historique : le format et le boss du dernier jeu reviennent beaucoup moins souvent
+    let same = 0, sameRecent = 0;
+    for (let k = 0; k < 60; k++) {
+      const a = planGame(job, { rand });
+      const b = planGame(job, { rand, recent: { formats: [a.format], mechanics: [], bosses: [a.boss!.archetype] } });
+      const c = planGame(job, { rand });
+      if (c.format === a.format) same++;
+      if (b.format === a.format) sameRecent++;
+    }
+    expect(sameRecent).toBeLessThan(same);
   });
 
   it("ajoute un échange quand l'offre demande des qualités humaines", () => {
@@ -213,22 +247,23 @@ describe("pipeline complet", () => {
   });
 
   it("analyse, planifie, écrit, relit et livre une cartouche notée", async () => {
-    const { llm, calls } = tasked({ analyze: JSON.stringify(SOC_JOB), write: brief, critique: good });
+    const { llm, calls } = tasked({ analyze: JSON.stringify(SOC_JOB), write: brief, critique: good, repair: brief });
     const { events, last } = await runFull(llm);
-    expect(calls).toEqual(["analyze", "write", "critique"]);
+    expect(calls.filter((c) => !["pitch", "repair"].includes(c))).toEqual(["analyze", "write", "critique"]);
+    expect(calls[1]).toBe("pitch");
     expect(last.type).toBe("done");
     if (last.type !== "done") return;
     expect(last.scores).toEqual({ accuracy: 9, pedagogy: 8, fun: 9, wow: 8 });
     expect(last.cartridge.analysis.requirements.map((r) => r.id)).toContain("req_iam");
     expect(last.cartridge.review.notes).toContain("justesse 9/10");
-    expect(events.some((e) => e.type === "step" && e.message.startsWith("Plan : LUNDI 9H attrape-tout"))).toBe(true);
+    expect(events.some((e) => e.type === "step" && e.message.startsWith("Plan « "))).toBe(true);
     expect(last.slug).toMatch(/^demo-cyber-analyste-soc-[a-z2-9]{4}$/);
   });
 
   it("révise le jeu quand les relecteurs le jugent faible", async () => {
-    const { llm, calls } = tasked({ analyze: JSON.stringify(SOC_JOB), write: brief, critique: weak, revise: brief });
+    const { llm, calls } = tasked({ analyze: JSON.stringify(SOC_JOB), write: brief, critique: weak, revise: brief, repair: brief });
     const { events, last } = await runFull(llm);
-    expect(calls).toEqual(["analyze", "write", "critique", "revise"]);
+    expect(calls.filter((c) => !["pitch", "repair"].includes(c))).toEqual(["analyze", "write", "critique", "revise"]);
     expect(last.type).toBe("done");
     expect(events.some((e) => e.type === "step" && e.message === "Version révisée retenue.")).toBe(true);
   });

@@ -168,6 +168,8 @@ function scoreToward(effects: Effect[], win: Condition[]): number {
 }
 
 export interface LevelCheck {
+  /** chemin dans la cartouche (levels[i] ou boss.phases[i]) */
+  path?: string;
   levelId: string;
   winnable: boolean;
   wonAtStart: boolean;
@@ -251,8 +253,18 @@ export function simulateBestRun(c: Cartridge): LevelCheck[] {
     const m = l.mechanic;
     const winRate = m.type === "wheel" ? wheelWinRate(c, m, l.win, start) : m.type === "gauge" ? gaugeWinRate(c, m, l.win, start) : undefined;
     const tooHard = m.type === "catch" || m.type === "whack" ? !arcadeAverageWins(c, m, l.win, start) : undefined;
-    out.push({ levelId: l.id, winnable: end !== null, wonAtStart, winRate, tooHard });
+    out.push({ levelId: l.id, path: `levels[${c.levels.indexOf(l)}]`, winnable: end !== null, wonAtStart, winRate, tooHard });
     if (end) Object.assign(s, end);
   }
+  // boss à plusieurs formes : chaque phase se vérifie comme un niveau, dans l'ordre
+  (c.boss?.phases ?? []).forEach((ph, i) => {
+    const start = { ...s };
+    const m = ph.mechanic;
+    const end = playBest(c, m, ph.win, start);
+    const winRate = m.type === "wheel" ? wheelWinRate(c, m, ph.win, start) : m.type === "gauge" ? gaugeWinRate(c, m, ph.win, start) : undefined;
+    const tooHard = m.type === "catch" || m.type === "whack" ? !arcadeAverageWins(c, m, ph.win, start) : undefined;
+    out.push({ levelId: `boss-phase-${i + 1}`, path: `boss.phases[${i}]`, winnable: end !== null, wonAtStart: checkConditions(ph.win, start, start), winRate, tooHard });
+    if (end) Object.assign(s, end);
+  });
   return out;
 }

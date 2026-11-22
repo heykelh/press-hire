@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSSProperties } from "react";
-import { applyEffects, checkConditions, initState, playBest, type Cartridge, type GameState, type I18n } from "@press-hire/cartridge";
+import { applyEffects, checkConditions, initState, playBest, type Cartridge, type GameState, type I18n, type Modifier } from "@press-hire/cartridge";
 import { Chip, finalScore, pickWeighted, rng, SKINS } from "@press-hire/engine";
 import TitleScreen from "../TitleScreen";
 import Ending from "./Ending";
@@ -15,11 +15,14 @@ type Phase =
   | { k: "title" }
   | { k: "open" }
   | { k: "intro"; i: number }
+  | { k: "ambush"; i: number }
   | { k: "play"; i: number }
   | { k: "result"; i: number; won: boolean }
   | { k: "event"; next: number; id: string; lines: string[] }
   | { k: "bossIntro" }
   | { k: "boss" }
+  | { k: "bphase"; j: number; missed?: boolean }
+  | { k: "bplay"; j: number }
   | { k: "bossResult"; won: boolean }
   | { k: "ending" };
 
@@ -68,6 +71,12 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
   const combo = useRef({ cur: 0, max: 0 });
   const [comboShow, setComboShow] = useState(0);
   const [bossWon, setBossWon] = useState(false);
+  const [bossHp, setBossHp] = useState(0);
+  const [bossLives, setBossLives] = useState(3);
+  const [answered, setAnswered] = useState(false); // appel entrant décroché
+  const bossStart = useRef<GameState>({ ...st.current });
+  const ambushTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(ambushTimer.current), []);
   const [rankUp, setRankUp] = useState<string | null>(null);
   const chip = useRef<Chip | null>(null);
   if (!chip.current && typeof window !== "undefined") chip.current = new Chip();
@@ -175,6 +184,16 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang]);
 
+  /* ---------- modificateur « séisme » : l'écran tremble par moments ---------- */
+  const quake = (phase.k === "play" && levels[phase.i]?.modifiers?.includes("quake")) ||
+    (phase.k === "bplay" && c.boss?.phases?.[phase.j]?.modifiers?.includes("quake"));
+  useEffect(() => {
+    if (!quake) return;
+    const id = setInterval(() => { if (!help) { fx.shake(); chip.current?.sfx("hit"); } }, 3600);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quake, help]);
+
   /* ---------- enchaînement ---------- */
   const startLevel = (i: number) => {
     setHelp(false);
@@ -183,9 +202,22 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
     setLevelFails(0);
     setGained([]);
     setRankUp(null);
+    setAnswered(false);
+    const entry = levels[i]?.entry ?? "briefing";
+    if (entry === "ambush") {
+      // embuscade : pas d'écran d'explication, une alerte puis ça démarre
+      chip.current?.sfx("lose");
+      fx.shake();
+      setPhase({ k: "ambush", i });
+      clearTimeout(ambushTimer.current);
+      ambushTimer.current = setTimeout(() => play(i), 2400);
+      return;
+    }
+    if (entry === "call") chip.current?.sfx("coin");
     setPhase({ k: "intro", i });
   };
   const play = (i: number) => {
+    clearTimeout(ambushTimer.current);
     twistShown.current = false;
     setBanners([]);
     setComboShow(0);
@@ -213,7 +245,7 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
   };
   const goTo = (next: number) => {
     if (next < levels.length) startLevel(next);
-    else if (c.boss) { levelStart.current = { ...st.current }; setPhase({ k: "bossIntro" }); }
+    else if (c.boss) { levelStart.current = { ...st.current }; bossStart.current = { ...st.current }; setBossHp(c.boss.phases?.length ?? c.boss.hp); setBossLives(3); setPhase({ k: "bossIntro" }); }
     else setPhase({ k: "ending" });
   };
   const maxStars = levels.length * 3;
@@ -298,14 +330,17 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
       <button className="g-tool" onClick={() => setSound((s) => ({ ...s, sfx: !s.sfx }))} aria-pressed={sound.sfx} title="SFX">{sound.sfx ? "SFX ●" : "SFX ○"}</button>
       <button className="g-tool" onClick={() => setSound((s) => ({ ...s, music: !s.music }))} aria-pressed={sound.music} title={fr ? "Musique" : "Music"}>{sound.music ? "♪ ●" : "♪ ○"}</button>
       {c.meta.languages.length > 1 && <button className="g-tool" onClick={() => setLang(fr ? "en" : "fr")}>{fr ? "EN" : "FR"}</button>}
-      {phase.k === "play" && <button className="g-tool accent" onClick={() => setHelp(true)} title={fr ? "Comment jouer (pause)" : "How to play (pause)"} aria-label={fr ? "Comment jouer" : "How to play"}>?</button>}
+      {(phase.k === "play" || phase.k === "bplay") && <button className="g-tool accent" onClick={() => setHelp(true)} title={fr ? "Comment jouer (pause)" : "How to play (pause)"} aria-label={fr ? "Comment jouer" : "How to play"}>?</button>}
     </>
   );
 
   const levelIdx = "i" in phase ? phase.i : phase.k === "event" ? phase.next - 1 : phase.k === "open" ? 0 : levels.length - 1;
   const level = levels[Math.max(0, Math.min(levels.length - 1, levelIdx))]!;
-  const inBoss = phase.k === "boss" || phase.k === "bossIntro" || phase.k === "bossResult";
-  const goals = inBoss ? [] : level.win;
+  const inBoss = phase.k === "boss" || phase.k === "bossIntro" || phase.k === "bossResult" || phase.k === "bphase" || phase.k === "bplay";
+  const bossPhase = (phase.k === "bphase" || phase.k === "bplay") ? c.boss?.phases?.[phase.j] : undefined;
+  const goals = bossPhase ? bossPhase.win : inBoss ? [] : level.win;
+  const mods: Modifier[] = phase.k === "play" ? level.modifiers ?? [] : phase.k === "bplay" ? bossPhase?.modifiers ?? [] : [];
+  const playCtx: Ctx = mods.length ? { ...ctx, speed: mods.includes("turbo") ? 1.35 : 1, mirror: mods.includes("mirror") } : ctx;
   const levelNo = inBoss ? "BOSS" : level.day ? `${t(level.day)} · ${level.order}` : String(level.order);
   const totalStars = Object.values(stars).reduce((a, b) => a + b, 0);
 
@@ -315,8 +350,38 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
     case "open":
       body = <ColdOpen ctx={ctx} onDone={() => startLevel(0)} />;
       break;
+    case "ambush":
+      body = (
+        <div className="g-intro ambush" key={`amb-${phase.i}`}>
+          <p className="g-stage warn">⚠ {fr ? "ALERTE" : "ALERT"} ⚠</p>
+          {level.day ? <p className="g-day">{t(level.day)}</p> : null}
+          <h2 className="g-level-title">{t(level.title)}</h2>
+          <p className="g-bubble">{t(level.intro)}</p>
+          <ModTags mods={level.modifiers ?? []} fr={fr} />
+          <button className="g-btn primary" onClick={() => play(phase.i)}>{fr ? "GO ! ▶" : "GO! ▶"}</button>
+        </div>
+      );
+      break;
     case "intro": {
       const ch = char(level.characterId ?? (level.mechanic.type === "dialogue" ? level.mechanic.characterId : undefined));
+      if (level.entry === "call" && !answered) {
+        body = (
+          <div className="g-intro call" key={`call-${phase.i}`}>
+            {level.day ? <p className="g-day">{t(level.day)}</p> : null}
+            <p className="g-stage">{fr ? "APPEL ENTRANT" : "INCOMING CALL"}</p>
+            <div className="g-phone">
+              {ch ? <Portrait palette={ch.palette} size={84} talking /> : <span className="g-phone-icon">☎</span>}
+              <p className="g-speaker-name">{ch ? <>{ch.name} <small>{t(ch.role)}</small></> : (fr ? "Numéro masqué" : "Unknown caller")}</p>
+              <p className="g-ring">♪ DRING ♪ DRING ♪</p>
+            </div>
+            <div className="g-row">
+              <button className="g-btn primary big" autoFocus onClick={() => { chip.current?.sfx("click"); setAnswered(true); }}>{fr ? "📞 DÉCROCHER" : "📞 ANSWER"}</button>
+              <button className="g-btn" onClick={() => { chip.current?.sfx("lose"); say(fr ? "Il rappelle. Il rappelle toujours." : "They call back. They always call back."); setAnswered(true); }}>{fr ? "IGNORER" : "IGNORE"}</button>
+            </div>
+          </div>
+        );
+        break;
+      }
       const rq = c.analysis.requirements.find((r) => r.id === level.requirementId);
       body = (
         <div className="g-intro" key={`intro-${phase.i}`}>
@@ -337,6 +402,7 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
               {level.teaches.map((id) => conceptById(c, id)).filter((x) => !!x).map((x) => <ConceptChip key={x!.id} ctx={ctx} concept={x!} />)}
             </p>
           )}
+          <ModTags mods={level.modifiers ?? []} fr={fr} />
           <HowToCard ctx={ctx} level={level} />
           <button className="g-btn primary big" autoFocus onClick={() => { chip.current?.sfx("click"); play(phase.i); }}>
             {fr ? "C'EST PARTI ▶" : "LET'S GO ▶"}
@@ -349,7 +415,9 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
       const ch = char(level.mechanic.type === "dialogue" ? level.mechanic.characterId ?? level.characterId : level.characterId);
       body = (
         <>
-          <Mechanic key={`${phase.i}-${attempt}`} ctx={ctx} m={level.mechanic} character={ch} paused={help} onDone={() => finishLevel(phase.i)} />
+          <ModFrame mods={mods}>
+            <Mechanic key={`${phase.i}-${attempt}`} ctx={playCtx} m={level.mechanic} character={ch} paused={help} onDone={() => finishLevel(phase.i)} />
+          </ModFrame>
           {help && (
             <div className="g-overlay" onClick={() => setHelp(false)}>
               <div className="g-panel g-tuto" onClick={(e) => e.stopPropagation()}>
@@ -429,10 +497,15 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
           {ch ? <Portrait palette={ch.palette} size={96} talking /> : <BossSprite color={p.colors[0]!} size={110} />}
           <p className="g-bubble boss">{t(b.taunts[0]!)}</p>
           {pain && <p className="g-req">{fr ? "Le vrai problème" : "The real problem"} : <b>{t(pain.label)}</b></p>}
-          <p className="g-rule">{b.mechanic.type === "quiz"
+          <p className="g-rule">{b.phases
+            ? fr ? `Il a ${b.phases.length} formes. Gagne chaque phase pour lui infliger un coup. 3 vies.` : `It has ${b.phases.length} forms. Win each phase to land a hit. 3 lives.`
+            : b.mechanic?.type === "quiz"
             ? fr ? `Bonne réponse = 1 coup. ${b.hp} coups pour gagner, 3 vies.` : `Right answer = 1 hit. ${b.hp} hits to win, 3 lives.`
             : fr ? `Case favorable = 1 coup. ${b.hp} coups pour gagner, 3 vies.` : `Good slot = 1 hit. ${b.hp} hits to win, 3 lives.`}</p>
-          <button className="g-btn primary big" autoFocus onClick={() => { chip.current?.sfx("coin"); setAttempt((a) => a + 1); setPhase({ k: "boss" }); }}>{fr ? "COMBATTRE ▶" : "FIGHT ▶"}</button>
+          <button className="g-btn primary big" autoFocus onClick={() => {
+            chip.current?.sfx("coin"); setAttempt((a) => a + 1);
+            setPhase(b.phases ? { k: "bphase", j: 0 } : { k: "boss" });
+          }}>{fr ? "COMBATTRE ▶" : "FIGHT ▶"}</button>
         </div>
       );
       break;
@@ -446,6 +519,52 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
           }} />
       );
       break;
+    case "bphase": {
+      const b = c.boss!;
+      const ph = b.phases![phase.j]!;
+      const ch = char(b.characterId);
+      body = (
+        <div className="g-intro boss" key={`bph-${phase.j}-${phase.missed ? 1 : 0}`}>
+          <BossHead ctx={ctx} name={t(b.name)} hp={bossHp} max={b.phases!.length} lives={bossLives} character={ch} hurt={false} />
+          <p className="g-stage warn">{fr ? "PHASE" : "PHASE"} {phase.j + 1} / {b.phases!.length}</p>
+          <p className="g-bubble boss">{phase.missed ? t(ph.taunt ?? b.taunts[(phase.j + 1) % b.taunts.length]!) : t(ph.intro)}</p>
+          <ModTags mods={ph.modifiers ?? []} fr={fr} />
+          <button className="g-btn primary big" autoFocus onClick={() => {
+            chip.current?.sfx("click");
+            st.current = { ...levelStart.current }; bump();
+            setAttempt((a) => a + 1); setPhase({ k: "bplay", j: phase.j });
+          }}>{phase.missed ? (fr ? "↺ ENCORE ▶" : "↺ AGAIN ▶") : (fr ? "ATTAQUER ▶" : "ATTACK ▶")}</button>
+        </div>
+      );
+      break;
+    }
+    case "bplay": {
+      const b = c.boss!;
+      const ph = b.phases![phase.j]!;
+      const ch = char(ph.mechanic.type === "dialogue" ? ph.mechanic.characterId ?? b.characterId : b.characterId);
+      const j = phase.j;
+      body = (
+        <ModFrame mods={mods}>
+          <Mechanic key={`bp-${j}-${attempt}`} ctx={playCtx} m={ph.mechanic} character={ch} paused={help} onDone={() => {
+            const won = checkConditions(ph.win, st.current, levelStart.current);
+            trackOnce("level", `boss${j + 1}:${won ? 1 : 0}`);
+            if (won) {
+              chip.current?.sfx("hit"); fx.shake(); fx.confetti();
+              const hp = bossHp - 1; setBossHp(hp);
+              levelStart.current = { ...st.current };
+              if (hp <= 0 || j + 1 >= b.phases!.length) { chip.current?.sfx("win"); setBossWon(true); setPhase({ k: "bossResult", won: true }); }
+              else setPhase({ k: "bphase", j: j + 1 });
+            } else {
+              chip.current?.sfx("lose"); fx.shake(); setFails((f) => f + 1);
+              const l = bossLives - 1; setBossLives(l);
+              if (l <= 0) setPhase({ k: "bossResult", won: false });
+              else setPhase({ k: "bphase", j, missed: true });
+            }
+          }} />
+        </ModFrame>
+      );
+      break;
+    }
     case "bossResult":
       body = (
         <div className={`g-result ${phase.won ? "won" : "lost"}`}>
@@ -454,7 +573,10 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
           {phase.won ? (
             <button className="g-btn primary big" autoFocus onClick={() => setPhase({ k: "ending" })}>{fr ? "VICTOIRE ▶" : "VICTORY ▶"}</button>
           ) : (
-            <button className="g-btn primary big" autoFocus onClick={() => { st.current = { ...levelStart.current }; bump(); setAttempt((a) => a + 1); setPhase({ k: "boss" }); }}>{fr ? "↺ REVANCHE" : "↺ REMATCH"}</button>
+            <button className="g-btn primary big" autoFocus onClick={() => {
+              st.current = { ...bossStart.current }; levelStart.current = { ...bossStart.current }; bump(); setAttempt((a) => a + 1);
+              if (c.boss!.phases) { setBossHp(c.boss!.phases.length); setBossLives(3); setPhase({ k: "bphase", j: 0 }); } else setPhase({ k: "boss" });
+            }}>{fr ? "↺ REVANCHE" : "↺ REMATCH"}</button>
           )}
         </div>
       );
@@ -478,17 +600,59 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
       {phase.k === "ending" ? (
         <header className="g-hud slim"><div className="g-hud-top"><span className="g-hud-title">{t(c.design.title)}</span><span className="g-hud-actions">{toolbar}</span></div></header>
       ) : (
-        <Hud ctx={ctx} state={st.current} levelStart={levelStart.current} goals={phase.k === "intro" || phase.k === "play" || phase.k === "result" ? goals : []} levelNo={levelNo} levelCount={levels.length}>
+        <Hud ctx={ctx} state={st.current} levelStart={levelStart.current} goals={phase.k === "intro" || phase.k === "play" || phase.k === "result" || phase.k === "bplay" || phase.k === "bphase" ? goals : []} levelNo={levelNo} levelCount={levels.length}>
           <span className="g-tool-stars" title={fr ? "Étoiles · grade" : "Stars · rank"}>★ {totalStars} · {t(ranksOf(c)[rankIndex(totalStars, maxStars)]!)}</span>
           {toolbar}
         </Hud>
       )}
       {banners[0] && <div className="g-banner-zone"><BannerView ctx={ctx} b={banners[0]} /></div>}
-      {phase.k === "play" && comboShow >= 3 && <div className="g-combo" key={comboShow}>COMBO ×{comboShow}</div>}
+      {(phase.k === "play" || phase.k === "bplay") && comboShow >= 3 && <div className="g-combo" key={comboShow}>COMBO ×{comboShow}</div>}
       <main className="g-stage-area">
         {phase.k === "open" ? body : <div className="g-panel main" key={phase.k}>{body}</div>}
       </main>
       {toast && <div className="g-toast" role="status">{toast}</div>}
+    </div>
+  );
+}
+
+const MOD_FR: Record<Modifier, [string, string, string, string]> = {
+  turbo: ["TURBO", "tout va 35 % plus vite", "TURBO", "everything is 35% faster"],
+  fog: ["BROUILLARD", "on ne voit pas le haut de l'écran", "FOG", "the top of the screen is hidden"],
+  mirror: ["MIROIR", "gauche et droite sont inversées", "MIRROR", "left and right are swapped"],
+  quake: ["SÉISME", "l'écran tremble par moments", "QUAKE", "the screen shakes now and then"],
+  blackout: ["COUPURE", "la lumière saute par moments", "BLACKOUT", "the lights go out now and then"],
+};
+
+/** Étiquettes des modificateurs, avant de jouer. */
+function ModTags({ mods, fr }: { mods: Modifier[]; fr: boolean }) {
+  if (!mods.length) return null;
+  return (
+    <p className="g-modtags">
+      {mods.map((m) => (
+        <span key={m} className={`g-modtag mod-${m}`}><b>{MOD_FR[m][fr ? 0 : 2]}</b> {MOD_FR[m][fr ? 1 : 3]}</span>
+      ))}
+    </p>
+  );
+}
+
+/** Cadre qui applique les effets visuels des modificateurs (brouillard, coupures). */
+function ModFrame({ mods, children }: { mods: Modifier[]; children: React.ReactNode }) {
+  if (!mods.length) return <>{children}</>;
+  return <div className={`g-modframe ${mods.map((m) => `mod-${m}`).join(" ")}`}>{children}</div>;
+}
+
+/** En-tête de boss (portrait, points de vie, vies) pour les boss à plusieurs formes. */
+function BossHead({ ctx, name, hp, max, lives, character, hurt }: {
+  ctx: Ctx; name: string; hp: number; max: number; lives: number; character?: ReturnType<Ctx["c"]["characters"]["find"]>; hurt: boolean;
+}) {
+  return (
+    <div className={`g-boss-head${hurt ? " hurt" : ""}`}>
+      {character ? <Portrait palette={character.palette} size={96} talking={!hurt} /> : <BossSprite color={ctx.c.design.palette.colors[0]!} hurt={hurt} />}
+      <div className="g-boss-info">
+        <p className="g-boss-name">{name}</p>
+        <div className="g-hp" aria-label={`HP ${hp}/${max}`}>{Array.from({ length: max }, (_, k) => <i key={k} className={k < hp ? "on" : ""} />)}</div>
+        <p className="g-lives">{ctx.lang === "fr" ? "Vies" : "Lives"} {"♥".repeat(Math.max(0, lives))}{"♡".repeat(3 - Math.max(0, lives))}</p>
+      </div>
     </div>
   );
 }

@@ -10,7 +10,9 @@
   },
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "design": "node scripts/build-design.mjs",
+    "pretest": "node scripts/build-design.mjs --check"
   },
   "dependencies": {
     "@press-hire/cartridge": "workspace:*",

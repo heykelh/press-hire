@@ -13,8 +13,8 @@ describe("mode idée", () => {
     expect(ideaText(o)).toContain("apprenti boulanger");
   });
 
-  it("respecte le nombre de niveaux, les mécaniques choisies, les mondes et l'absence de boss", () => {
-    const p = planGame(job, { levels: 4, mechanics: ["quiz", "catch"], stages: "worlds", boss: false, skin: "gameboy" });
+  it("respecte le nombre de niveaux, les mécaniques choisies, le format et l'absence de boss", () => {
+    const p = planGame(job, { levels: 4, mechanics: ["quiz", "catch"], idea: true, format: "quete", boss: false, skin: "gameboy" });
     expect(p.levels).toHaveLength(4);
     expect(new Set(p.levels.map((l) => l.mechanic))).toEqual(new Set(["quiz", "catch"]));
     for (let i = 1; i < p.levels.length; i++) expect(p.levels[i]!.mechanic).not.toBe(p.levels[i - 1]!.mechanic);
@@ -25,9 +25,16 @@ describe("mode idée", () => {
     expect(p.forcedScene).toBe(false);
   });
 
+  it("ne répète jamais une mécanique d'affilée, même avec peu de mécaniques choisies", () => {
+    for (let k = 0; k < 60; k++) {
+      const p = planGame(job, { levels: 3 + (k % 4), mechanics: k % 2 ? ["quiz", "catch"] : ["whack", "gauge", "triage"], idea: true });
+      for (let i = 1; i < p.levels.length; i++) expect(p.levels[i]!.mechanic).not.toBe(p.levels[i - 1]!.mechanic);
+    }
+  });
+
   it("utilise chaque mécanique demandée au moins une fois quand il y a assez de niveaux", () => {
     const wanted = ["wheel", "sequence", "dialogue", "inspection", "gauge"] as const;
-    const p = planGame(job, { levels: 6, mechanics: [...wanted], stages: "worlds" });
+    const p = planGame(job, { levels: 6, mechanics: [...wanted], idea: true });
     for (const m of wanted) expect(p.levels.some((l) => l.mechanic === m)).toBe(true);
   });
 
@@ -38,6 +45,7 @@ describe("mode idée", () => {
       async complete(system, user, opts) {
         prompts[opts?.task ?? "?"] = system + user;
         if (opts?.task === "analyze") return JSON.stringify(job);
+        if (opts?.task === "pitch") return "{}";
         return JSON.stringify(EXAMPLE_BRIEF_ARCADE);
       },
     };
@@ -48,7 +56,8 @@ describe("mode idée", () => {
     if (done?.type !== "done") throw new Error(JSON.stringify(events.filter((e) => e.type !== "step"), null, 1));
     expect(validateCartridge(done.cartridge).ok).toBe(true);
     expect(done.cartridge.design.skin).toBe("synth");
-    expect(done.cartridge.levels[0]!.day?.fr).toBe("MONDE 1-1");
+    expect(done.cartridge.levels[0]!.day?.fr).toBeTruthy();
+    expect(done.cartridge.design.format).toBeTruthy();
     expect(done.slug.startsWith("noel-rouge")).toBe(true);
     expect(prompts.analyze).toContain("IDÉE de jeu");
     expect(prompts.write).toContain("MODE IDÉE");

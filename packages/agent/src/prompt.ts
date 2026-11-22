@@ -31,18 +31,19 @@ Trois objectifs, dans cet ordre :
 Tu réponds uniquement par un objet JSON conforme au schéma fourni, sans texte autour.
 
 STRUCTURE
-- Respecte le PLAN fourni : ordre des niveaux, mécanique de chacun, requirementId, et le champ "day" de chaque niveau.
+- Respecte le PLAN fourni : format, ordre des niveaux, mécanique de chacun, entrée (entry), modificateurs (modifiers), requirementId,
+  étiquette "day" de chaque niveau, et boss à plusieurs formes (boss.phases). Suis le CONCEPT du directeur créatif s'il est fourni.
 - analysis.requirements : reprends EXACTEMENT les exigences fournies (mêmes id), traduis seulement le label en anglais.
 - Tout texte visible est bilingue {"fr": "...", "en": "..."}. Français naturel, phrases courtes.
 
-HISTOIRE (le jeu raconte une semaine du poste, du lundi au vendredi)
-- story.coldOpen : 2 à 3 répliques d'ouverture qui posent la crise de la semaine, avec time (« LUNDI, 8H57 ») et le personnage principal.
+HISTOIRE (le jeu suit le FORMAT du plan : semaine type, nuit blanche, braquage, tournoi, émission de télé, boucle temporelle…)
+- story.coldOpen : 2 à 3 répliques d'ouverture qui posent la crise dans l'esprit du format, avec time (le premier moment du format) et le personnage principal.
 - story.epilogue : une phrase de conclusion drôle.
 - characters : 1 à 3 personnages récurrents crédibles (manager, client interne…), noms fictifs. Ils reviennent dans les niveaux.
 - Chaque niveau : day (repris du plan), intro (80 caractères max), outro {characterId, text} = la réaction d'un personnage après la victoire.
 - design.ranks : 4 grades qui sont de vrais titres du métier, du débutant au confirmé (ex. « Stagiaire SOC », « Analyste N1 », « Analyste N2 », « Lead SOC »).
 
-APPRENDRE (structure en 4 temps de chaque niveau : découvrir, pratiquer, rebondissement, maîtriser)
+APPRENDRE (chaque niveau : découvrir, pratiquer, rebondissement, maîtriser)
 - concepts : 5 à 10 notions du métier (term, definition pour un débutant complet en 160 caractères max, icon). Ce sont des cartes à collectionner.
 - Chaque niveau : teaches = 1 à 2 notions qu'il fait découvrir. Relie aussi les objets concernés par conceptId (la notion s'affiche
   au moment où l'objet apparaît pour la première fois).
@@ -64,6 +65,12 @@ MÉCANIQUES
 - investigation (Où est Charlie) : 2 à 3 manches ; view = logs (lignes réalistes), table (colonnes + lignes) ou chart (labels + valeurs) ;
   answer = index de l'anomalie (0 = première ligne) ; explain = pourquoi c'est l'anomalie.
 - triage, quiz, slider, wheel, dialogue : comme dans les exemples.
+- entry : "briefing" (écran d'explication), "ambush" (pas d'écran : l'intro est une alerte courte qui claque), "call" (un personnage
+  appelle : renseigne characterId, l'intro est ce qu'il dit au téléphone).
+- modifiers : ceux du plan, à justifier dans l'intro ou le twist (« La clim du data center lâche : TURBO ! »).
+- BOSS À PLUSIEURS FORMES : boss.phases = 2 à 3 phases du plan, chacune { intro, mechanic (mécanique complète, comme un niveau),
+  win (condition de victoire, scope "level" conseillé), taunt, modifiers }. Pas de boss.mechanic. hp = nombre de phases.
+  Les phases reprennent les notions vues pendant le jeu et montent en intensité.
 - Icônes possibles : ${ICONS}.
 
 DESIGN
@@ -86,7 +93,8 @@ RÈGLES
   · gauge : meilleure zone touchée 2 fois sur 3. sequence : objectif = rounds - 1.
   · dialogue : la somme des meilleurs choix dépasse l'objectif.
 
-Exemples complets de briefs réussis :
+Exemples de briefs valides. ILS MONTRENT LA FORME DU JSON, PAS UN MODÈLE DE JEU : ne copie ni leur histoire, ni leur format,
+ni leurs mécaniques, ni leur boss, ni leurs blagues. Ton jeu doit être différent et propre au métier visé.
 1. Analyste SOC (mécaniques d'arcade, inspection, enquête, histoire, notions) :
 ${JSON.stringify(EXAMPLE_BRIEF_ARCADE)}
 
@@ -110,7 +118,13 @@ export interface WriteContext {
   notes?: string;
   /** mode idée : consignes qui remplacent le cadre « candidature » */
   idea?: { rules: string };
+  /** extraits de la bibliothèque de game design utiles à ce jeu */
+  design?: string;
+  /** concept du directeur créatif (étape pitch) */
+  concept?: string;
 }
+
+const extras = (w: WriteContext) => [w.design, w.concept].filter(Boolean).join("\n\n");
 
 export function userPrompt(w: WriteContext): string {
   const { offer } = w;
@@ -129,6 +143,8 @@ ${packText(w.plan.pack)}
     : "";
   return `SCHÉMA JSON DU BRIEF :
 ${briefSchemaText()}
+
+${extras(w)}
 
 ${jobBlock}
 OFFRE D'EMPLOI
@@ -161,6 +177,8 @@ ${packText(w.plan.pack)}
 ${briefSchemaText()}
 
 ${rules}
+
+${extras(w)}
 
 ${jobBlock}
 ${w.offer.text}

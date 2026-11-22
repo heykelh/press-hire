@@ -8,3 +8,5 @@ export * from "./job";
 export * from "./packs";
 export * from "./plan";
 export * from "./idea";
+export * from "./design";
+export * from "./pitch";

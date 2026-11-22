@@ -555,7 +555,7 @@ export function BossFight({ ctx, boss, character, onEnd }: { ctx: Ctx; boss: Bos
   const [picked, setPicked] = useState<number | null>(null);
   const [spins, setSpins] = useState(0);
   const ended = useRef(false);
-  const m = boss.mechanic;
+  const m = boss.mechanic!; // boss classique (les boss à plusieurs formes sont joués par Game)
   const maxSpins = m.type === "wheel" ? Math.max(m.spins, boss.hp + LIVES) : m.type === "gauge" ? Math.max(m.rounds, boss.hp + LIVES) : 0;
 
   const hit = (good: boolean, effects: Effect[]) => {

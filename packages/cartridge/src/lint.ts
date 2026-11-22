@@ -138,9 +138,28 @@ export function lintCartridge(c: Cartridge, opts: { strict?: boolean } = {}): Is
   if (c.boss) {
     if (!painIds.has(c.boss.painPointId)) add("boss-painpoint", "error", "boss.painPointId", `problème du poste inconnu : ${c.boss.painPointId}`);
     if (c.boss.characterId && !charIds.has(c.boss.characterId)) add("character-ref", "error", "boss.characterId", `personnage inconnu : ${c.boss.characterId}`);
-    mechanicEffects(c.boss.mechanic).forEach(({ path, e }) => checkVar(e.var, `boss.mechanic.${path}`));
-    checkMechanic(c.boss.mechanic, "boss.mechanic", add, checkVar);
+    if (c.boss.mechanic) {
+      mechanicEffects(c.boss.mechanic).forEach(({ path, e }) => checkVar(e.var, `boss.mechanic.${path}`));
+      checkMechanic(c.boss.mechanic, "boss.mechanic", add, checkVar);
+    }
+    (c.boss.phases ?? []).forEach((ph, i) => {
+      const p = `boss.phases[${i}]`;
+      ph.win.forEach((w, j) => checkVar(w.var, `${p}.win[${j}]`));
+      mechanicEffects(ph.mechanic).forEach(({ path, e }) => checkVar(e.var, `${p}.mechanic.${path}`));
+      checkMechanic(ph.mechanic, `${p}.mechanic`, add, checkVar);
+      if (ph.mechanic.type === "dialogue" && ph.mechanic.characterId && !charIds.has(ph.mechanic.characterId))
+        add("character-ref", "error", `${p}.mechanic.characterId`, `personnage inconnu : ${ph.mechanic.characterId}`);
+      if (i > 0 && ph.mechanic.type === c.boss!.phases![i - 1]!.mechanic.type)
+        add("boss-variety", "warning", `${p}.mechanic`, "deux phases de boss d'affilée avec la même mécanique");
+    });
   }
+  /* variété : pas trois fois la même mécanique, pas deux fois d'affilée */
+  const types = c.levels.map((l) => l.mechanic.type);
+  types.forEach((t, i) => {
+    if (i > 0 && t === types[i - 1]) add("variety", "warning", `levels[${i}].mechanic`, `deux niveaux d'affilée en « ${t} »`);
+  });
+  for (const t of new Set(types))
+    if (types.filter((x) => x === t).length >= 3) add("variety", "warning", "levels", `mécanique « ${t} » utilisée ${types.filter((x) => x === t).length} fois`);
 
   c.events.forEach((ev, i) => ev.effects.forEach((e, j) => checkVar(e.var, `events[${i}].effects[${j}]`)));
 
@@ -205,14 +224,15 @@ export function lintCartridge(c: Cartridge, opts: { strict?: boolean } = {}): Is
   if (!issues.some((i) => i.severity === "error"))
     for (const r of simulateBestRun(c)) {
       const i = c.levels.findIndex((l) => l.id === r.levelId);
-      if (!r.winnable) add("balance-unwinnable", "error", `levels[${i}]`, `${r.levelId} : impossible à gagner, même en jouant parfaitement`);
-      else if (r.wonAtStart) add("balance-trivial", "error", `levels[${i}]`, `${r.levelId} : déjà gagné avant de jouer (utiliser une variable propre au niveau ou scope "level")`);
+      const at = r.path ?? `levels[${i}]`;
+      if (!r.winnable) add("balance-unwinnable", "error", at, `${r.levelId} : impossible à gagner, même en jouant parfaitement`);
+      else if (r.wonAtStart) add("balance-trivial", "error", at, `${r.levelId} : déjà gagné avant de jouer (utiliser une variable propre au niveau ou scope "level")`);
       else if (r.winRate !== undefined && r.winRate < 0.3)
-        add("balance-luck", "warning", `levels[${i}]`, `${r.levelId} : trop punitif, un joueur moyen gagne ${Math.round(r.winRate * 100)} % du temps (viser 30 à 80 %)`);
+        add("balance-luck", "warning", at, `${r.levelId} : trop punitif, un joueur moyen gagne ${Math.round(r.winRate * 100)} % du temps (viser 30 à 80 %)`);
       else if (r.tooHard)
-        add("balance-hard", "warning", `levels[${i}]`, `${r.levelId} : trop exigeant, un joueur qui attrape 75 % des bons objets perd`);
+        add("balance-hard", "warning", at, `${r.levelId} : trop exigeant, un joueur qui attrape 75 % des bons objets perd`);
       else if (r.winRate !== undefined && r.winRate > 0.95)
-        add("balance-luck", "warning", `levels[${i}]`, `${r.levelId} : sans enjeu, un joueur moyen gagne ${Math.round(r.winRate * 100)} % du temps`);
+        add("balance-luck", "warning", at, `${r.levelId} : sans enjeu, un joueur moyen gagne ${Math.round(r.winRate * 100)} % du temps`);
     }
 
   /* emplacements non remplis */

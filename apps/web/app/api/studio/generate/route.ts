@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { chain, EXAMPLE_BRIEF, EXAMPLE_BRIEF_ARCADE, EXAMPLE_JOB, generate, IdeaOptions, llmsFromEnv, type GenerateEvent, type Llm } from "@press-hire/agent";
-import { saveCartridge } from "@/lib/cartridges";
+import { recentDesign, saveCartridge } from "@/lib/cartridges";
 import { dbConfigured } from "@/lib/db";
 import { generationsThisMonth, getSession, logGeneration } from "@/lib/session";
 
@@ -29,6 +29,13 @@ function mockLlm(company?: string, job?: string): Llm {
     async complete(_system, _user, opts) {
       await new Promise((r) => setTimeout(r, 300));
       if (opts?.task === "analyze") return JSON.stringify({ ...EXAMPLE_JOB, ...(company ? { company } : {}), ...(job ? { jobTitle: job } : {}) });
+      if (opts?.task === "pitch")
+        return JSON.stringify({
+          choice: 1, why: "simulé", title: "OPÉRATION TEST", hook: "Une accroche simulée pour les tests de bout en bout.",
+          runningGag: "La machine à café qui fait des bruits de modem.",
+          levels: [{ order: 1, angle: "Un vrai objet du métier.", twist: "La règle change." }],
+          boss: { name: "Le Boss Simulé", phases: [{ intro: "Il attaque." }, { intro: "Il change de forme." }] },
+        });
       if (opts?.task === "critique")
         return JSON.stringify({ scores: { accuracy: 8, pedagogy: 8, fun: 9, wow: 8 }, levels: [], global: ["Ajouter un exemple de MFA."] });
       const b = JSON.parse(JSON.stringify(EXAMPLE_BRIEF_ARCADE));
@@ -68,7 +75,9 @@ export async function POST(req: Request) {
         const genInput = input.mode === "idea"
           ? { idea: input.idea, notes: input.notes }
           : { offerUrl: input.offerUrl, offerText: input.offerText, company: input.company, jobTitle: input.jobTitle, notes: input.notes, contact };
-        for await (const e of generate(genInput, { llm })) {
+        // anti-répétition : ce qui a servi dans les derniers jeux du compte
+        const recent = await recentDesign(session.accountId).catch(() => undefined);
+        for await (const e of generate(genInput, { llm, recent })) {
           if (e.type === "done") {
             await saveCartridge(e.cartridge, "draft", session.accountId, input.offerUrl);
             await logGeneration({ accountId: session.accountId, slug: e.slug, ok: true, provider, durationMs: Date.now() - t0 });
