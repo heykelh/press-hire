@@ -5,6 +5,7 @@
  */
 import type { GamePlan } from "./plan";
 import {
+  checkConditions,
   arcadeSplit,
   defenseBest,
   naiveRuns,
@@ -322,6 +323,22 @@ export function autoBalance(c: Cartridge, levelIds: string[], opts: { singleGoal
         if (naive >= target && naive < best) target = Math.min(best, Math.floor(naive) + 1);
         return { var: varId, op: dir === 1 ? ">=" : "<=", value: target * dir, scope: "level" };
       };
+      // dialogue : la meilleure réplique tourne de position (sinon « toujours la première » gagne)
+      if (l.mechanic.type === "dialogue" && l.win.length) {
+        const w0 = l.win[0]!;
+        const dir = w0.op === "<=" || w0.op === "<" ? -1 : 1;
+        const gain = (ch: { effects: Array<{ var: string; op: string; value: number }> }) =>
+          ch.effects.reduce((t, e) => t + (e.var === w0.var && e.op === "add" ? e.value * dir : 0), 0);
+        l.mechanic.nodes.forEach((n, i) => {
+          if (n.choices.length < 2) return;
+          const best = n.choices.reduce((b, ch, j) => (gain(ch) > gain(n.choices[b]!) ? j : b), 0);
+          if (n.choices.every((ch) => gain(ch) === gain(n.choices[best]!))) return;
+          const target = (i * 2 + 1) % n.choices.length; // 1, 0, 1… ou 1, 0, 2… : jamais toujours la même place
+          const bestCh = n.choices[best]!;
+          const others = n.choices.filter((_, j) => j !== best);
+          n.choices = [...others.slice(0, target), bestCh, ...others.slice(target)];
+        });
+      }
       l.win = l.win.map((w): Condition => {
         const dir: 1 | -1 = w.op === "<=" || w.op === "<" ? -1 : 1;
         const best = bestDelta(out, l, w.var, state, dir);
@@ -329,7 +346,8 @@ export function autoBalance(c: Cartridge, levelIds: string[], opts: { singleGoal
       });
       // objectifs impossibles (la mécanique ne fait pas bouger leur variable, ou ils se contredisent) :
       // on vise la variable que ce niveau fait vraiment progresser
-      const ok = playBest(out, l.mechanic, l.win, state) !== null;
+      // déjà gagné avant de jouer (objectif sur une variable que d'autres niveaux ont déjà remplie) : même traitement
+      const ok = playBest(out, l.mechanic, l.win, state) !== null && !checkConditions(l.win, state, state);
       if (!ok) {
         let pick: { v: string; dir: 1 | -1; best: number } | undefined;
         for (const v of out.state.vars)

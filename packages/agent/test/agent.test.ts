@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { simulateBestRun, validateCartridge } from "@press-hire/cartridge";
+import { coerceToSchema } from "../src/coerce";
+import { Pitch } from "../src/pitch";
 import {
   ARCADE,
+  autoBalance,
   THINKING,
   BOSS_TEMPLATES,
   STAGES,
@@ -162,6 +165,39 @@ describe("génération", () => {
     expect(last.cartridge.levels).toHaveLength(n - 1);
     expect(last.issues.some((i) => i.rule === "salvage")).toBe(true);
     expect(events.some((e) => e.type === "warn" && /Sauvetage/.test(e.message) && /trop peu de dossiers/.test(e.message))).toBe(true);
+  });
+
+  it("l'équilibrage déplace la meilleure réplique d'un dialogue (« toujours la première » ne gagne plus)", async () => {
+    const { last } = await run(scripted(JSON.stringify(EXAMPLE_BRIEF)), {});
+    if (last.type !== "done") throw new Error("exemple invalide");
+    const c = clone(last.cartridge) as any;
+    const dl = c.levels.find((l: any) => l.mechanic.type === "dialogue");
+    const w = dl.win[0];
+    for (const n of dl.mechanic.nodes)
+      n.choices.forEach((ch: any, j: number) => { ch.effects = [{ var: w.var, op: "add", value: j === 0 ? 3 : -1 }]; });
+    dl.win = [{ var: w.var, op: ">=", value: 3, scope: "level" }];
+    expect(validateCartridge(c).issues.some((i) => i.rule === "naive-win")).toBe(true);
+    const fixed = autoBalance(c, [dl.id]);
+    const r = validateCartridge(fixed);
+    expect(r.issues.filter((i) => i.severity === "error")).toEqual([]);
+  });
+
+  it("répare seul des phases de boss déjà gagnées avant de jouer", async () => {
+    const b = clone(EXAMPLE_BRIEF_ARCADE) as any;
+    for (const ph of b.boss.phases) ph.win = [{ var: "trust", op: ">=", value: 40 }]; // trust part de 50 : gagné d'avance
+    const { last } = await run(scripted(JSON.stringify(b), JSON.stringify(b), JSON.stringify(b)), {});
+    if (last.type === "fail") throw new Error(last.message);
+    if (last.type !== "done") return;
+    expect(last.issues.filter((i) => i.severity === "error")).toEqual([]);
+    expect(simulateBestRun(last.cartridge).some((r) => r.wonAtStart)).toBe(false);
+  });
+
+  it("lit un concept dont les niveaux arrivent en objet au lieu d'une liste", () => {
+    const raw = { choice: 1, why: "x", title: "TITRE", hook: "Une accroche assez longue pour passer.", runningGag: "Le café.",
+      levels: { "1": { order: 1, angle: "Un angle.", twist: "Un twist." }, "2": { order: 2, angle: "Autre angle.", twist: "Autre." } },
+      boss: { name: "Boss", phases: [{ intro: "Il attaque." }] } };
+    const r = coerceToSchema(Pitch, raw);
+    expect(r.success).toBe(true);
   });
 
   it("explique un échec en français quand rien n'est récupérable", async () => {

@@ -52,6 +52,14 @@ export function coerceToSchema<S extends z.ZodTypeAny>(schema: S, raw: unknown):
       } else if (i.code === "invalid_type" && i.expected === "string" && asText(value) !== undefined) {
         parent[k] = asText(value);
         changed = true;
+      } else if (i.code === "invalid_type" && i.expected === "array" && value && typeof value === "object") {
+        // { "1": {...}, "2": {...} } → liste de ses valeurs ; un seul objet → liste d'un élément
+        const vals = Object.values(value as Obj);
+        parent[k] = vals.length && vals.every((x) => x && typeof x === "object") ? vals : [value];
+        changed = true;
+      } else if (i.code === "invalid_type" && i.expected === "array" && typeof value === "string") {
+        parent[k] = [value];
+        changed = true;
       } else if (i.code === "invalid_type" && i.expected === "number" && typeof value === "string" && !Number.isNaN(Number(value))) {
         parent[k] = Number(value);
         changed = true;

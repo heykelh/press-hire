@@ -347,7 +347,19 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
     return { issues, attempts: repairs + 1 };
   }
 
-  const first = yield* toCartridge(reply, maxRepairs);
+  let first = yield* toCartridge(reply, maxRepairs);
+  // le jeu reste bloqué : s'il reste du temps, on le fait réécrire entièrement une fois (une autre version, souvent saine)
+  if (!first.cartridge && elapsed() < budget * 0.45) {
+    const why = explainIssues(first.issues, 2);
+    yield { type: "step", message: `Jeu bloqué${why.length ? ` (${why.join(" ; ")})` : ""} : nouvelle écriture complète…` };
+    try {
+      const again = await deps.llm.complete(SYSTEM_PROMPT, user, { task: "write", temperature: 0.8 });
+      const second = yield* toCartridge(again, 1);
+      if (second.cartridge) first = second;
+    } catch (e) {
+      yield { type: "warn", message: `Nouvelle écriture impossible (${(e as Error).message.slice(0, 120)}).` };
+    }
+  }
   if (!first.cartridge) {
     const why = explainIssues(first.issues);
     yield { type: "fail", message: `Le jeu n'a pas passé les contrôles après corrections${why.length ? ` : ${why.join(" ; ")}` : ""}.`, issues: errorsOf(first.issues) };
