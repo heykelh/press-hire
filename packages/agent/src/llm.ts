@@ -202,6 +202,23 @@ export const groq = (apiKey: string, model = "openai/gpt-oss-120b", tpm?: number
 export const qwen = (apiKey: string, model = "qwen-plus", baseUrl = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1") =>
   openaiCompatible({ label: "Qwen", baseUrl, apiKey, model, maxTokens: 16000, extraBody: { enable_thinking: false } });
 
+/**
+ * Cloudflare Workers AI : 10 000 « neurons » gratuits par jour, sans carte.
+ * Avec GLM-4.7-Flash, une écriture de jeu coûte environ 500 neurons : une dizaine de jeux par jour.
+ */
+export const cloudflare = (accountId: string, apiToken: string, model = "@cf/zai-org/glm-4.7-flash") =>
+  openaiCompatible({
+    label: "Cloudflare", baseUrl: `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/ai/v1`,
+    apiKey: apiToken, model, maxTokens: 16000, jsonMode: false,
+  });
+
+/** Z.ai (GLM) : modèles « Flash » gratuits en permanence ; une seule requête à la fois sur l'offre gratuite. */
+export const zai = (apiKey: string, model = "glm-4.7-flash") =>
+  openaiCompatible({
+    label: "Z.ai", baseUrl: "https://api.z.ai/api/paas/v4", apiKey, model, maxTokens: 16000,
+    extraBody: { thinking: { type: "disabled" } },
+  });
+
 export const openrouter = (apiKey: string, model: string) =>
   openaiCompatible({
     label: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1", apiKey, model, maxTokens: 16000,
@@ -223,7 +240,7 @@ export const resetBreaker = () => tripped.clear();
 
 /** Essaie chaque fournisseur jusqu'au premier qui répond ; ceux qui viennent d'échouer passent en dernier. */
 export function chain(llms: Llm[], onFallback?: (from: string, err: string) => void): Llm & { members: Llm[] } {
-  if (!llms.length) throw new LlmError("aucun modèle configuré : ajoute GEMINI_API_KEY, QWEN_API_KEY ou GROQ_API_KEY", false);
+  if (!llms.length) throw new LlmError("aucun modèle configuré : ajoute GEMINI_API_KEY, CLOUDFLARE_API_TOKEN ou ZAI_API_KEY", false);
   return {
     name: llms.map((l) => l.name).join(" → "),
     members: llms,
@@ -260,17 +277,22 @@ export const chainHead = (l: Llm & { members?: Llm[] }, task?: string, size = 0)
 
 /**
  * Fournisseurs configurés par l'environnement. Ordre par défaut :
- *   Gemini (GEMINI_API_KEY) → Qwen (QWEN_API_KEY) → Groq (GROQ_API_KEY, petites étapes seulement en gratuit)
+ *   Gemini (GEMINI_API_KEY) → Cloudflare (CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN) → Z.ai (ZAI_API_KEY)
+ *   → Qwen (QWEN_API_KEY) → Groq (GROQ_API_KEY, petites étapes seulement en gratuit)
  *   → OpenRouter (OPENROUTER_API_KEY + OPENROUTER_MODEL) → Mistral, NVIDIA (facultatifs).
  * LLM_ORDER change l'ordre (ex. « qwen,gemini,groq ») ; chaque *_MODEL accepte plusieurs modèles séparés par des virgules.
  */
-export const DEFAULT_ORDER = ["gemini", "qwen", "groq", "openrouter", "mistral", "nvidia"];
+export const DEFAULT_ORDER = ["gemini", "cloudflare", "zai", "qwen", "groq", "openrouter", "mistral", "nvidia"];
 export function llmsFromEnv(env: Record<string, string | undefined> = process.env, opts: { retry?: boolean } = {}): Llm[] {
   const list = (v: string | undefined, def: string[]) => (v ? v.split(",").map((x) => x.trim()).filter(Boolean) : def);
   const qwenKey = env.QWEN_API_KEY || env.DASHSCOPE_API_KEY;
   const groqTpm = Number(env.GROQ_TPM) || undefined;
   const by: Record<string, Llm[]> = {
     gemini: env.GEMINI_API_KEY ? list(env.GEMINI_MODEL, ["gemini-flash-latest", "gemini-flash-lite-latest"]).map((m) => gemini(env.GEMINI_API_KEY!, m)) : [],
+    cloudflare: env.CLOUDFLARE_ACCOUNT_ID && env.CLOUDFLARE_API_TOKEN
+      ? list(env.CLOUDFLARE_MODEL, ["@cf/zai-org/glm-4.7-flash", "@cf/openai/gpt-oss-120b"]).map((m) => cloudflare(env.CLOUDFLARE_ACCOUNT_ID!, env.CLOUDFLARE_API_TOKEN!, m))
+      : [],
+    zai: env.ZAI_API_KEY ? list(env.ZAI_MODEL, ["glm-4.7-flash"]).map((m) => zai(env.ZAI_API_KEY!, m)) : [],
     qwen: qwenKey ? list(env.QWEN_MODEL, ["qwen-plus", "qwen-flash"]).map((m) => qwen(qwenKey, m, env.QWEN_BASE_URL || undefined)) : [],
     groq: env.GROQ_API_KEY ? list(env.GROQ_MODEL, ["openai/gpt-oss-120b", "llama-3.3-70b-versatile"]).map((m) => groq(env.GROQ_API_KEY!, m, groqTpm)) : [],
     openrouter: env.OPENROUTER_API_KEY && env.OPENROUTER_MODEL ? list(env.OPENROUTER_MODEL, []).map((m) => openrouter(env.OPENROUTER_API_KEY!, m)) : [],

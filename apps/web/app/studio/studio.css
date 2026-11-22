@@ -73,3 +73,29 @@
 .st-levels { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .st-levels span { font-family: "Press Start 2P", monospace; font-size: 7px; padding: 3px 5px; background: #1d1f44; border: 1px solid var(--line); }
 .st-levels span.hard { background: #4a1020; border-color: #ff6a6a; }
+
+/* ---- nouveau jeu : onglets offre / idée ---- */
+.st-tabs { display: flex; gap: 0; margin: -4px 0 16px; border-bottom: 3px solid var(--line); flex-wrap: wrap; }
+.st-tabs button {
+  font-family: "Press Start 2P", monospace; font-size: 9px; padding: 11px 14px; background: transparent; color: var(--mut);
+  border: 3px solid transparent; border-bottom: none; cursor: pointer; margin-bottom: -3px;
+}
+.st-tabs button.on { color: #000; background: var(--c3); border-color: #000; }
+.st-tabs button:not(.on):hover { color: var(--ink); }
+.st input[type="range"] { padding: 0; accent-color: var(--c3); border: none; background: transparent; height: 32px; }
+.st label.st-check { flex-direction: row; align-items: center; gap: 10px; align-self: end; padding-bottom: 8px; cursor: pointer; }
+.st label.st-check input { width: 22px; height: 22px; accent-color: var(--c3); }
+.st label.st-check span { font-size: 9px; color: var(--ink); }
+.st-mechs { border: 2px dashed var(--line); padding: 12px; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.st-mechs legend { font-family: "Press Start 2P", monospace; font-size: 9px; color: var(--mut); padding: 0 6px; }
+.st-mechs legend em { font-style: normal; color: var(--c3); margin-left: 6px; }
+.st-mechs .st-chip {
+  font-size: 8px; padding: 9px 10px; background: #070816; color: var(--ink); border: 2px solid var(--line); cursor: pointer;
+  display: flex; flex-direction: column; gap: 5px; box-shadow: 0 3px 0 #000; user-select: none;
+}
+.st-mechs .st-chip small { font-family: "Pixelify Sans", sans-serif; font-size: 12px; color: var(--mut); line-height: 1.2; }
+.st-mechs .st-chip input { position: absolute; opacity: 0; pointer-events: none; }
+.st-mechs .st-chip.on { background: var(--c3); color: #000; border-color: #000; }
+.st-mechs .st-chip.on small { color: #222; }
+.st-mechs .st-chip:focus-within { outline: 2px solid var(--accent); }
+.st-mechs .st-hint { grid-column: 1 / -1; }

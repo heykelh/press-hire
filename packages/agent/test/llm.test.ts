@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { chain, chainHead, gemini, groq, llmsFromEnv, mistral, qwen, resetBreaker, setFetch, withRetry, type Llm } from "../src";
+import { chain, chainHead, cloudflare, gemini, zai, groq, llmsFromEnv, mistral, qwen, resetBreaker, setFetch, withRetry, type Llm } from "../src";
 
 const ok = (text: string) => new Response(JSON.stringify({ choices: [{ message: { content: text } }] }), { status: 200 });
 const err = (status: number, headers: Record<string, string> = {}) => new Response("{}", { status, headers });
@@ -59,6 +59,19 @@ describe("fiabilité des modèles", () => {
     ]);
     expect(llmsFromEnv({ GEMINI_API_KEY: "g", DASHSCOPE_API_KEY: "w", LLM_ORDER: "qwen" }).map((l) => l.name)).toEqual(["Qwen qwen-plus", "Qwen qwen-flash"]);
     expect(llmsFromEnv({ GROQ_API_KEY: "q", GROQ_TPM: "250000" })[0]!.tpm).toBe(250000);
+  });
+
+  it("ajoute Cloudflare et Z.ai juste après Gemini", async () => {
+    const names = llmsFromEnv({ GEMINI_API_KEY: "g", GROQ_API_KEY: "q", CLOUDFLARE_ACCOUNT_ID: "acc", CLOUDFLARE_API_TOKEN: "t", ZAI_API_KEY: "z" }).map((l) => l.name);
+    expect(names.slice(2, 5)).toEqual(["Cloudflare @cf/zai-org/glm-4.7-flash", "Cloudflare @cf/openai/gpt-oss-120b", "Z.ai glm-4.7-flash"]);
+    let seen: { url: string; body: Record<string, unknown> }[] = [];
+    setFetch(async (url, init) => { seen.push({ url: String(url), body: JSON.parse(String(init?.body)) }); return ok("{}"); });
+    await cloudflare("acc", "t").complete("s", "u");
+    await zai("z").complete("s", "u");
+    expect(seen[0]!.url).toBe("https://api.cloudflare.com/client/v4/accounts/acc/ai/v1/chat/completions");
+    expect(seen[0]!.body.response_format).toBeUndefined();
+    expect(seen[1]!.url).toBe("https://api.z.ai/api/paas/v4/chat/completions");
+    expect(seen[1]!.body).toMatchObject({ model: "glm-4.7-flash", thinking: { type: "disabled" } });
   });
 
   it("appelle Qwen sur l'adresse compatible OpenAI de Singapour, sans mode réflexion", async () => {

@@ -29,6 +29,8 @@ export default async function StudioPage() {
   // fournisseurs capables d'écrire un jeu entier (Groq gratuit est trop limité par minute pour cette étape)
   const writers = [
     process.env.GEMINI_API_KEY && "Gemini",
+    process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN && "Cloudflare",
+    process.env.ZAI_API_KEY && "Z.ai",
     qwenKey && "Qwen",
     process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_MODEL && "OpenRouter",
     process.env.MISTRAL_API_KEY && "Mistral",
@@ -38,11 +40,11 @@ export default async function StudioPage() {
   if (!mock && !writers.length)
     problems.push(
       process.env.GROQ_API_KEY
-        ? "Seul Groq est configuré : son quota gratuit (8 à 12k jetons/min) suffit pour l'analyse, pas pour écrire un jeu. Ajoute GEMINI_API_KEY ou QWEN_API_KEY."
-        : "Aucune clé de modèle : ajoute GEMINI_API_KEY et QWEN_API_KEY (et GROQ_API_KEY pour accélérer) dans les variables Vercel.",
+        ? "Seul Groq est configuré : son quota gratuit (8 à 12k jetons/min) suffit pour l'analyse, pas pour écrire un jeu. Ajoute GEMINI_API_KEY, Cloudflare (CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN) ou ZAI_API_KEY."
+        : "Aucune clé de modèle : ajoute GEMINI_API_KEY et Cloudflare ou ZAI_API_KEY (et GROQ_API_KEY pour accélérer) dans les variables Vercel.",
     );
   else if (!mock && writers.length === 1)
-    problems.push(`Un seul fournisseur peut écrire les jeux (${writers[0]}) : ajoute-en un deuxième (Gemini ou Qwen) pour qu'une panne ne bloque pas la génération.`);
+    problems.push(`Un seul fournisseur peut écrire les jeux (${writers[0]}) : ajoute-en un deuxième (Cloudflare ou Z.ai, gratuits) pour qu'une panne ne bloque pas la génération.`);
   if (!process.env.NTFY_TOPIC) problems.push("NTFY_TOPIC n'est pas réglé : pas de notification quand quelqu'un joue.");
 
   const [games, used, live] = dbConfigured()

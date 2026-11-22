@@ -82,11 +82,13 @@ et quand il le termine. Tes propres parties (connecté au studio) et les robots 
 | `DATABASE_URL` | Neon (déjà réglée) |
 | `STUDIO_PASSWORD` | mot de passe du studio, 8 caractères minimum |
 | `GEMINI_API_KEY` | 1er choix, gratuit sans carte : https://aistudio.google.com/apikey — `gemini-flash-latest` puis `gemini-flash-lite-latest` (`GEMINI_MODEL`) |
-| `QWEN_API_KEY` | 2e choix : Alibaba Cloud Model Studio (Singapour), quota gratuit d'environ 1M de jetons par modèle pendant 90 jours, puis payant : régler une alerte de dépense — `qwen-plus` puis `qwen-flash` (`QWEN_MODEL`, `QWEN_BASE_URL`) |
+| `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` | 2e choix, gratuit sans carte : Workers AI, 10 000 neurons/jour (environ 500 par jeu avec `@cf/zai-org/glm-4.7-flash`), puis `@cf/openai/gpt-oss-120b` (`CLOUDFLARE_MODEL`) |
+| `ZAI_API_KEY` | 3e choix, gratuit : Z.ai `glm-4.7-flash`, une requête à la fois (`ZAI_MODEL`) |
+| `QWEN_API_KEY` | facultatif : Alibaba Cloud Model Studio (Singapour), quota gratuit d'environ 1M de jetons par modèle pendant 90 jours, puis payant : régler une alerte de dépense — `qwen-plus` puis `qwen-flash` (`QWEN_MODEL`, `QWEN_BASE_URL`) |
 | `GROQ_API_KEY` | conseillé, gratuit sans carte : https://console.groq.com — très rapide, sert à l'analyse et à la relecture (quota gratuit trop petit pour l'écriture) ; `GROQ_TPM` si plan payant |
 | `OPENROUTER_API_KEY` + `OPENROUTER_MODEL` | facultatif : un modèle `…:free` d'OpenRouter |
 | `MISTRAL_API_KEY`, `NVIDIA_API_KEY` | facultatifs, en fin de file |
-| `LLM_ORDER` | facultatif : ordre des fournisseurs, ex. `qwen,gemini,groq` |
+| `LLM_ORDER` | facultatif : ordre des fournisseurs, ex. `gemini,zai,cloudflare,groq` |
 
 Fiabilité : chaque appel est réessayé 2 fois sur surcharge ou quota (attente croissante, `Retry-After` respecté), puis le fournisseur
 suivant prend le relais ; un fournisseur tombé passe en fin de file pendant 5 minutes. Chaque fournisseur à petit quota par minute

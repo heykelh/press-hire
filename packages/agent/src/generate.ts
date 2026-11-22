@@ -9,6 +9,7 @@ import { makeSlug, validateCartridge, type Cartridge, type Issue, type Validatio
 import { applyPlan, autoBalance, assemble, repairBrief } from "./brief";
 import { ANALYZE_SYSTEM, JobModel, jobSchemaJson, repairJob, requirementsFromJob, type JobModel as Job } from "./job";
 import { chainHead, estimateTokens, parseJsonReply, type Llm } from "./llm";
+import { IDEA_ANALYZE_SYSTEM, analyzeIdeaPrompt, ideaOffer, ideaWriteRules, type IdeaOptions } from "./idea";
 import { fetchOffer, mergeOffer, type Offer } from "./offer";
 import { planGame, type GamePlan } from "./plan";
 import {
@@ -23,6 +24,8 @@ export interface GenerateInput {
   jobTitle?: string;
   notes?: string;
   contact?: { name: string; role?: string };
+  /** mode idée : le jeu part d'une idée et d'options, sans offre d'emploi */
+  idea?: IdeaOptions;
 }
 
 export interface GenerateDeps {
@@ -68,9 +71,11 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
   const t0 = Date.now();
   const elapsed = () => Date.now() - t0;
 
-  /* 1. l'offre */
+  const idea = input.idea;
+  /* 1. l'offre (ou l'idée) */
   let fetched: Offer | null = null;
-  if (input.offerUrl) {
+  if (idea) yield { type: "step", message: "Mode idée : pas d'offre à lire, on part de ton idée et de tes options." };
+  else if (input.offerUrl) {
     yield { type: "step", message: "Lecture de la page de l'offre…" };
     try {
       fetched = await fetchOffer(input.offerUrl, deps.fetchImpl);
@@ -79,7 +84,7 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
       yield { type: "warn", message: `Page illisible : ${(e as Error).message}` };
     }
   }
-  const offer = mergeOffer(fetched, input.offerText, input.offerUrl);
+  const offer = idea ? ideaOffer(idea) : mergeOffer(fetched, input.offerText, input.offerUrl);
   if (offer.thin) {
     yield {
       type: "fail",
@@ -93,22 +98,31 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
   /* 2. fiche du poste */
   let job: Job | undefined;
   let plan: GamePlan | undefined;
-  yield { type: "step", message: "Analyse du poste : missions, documents manipulés, indicateurs, pièges…" };
+  yield {
+    type: "step",
+    message: idea ? "Analyse de l'idée : actions du héros, vrais objets du thème, notions à apprendre, grand méchant…" : "Analyse du poste : missions, documents manipulés, indicateurs, pièges…",
+  };
   try {
-    const raw = await deps.llm.complete(ANALYZE_SYSTEM, analyzePrompt(offer, input, jobSchemaJson()), { task: "analyze", temperature: 0.3 });
+    const raw = idea
+      ? await deps.llm.complete(IDEA_ANALYZE_SYSTEM, analyzeIdeaPrompt(idea, jobSchemaJson()), { task: "analyze", temperature: 0.5 })
+      : await deps.llm.complete(ANALYZE_SYSTEM, analyzePrompt(offer, input, jobSchemaJson()), { task: "analyze", temperature: 0.3 });
     const parsed = JobModel.safeParse(repairJob(parseJsonReply(raw)));
     if (parsed.success) job = parsed.data;
-    else yield { type: "warn", message: `Fiche du poste incomplète (${parsed.error.issues.slice(0, 2).map((i) => i.path.join(".")).join(", ")}) : écriture directe depuis l'offre.` };
+    else yield { type: "warn", message: `Fiche incomplète (${parsed.error.issues.slice(0, 2).map((i) => i.path.join(".")).join(", ")}) : écriture directe depuis ${idea ? "l'idée" : "l'offre"}.` };
   } catch (e) {
-    yield { type: "warn", message: `Analyse impossible (${(e as Error).message.slice(0, 120)}) : écriture directe depuis l'offre.` };
+    yield { type: "warn", message: `Analyse impossible (${(e as Error).message.slice(0, 120)}) : écriture directe depuis ${idea ? "l'idée" : "l'offre"}.` };
   }
   let requirements: ReturnType<typeof requirementsFromJob> | undefined;
   if (job) {
-    plan = planGame(job);
+    plan = idea
+      ? planGame(job, { levels: idea.levels, mechanics: idea.mechanics, skin: idea.skin, scene: idea.scene, boss: idea.boss, stages: "worlds" })
+      : planGame(job);
     requirements = requirementsFromJob(job);
     yield {
       type: "step",
-      message: `Fiche du poste : ${job.missions.length} missions, famille « ${plan.pack.label} »${job.intermediary ? `, client final : ${job.clientSector ?? "à déduire"}` : ""}.`,
+      message: idea
+        ? `Univers : « ${job.company} », le joueur est ${job.jobTitle} ; ${job.missions.length} actions, ${job.jargon.length} notion${job.jargon.length > 1 ? "s" : ""} à apprendre.`
+        : `Fiche du poste : ${job.missions.length} missions, famille « ${plan.pack.label} »${job.intermediary ? `, client final : ${job.clientSector ?? "à déduire"}` : ""}.`,
     };
     yield {
       type: "step",
@@ -117,7 +131,10 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
   }
 
   /* 3. écriture */
-  const user = userPrompt({ offer, job, plan, requirements, company: input.company, jobTitle: input.jobTitle, notes: input.notes });
+  const user = userPrompt({
+    offer, job, plan, requirements, company: input.company, jobTitle: input.jobTitle, notes: input.notes,
+    idea: idea ? { rules: ideaWriteRules(idea) } : undefined,
+  });
   const writeSize = estimateTokens(SYSTEM_PROMPT) + estimateTokens(user);
   yield { type: "step", message: `Écriture du jeu par ${chainHead(deps.llm, "write", writeSize)}… (la plus longue étape)` };
   let reply: string;
@@ -138,13 +155,18 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
     for (let attempt = 0; attempt <= repairs; attempt++) {
       let brief: Obj = {};
       try {
-        brief = applyPlan(repairBrief(parseJsonReply(briefText)) as Obj, requirements, days);
+        brief = applyPlan(repairBrief(parseJsonReply(briefText)) as Obj, requirements, days, {
+          days: !!idea && !!plan,
+          skin: plan?.forcedSkin ? plan.skin : undefined,
+          scene: plan?.forcedScene ? plan.scene : undefined,
+        });
       } catch (e) {
         issues = [{ rule: "json", severity: "error", path: "", message: (e as Error).message }];
       }
       if (!slug) {
-        const company = input.company || job?.company || pick(brief, "target", "company", "name") || offer.company || "entreprise";
-        const title = input.jobTitle || job?.jobTitle || pick(brief, "target", "job", "title") || offer.title || "poste";
+        const company = idea ? idea.title || job?.company || pick(brief, "design", "title", "fr") || "jeu" : input.company || job?.company || pick(brief, "target", "company", "name") || offer.company || (idea ? "jeu" : "entreprise");
+        const title = idea ? idea.hero || job?.jobTitle || ""
+          : input.jobTitle || job?.jobTitle || pick(brief, "target", "job", "title") || offer.title || "poste";
         slug = makeSlug(company, title, deps.rand);
       }
       if (Object.keys(brief).length) {
@@ -193,10 +215,10 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
 
   /* 4. relecture par trois personnages, puis révision */
   if (!deps.skipCritique && elapsed() < budget * 0.55) {
-    yield { type: "step", message: "Relecture par un praticien du métier, un débutant complet et un joueur exigeant…" };
+    yield { type: "step", message: idea ? "Relecture par un expert du sujet, un débutant complet et un joueur exigeant…" : "Relecture par un praticien du métier, un débutant complet et un joueur exigeant…" };
     let critique: CritiqueT | undefined;
     try {
-      const raw = await deps.llm.complete(CRITIC_SYSTEM, criticPrompt(JSON.stringify(first.brief), job, offer.text), { task: "critique", temperature: 0.2 });
+      const raw = await deps.llm.complete(CRITIC_SYSTEM, criticPrompt(JSON.stringify(first.brief), job, offer.text, idea ? "idea" : "job"), { task: "critique", temperature: 0.2 });
       const parsed = Critique.safeParse(parseJsonReply(raw));
       if (parsed.success) critique = parsed.data;
     } catch (e) {

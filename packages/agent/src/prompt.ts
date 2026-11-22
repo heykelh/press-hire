@@ -108,10 +108,13 @@ export interface WriteContext {
   company?: string;
   jobTitle?: string;
   notes?: string;
+  /** mode idée : consignes qui remplacent le cadre « candidature » */
+  idea?: { rules: string };
 }
 
 export function userPrompt(w: WriteContext): string {
   const { offer } = w;
+  if (w.idea) return ideaUserPrompt(w, w.idea.rules);
   const jobBlock = w.job && w.plan
     ? `FICHE DU POSTE (analyse préalable de l'offre) :
 ${JSON.stringify(w.job)}
@@ -136,6 +139,31 @@ Texte de l'offre :
 """
 ${offer.text}
 """
+${w.notes ? `\nCONSIGNES POUR CE JEU (prioritaires) :\n${w.notes}\n` : ""}
+Écris maintenant le brief JSON complet de ce jeu.`;
+}
+
+function ideaUserPrompt(w: WriteContext, rules: string): string {
+  const jobBlock = w.job && w.plan
+    ? `FICHE DE L'UNIVERS (analyse préalable de l'idée, au format d'une fiche de poste) :
+${JSON.stringify(w.job)}
+
+EXIGENCES À REPRENDRE TELLES QUELLES dans analysis.requirements :
+${JSON.stringify(w.requirements)}
+
+${planText(w.job, w.plan, "idea")}
+
+${packText(w.plan.pack)}
+(La bibliothèque ci-dessus n'est qu'une source d'inspiration de forme : le contenu vient du thème de l'idée.)
+`
+    : "";
+  return `SCHÉMA JSON DU BRIEF :
+${briefSchemaText()}
+
+${rules}
+
+${jobBlock}
+${w.offer.text}
 ${w.notes ? `\nCONSIGNES POUR CE JEU (prioritaires) :\n${w.notes}\n` : ""}
 Écris maintenant le brief JSON complet de ce jeu.`;
 }
@@ -177,8 +205,15 @@ export const Critique = z.object({
 });
 export type Critique = z.infer<typeof Critique>;
 
-export function criticPrompt(brief: string, job: JobModel | undefined, offerText: string): string {
-  return `${job ? `FICHE DU POSTE :\n${JSON.stringify(job)}\n\n` : `OFFRE :\n"""\n${offerText.slice(0, 6000)}\n"""\n\n`}BRIEF À RELIRE :
+export function criticPrompt(brief: string, job: JobModel | undefined, offerText: string, mode: "job" | "idea" = "job"): string {
+  const idea = mode === "idea"
+    ? `MODE IDÉE : ce jeu ne vient pas d'une offre d'emploi mais de l'idée ci-dessous. « Le praticien » est un expert du sujet,
+« justesse » = fidélité au sujet. Vérifie aussi le respect du public, du ton et de la difficulté demandés.
+${offerText}
+
+`
+    : "";
+  return `${idea}${job ? `FICHE DU POSTE :\n${JSON.stringify(job)}\n\n` : `OFFRE :\n"""\n${offerText.slice(0, 6000)}\n"""\n\n`}BRIEF À RELIRE :
 ${brief}
 
 Note et corrige maintenant, en JSON.`;

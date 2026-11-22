@@ -152,7 +152,12 @@ export function repairBrief(raw: unknown): unknown {
  * Applique la fiche du poste et le plan au brief : exigences fixées (le modèle ne garde que la traduction),
  * jours de la semaine repris du plan s'ils manquent.
  */
-export function applyPlan(brief: Obj, requirements: Array<{ id: string; label: { fr: string; en: string } }> | undefined, days: Array<{ fr: string; en: string }> | undefined): Obj {
+export function applyPlan(
+  brief: Obj,
+  requirements: Array<{ id: string; label: { fr: string; en: string } }> | undefined,
+  days: Array<{ fr: string; en: string }> | undefined,
+  force: { days?: boolean; skin?: string; scene?: string } = {},
+): Obj {
   if (requirements?.length) {
     const analysis = (isObj(brief.analysis) ? brief.analysis : {}) as Obj;
     const theirs = (Array.isArray(analysis.requirements) ? analysis.requirements : []) as Obj[];
@@ -165,8 +170,10 @@ export function applyPlan(brief: Obj, requirements: Array<{ id: string; label: {
   }
   if (days?.length && Array.isArray(brief.levels)) {
     const ordered = [...(brief.levels as Obj[])].sort((a, b) => Number(a.order) - Number(b.order));
-    ordered.forEach((l, i) => { if (!isObj(l.day) && days[i]) l.day = days[i]; });
+    ordered.forEach((l, i) => { if ((force.days || !isObj(l.day)) && days[i]) l.day = days[i]; });
   }
+  if (force.skin) brief.design = { ...(isObj(brief.design) ? brief.design : {}), skin: force.skin };
+  if (force.scene) brief.titleScreen = { ...(isObj(brief.titleScreen) ? brief.titleScreen : {}), scene: force.scene };
   return brief;
 }
 

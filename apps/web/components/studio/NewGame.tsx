@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { publishGame } from "@/app/studio/actions";
+import IdeaFields, { ideaBody } from "./IdeaFields";
 
 type Line = { kind: "s" | "w" | "f" | "d"; text: string };
 type Done = { slug: string; title: string; warnings: string[]; mechanics: string[] };
@@ -14,6 +15,7 @@ export default function NewGame() {
   const [done, setDone] = useState<Done | null>(null);
   const [published, setPublished] = useState<string | null>(null);
   const [pubError, setPubError] = useState<string | null>(null);
+  const [mode, setMode] = useState<"offer" | "idea">("offer");
   const logRef = useRef<HTMLDivElement>(null);
 
   const push = (l: Line) => {
@@ -24,10 +26,17 @@ export default function NewGame() {
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const body = Object.fromEntries([...fd.entries()].map(([k, v]) => [k, String(v).trim()]).filter(([, v]) => v));
-    if (!body.offerUrl && !body.offerText) {
-      push({ kind: "f", text: "Il faut le lien de l'offre ou son texte." });
-      return;
+    let body: Record<string, unknown>;
+    if (mode === "idea") {
+      const r = ideaBody(fd);
+      if ("error" in r) { setLines([{ kind: "f", text: String(r.error) }]); return; }
+      body = r;
+    } else {
+      body = Object.fromEntries([...fd.entries()].map(([k, v]) => [k, String(v).trim()]).filter(([, v]) => v));
+      if (!body.offerUrl && !body.offerText) {
+        setLines([{ kind: "f", text: "Il faut le lien de l'offre ou son texte." }]);
+        return;
+      }
     }
     setBusy(true); setLines([]); setDone(null); setPublished(null); setPubError(null);
     push({ kind: "s", text: "> INSERT COIN… génération lancée" });
@@ -82,7 +91,16 @@ export default function NewGame() {
   return (
     <section className="st-card">
       <h2>NOUVEAU JEU</h2>
-      <form onSubmit={submit} className="st-grid">
+      <div className="st-tabs" role="tablist">
+        <button type="button" role="tab" aria-selected={mode === "offer"} className={mode === "offer" ? "on" : ""} onClick={() => setMode("offer")} disabled={busy}>
+          D&apos;APRÈS UNE OFFRE
+        </button>
+        <button type="button" role="tab" aria-selected={mode === "idea"} className={mode === "idea" ? "on" : ""} onClick={() => setMode("idea")} disabled={busy}>
+          D&apos;APRÈS UNE IDÉE
+        </button>
+      </div>
+      <form onSubmit={submit} className="st-grid" key={mode}>
+        {mode === "idea" ? <IdeaFields /> : <>
         <label className="full">
           <span>LIEN DE L&apos;OFFRE</span>
           <input name="offerUrl" type="url" placeholder="https://… (APEC, Welcome to the Jungle, site carrière…)" />
@@ -111,9 +129,14 @@ export default function NewGame() {
           <span>CONSIGNES POUR CE JEU <em>facultatif</em></span>
           <textarea name="notes" style={{ minHeight: 70 }} placeholder="Ex. : insiste sur SQL et la gouvernance, ton sobre, un niveau tape-alerte, un boss sur la dette technique…" />
         </label>
+        </>}
         <div className="full st-row">
           <button className="st-btn go" disabled={busy}>{busy ? "GÉNÉRATION…" : "GÉNÉRER LE JEU ▶"}</button>
-          <span className="st-hint">1 à 4 min : analyse du poste, plan, écriture, relecture par trois personnages, révision. Le jeu est créé en brouillon.</span>
+          <span className="st-hint">
+            {mode === "idea"
+              ? "1 à 4 min : analyse de l'idée, plan en mondes, écriture, relecture, révision. Toujours en 8-bit NES. Créé en brouillon."
+              : "1 à 4 min : analyse du poste, plan, écriture, relecture par trois personnages, révision. Le jeu est créé en brouillon."}
+          </span>
         </div>
       </form>
 

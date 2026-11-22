@@ -45,7 +45,7 @@ export default function LlmCheck() {
               ))}
             </tbody>
           </table>
-        ) : <p className="st-err">Aucun modèle configuré : ajoute GEMINI_API_KEY et/ou QWEN_API_KEY sur Vercel.</p>
+        ) : <p className="st-err">Aucun modèle configuré : ajoute GEMINI_API_KEY et Cloudflare ou ZAI_API_KEY sur Vercel.</p>
       )}
     </section>
   );

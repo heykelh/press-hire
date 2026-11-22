@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { chain, EXAMPLE_BRIEF, EXAMPLE_BRIEF_ARCADE, EXAMPLE_JOB, generate, llmsFromEnv, type GenerateEvent, type Llm } from "@press-hire/agent";
+import { chain, EXAMPLE_BRIEF, EXAMPLE_BRIEF_ARCADE, EXAMPLE_JOB, generate, IdeaOptions, llmsFromEnv, type GenerateEvent, type Llm } from "@press-hire/agent";
 import { saveCartridge } from "@/lib/cartridges";
 import { dbConfigured } from "@/lib/db";
 import { generationsThisMonth, getSession, logGeneration } from "@/lib/session";
@@ -17,7 +17,10 @@ const Input = z.object({
   notes: z.string().max(2000).optional(),
   contactName: z.string().max(120).optional(),
   contactRole: z.string().max(120).optional(),
-});
+  /** "idea" : jeu créé à partir d'une idée et d'options, sans offre d'emploi */
+  mode: z.enum(["offer", "idea"]).default("offer"),
+  idea: IdeaOptions.optional(),
+}).refine((x) => x.mode !== "idea" || !!x.idea, { message: "idée manquante", path: ["idea"] });
 
 /** Modèle simulé pour les tests de bout en bout (PRESS_HIRE_MOCK_LLM=1), jamais en production. */
 function mockLlm(company?: string, job?: string): Llm {
@@ -45,7 +48,8 @@ export async function POST(req: Request) {
   if (used >= session.plan.generationsPerMonth)
     return Response.json({ error: `Quota atteint : ${session.plan.generationsPerMonth} jeux par mois avec l'offre ${session.plan.label}.` }, { status: 402 });
   const parsed = Input.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return Response.json({ error: "formulaire invalide", issues: parsed.error.issues }, { status: 400 });
+  if (!parsed.success)
+    return Response.json({ error: `formulaire invalide : ${parsed.error.issues.slice(0, 2).map((i) => `${i.path.join(".")} ${i.message}`).join(" ; ")}`, issues: parsed.error.issues }, { status: 400 });
   const input = parsed.data;
 
   const enc = new TextEncoder();
@@ -57,11 +61,14 @@ export async function POST(req: Request) {
       try {
         const llm =
           process.env.PRESS_HIRE_MOCK_LLM === "1" && process.env.VERCEL !== "1"
-            ? mockLlm(input.company, input.jobTitle)
+            ? mockLlm(input.idea?.title ?? input.company, input.idea?.hero ?? input.jobTitle)
             : chain(llmsFromEnv(), (from, err) => send({ type: "warn", message: `${err.slice(0, 160)} → modèle suivant…` }));
         provider = llm.name;
         const contact = input.contactName ? { name: input.contactName, ...(input.contactRole ? { role: input.contactRole } : {}) } : undefined;
-        for await (const e of generate({ ...input, contact }, { llm })) {
+        const genInput = input.mode === "idea"
+          ? { idea: input.idea, notes: input.notes }
+          : { offerUrl: input.offerUrl, offerText: input.offerText, company: input.company, jobTitle: input.jobTitle, notes: input.notes, contact };
+        for await (const e of generate(genInput, { llm })) {
           if (e.type === "done") {
             await saveCartridge(e.cartridge, "draft", session.accountId, input.offerUrl);
             await logGeneration({ accountId: session.accountId, slug: e.slug, ok: true, provider, durationMs: Date.now() - t0 });

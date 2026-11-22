@@ -16,7 +16,7 @@ const dir = join(process.cwd(), "eval/offers");
 const files = readdirSync(dir).filter((f) => f.endsWith(".txt") && (!filter || f.includes(filter))).sort();
 const llms = llmsFromEnv();
 if (!llms.length) {
-  console.error("Ajoute GEMINI_API_KEY et/ou QWEN_API_KEY dans .env pour lancer le banc d'essai.");
+  console.error("Ajoute GEMINI_API_KEY (et Cloudflare ou ZAI_API_KEY) dans .env pour lancer le banc d'essai.");
   process.exit(1);
 }
 const llm = chain(llms);
