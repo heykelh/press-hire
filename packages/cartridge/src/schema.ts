@@ -312,6 +312,142 @@ export const InvestigationMechanic = z.object({
   timeLimitSec: z.number().int().min(5).max(90).optional(), // par manche
 });
 
+/* ---------- mécaniques de stratégie et de casse-tête (v0.6) ---------- */
+
+/**
+ * Défense (façon tower defense en couloirs) : avant chaque vague, on voit les menaces de chaque couloir et on place
+ * un défenseur par couloir avec son budget. Un défenseur bloque les ennemis qu'il contre ; les autres passent.
+ * Le geste du métier : choisir la bonne protection pour la bonne menace, avec un budget limité.
+ */
+export const DefenseMechanic = z.object({
+  type: z.literal("defense"),
+  base: I18n, // ce que l'on protège (« le SI de la paie », « l'entrepôt »)
+  lanes: z.array(I18n).min(2).max(4), // les couloirs (« Messagerie », « VPN », « Site web »)
+  defenders: z
+    .array(
+      z.object({
+        id: Id,
+        label: I18n,
+        icon: Icon.default("shield"),
+        cost: z.number().int().min(1).max(6),
+        counters: z.array(Id).min(1).max(6), // identifiants des ennemis bloqués
+        why: I18n, // pourquoi il bloque ces menaces (une phrase)
+      }),
+    )
+    .min(2)
+    .max(5),
+  enemies: z
+    .array(z.object({ id: Id, label: I18n, icon: Icon.default("bug"), consequence: I18n.optional(), conceptId: Id.optional() }))
+    .min(2)
+    .max(6),
+  /** vagues : pour chaque couloir, la liste des ennemis qui arrivent */
+  waves: z.array(z.object({ lanes: z.array(z.array(Id).max(5)).min(2).max(4), intro: I18n.optional() })).min(2).max(5),
+  budget: z.number().int().min(2).max(20), // budget de départ
+  income: z.number().int().min(0).max(10).default(2), // ajouté avant chaque vague suivante
+  onBlock: z.array(Effect).default([]),
+  onLeak: z.array(Effect).default([]),
+});
+
+/**
+ * Tuyaux (façon Pipe Mania) : on fait pivoter les tuyaux pour relier la source à la sortie en passant par les étapes
+ * obligatoires dans l'ordre, sans passer par les étapes interdites. La grille est générée par le moteur : toujours soluble.
+ * Le geste du métier : construire un flux (données, colis, process) dans le bon ordre.
+ */
+export const PipesMechanic = z.object({
+  type: z.literal("pipes"),
+  flow: I18n, // ce qui circule (« les données clients », « les commandes »)
+  source: I18n,
+  sink: I18n,
+  size: z.number().int().min(4).max(6).default(5),
+  timeSec: z.number().int().min(20).max(120).default(45), // par manche
+  rounds: z
+    .array(
+      z.object({
+        stations: z.array(I18n).min(1).max(3), // étapes obligatoires, dans l'ordre
+        forbidden: z.array(I18n).max(2).default([]), // étapes à éviter (mauvaises pratiques)
+        explain: I18n,
+        conceptId: Id.optional(),
+      }),
+    )
+    .min(1)
+    .max(4),
+  onSolve: z.array(Effect).default([]),
+  onFail: z.array(Effect).default([]),
+});
+
+/**
+ * Chasse aux risques (façon objets cachés) : une scène pleine d'objets ; on clique sur ceux qui posent un risque.
+ * Cliquer sur un objet sans risque coûte, oublier un risque aussi. Le geste du métier : repérer un danger dans un environnement.
+ */
+export const HuntMechanic = z.object({
+  type: z.literal("hunt"),
+  scene: I18n, // le lieu (« l'atelier », « l'open space », « la salle serveur »)
+  rounds: z
+    .array(
+      z.object({
+        id: Id,
+        title: I18n,
+        items: z
+          .array(z.object({ id: Id, label: I18n, icon: Icon.default("box"), risk: z.boolean(), explain: I18n, conceptId: Id.optional() }))
+          .min(6)
+          .max(16),
+      }),
+    )
+    .min(1)
+    .max(3),
+  timeLimitSec: z.number().int().min(20).max(180).optional(), // par manche
+  onFound: z.array(Effect).default([]),
+  onWrong: z.array(Effect).default([]),
+  onMissed: z.array(Effect).default([]),
+});
+
+/* ---------- mécaniques d'action (v0.8) ---------- */
+
+/**
+ * Course (façon Canabalt) : le héros court tout seul ; on saute pour attraper ce qui est bon et éviter le reste.
+ * Les objets arrivent au sol ou en hauteur : sauter n'est pas toujours la bonne idée.
+ */
+export const RunnerMechanic = z.object({
+  type: z.literal("runner"),
+  hero: I18n, // ce que l'on incarne (« le colis », « ta requête », « l'ambulance »)
+  durationSec: z.number().int().min(20).max(60).default(35),
+  perSec: z.number().min(0.5).max(2).default(1),
+  items: z.array(ArcadeItem).min(2).max(8), // good = à ramasser, bad = à éviter
+  onGood: z.array(Effect).default([]),
+  onBad: z.array(Effect).default([]),
+  onMiss: z.array(Effect).default([]),
+});
+
+/** Tir (façon Space Invaders) : on abat les menaces qui descendent, on épargne les alliés. */
+export const ShooterMechanic = z.object({
+  type: z.literal("shooter"),
+  ship: I18n, // ce que l'on pilote (« ton antivirus », « le contrôle qualité »)
+  durationSec: z.number().int().min(20).max(60).default(35),
+  perSec: z.number().min(0.5).max(2.5).default(1),
+  items: z.array(ArcadeItem).min(2).max(8), // good = menace à abattre, bad = allié à épargner
+  onHit: z.array(Effect).default([]),
+  onWrong: z.array(Effect).default([]),
+  onMiss: z.array(Effect).default([]),
+});
+
+/**
+ * Rythme (façon Guitar Hero) : des notes étiquetées tombent en cadence ; au bon moment, on les envoie
+ * dans la bonne colonne (catégorie du métier). Le tempo accélère sur la fin.
+ */
+export const RhythmMechanic = z.object({
+  type: z.literal("rhythm"),
+  theme: I18n, // ce que l'on rythme (« le tri des urgences », « la réponse à incident »)
+  bpm: z.number().int().min(60).max(140).default(90),
+  lanes: z.array(z.object({ id: Id, label: I18n, color: Hex })).min(2).max(4),
+  notes: z
+    .array(z.object({ label: I18n, lane: Id, why: I18n.optional(), conceptId: Id.optional() }))
+    .min(4)
+    .max(18),
+  onHit: z.array(Effect).default([]),
+  onWrong: z.array(Effect).default([]),
+  onMiss: z.array(Effect).default([]),
+});
+
 export const Mechanic = z.discriminatedUnion("type", [
   WheelMechanic,
   SliderMechanic,
@@ -324,6 +460,12 @@ export const Mechanic = z.discriminatedUnion("type", [
   SequenceMechanic,
   InspectionMechanic,
   InvestigationMechanic,
+  DefenseMechanic,
+  PipesMechanic,
+  HuntMechanic,
+  RunnerMechanic,
+  ShooterMechanic,
+  RhythmMechanic,
 ]);
 export type Mechanic = z.infer<typeof Mechanic>;
 export type MechanicType = Mechanic["type"];
@@ -558,7 +700,7 @@ export const Cartridge = z.object({
   }).optional(), // ancien format : profil du candidat (plus généré depuis la v0.3)
   design: z.object({
     /** habillage complet (police, logo, cadres, filtre d'image) : chaque jeu doit avoir sa propre identité */
-    skin: z.enum(["arcade", "famicom", "gameboy", "terminal", "synth", "corporate", "comic"]).default("arcade"),
+    skin: z.enum(["arcade", "famicom", "gameboy", "terminal", "synth", "corporate", "comic", "candy", "sunset"]).default("arcade"),
     /** format narratif du jeu (semaine, nuit-blanche, braquage, tournoi…) : sert aussi à varier d'un jeu à l'autre */
     format: z.string().max(30).optional(),
     title: I18n,
@@ -609,6 +751,13 @@ export const Cartridge = z.object({
   concepts: z.array(Concept).max(14).default([]),
   levels: z.array(Level).min(1).max(12),
   boss: Boss.optional(),
+  /** clins d'œil à l'entreprise : faits publics, chacun avec sa source (Wikipédia, site officiel) */
+  about: z
+    .object({
+      company: z.string().min(1).max(80),
+      facts: z.array(z.object({ text: I18n, source: Url })).min(1).max(4),
+    })
+    .optional(),
   easterEggs: z
     .array(
       z.object({

@@ -10,8 +10,8 @@ import type { Ctx } from "./ui";
  * Fin de partie : grade, score, rapport de la semaine (vrais indicateurs du métier),
  * cartes métier à retourner, grille à partager façon Wordle.
  */
-export default function Ending({ ctx, score, fails, perfectEgg, badge, levels, stars, learned, reports, maxCombo, bossWon, onReplay }: {
-  ctx: Ctx; score: number; fails: number; perfectEgg?: string; badge: boolean;
+export default function Ending({ ctx, score, fails, perfectEgg, badge, levels, stars, learned, reports, maxCombo, bossWon, onReplay, slug, canSubmit = false }: {
+  ctx: Ctx; score: number; fails: number; perfectEgg?: string; badge: boolean; slug: string; canSubmit?: boolean;
   levels: Level[]; stars: Record<string, number>; learned: string[];
   reports: Record<string, Array<{ label: string; value: string }>>; maxCombo: number; bossWon: boolean;
   onReplay: () => void;
@@ -72,6 +72,17 @@ export default function Ending({ ctx, score, fails, perfectEgg, badge, levels, s
         </div>
       </div>
       {perfectEgg && <p className="g-callout">★ {perfectEgg}</p>}
+      <HighScores ctx={ctx} slug={slug} score={score} canSubmit={canSubmit} />
+      {c.about && (
+        <section className="g-panel g-about">
+          <h3 className="g-h3">{fr ? `CLINS D'ŒIL À ${c.about.company.toUpperCase()}` : `NODS TO ${c.about.company.toUpperCase()}`}</h3>
+          <ul>
+            {c.about.facts.map((f, i) => (
+              <li key={i}>{t(f.text)} <a href={f.source} target="_blank" rel="noopener noreferrer nofollow">{fr ? "source" : "source"} ↗</a></li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="g-panel">
         <h3 className="g-h3">{fr ? "RAPPORT DE LA SEMAINE" : "WEEKLY REPORT"}</h3>
@@ -122,5 +133,108 @@ export default function Ending({ ctx, score, fails, perfectEgg, badge, levels, s
       <button className="g-btn primary" onClick={onReplay}>{fr ? "↺ REJOUER POUR 3 ÉTOILES" : "↺ REPLAY FOR 3 STARS"}</button>
       {badge && <a className="g-made" href="/" target="_blank" rel="noopener">{fr ? "Fait avec" : "Made with"} PRESS HIRE</a>}
     </div>
+  );
+}
+
+/* ------------- tableau des meilleurs scores (3 initiales) ------------- */
+
+type ScoreRow = { initials: string; score: number };
+const ABC = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+function HighScores({ ctx, slug, score, canSubmit }: { ctx: Ctx; slug: string; score: number; canSubmit: boolean }) {
+  const fr = ctx.lang === "fr";
+  const [rows, setRows] = useState<ScoreRow[] | null>(null);
+  const [letters, setLetters] = useState([0, 0, 0]);
+  const [pos, setPos] = useState(0);
+  const [sent, setSent] = useState<{ rank: number | null; initials: string } | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!canSubmit) return;
+    fetch(`/api/score?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => setRows(d.scores ?? [])).catch(() => setRows([]));
+  }, [slug, canSubmit]);
+
+  const initials = letters.map((i) => ABC[i]).join("");
+  const qualifies = rows !== null && (rows.length < 10 || score > (rows[rows.length - 1]?.score ?? 0));
+
+  const submit = async () => {
+    if (sent) return;
+    setErr(null);
+    try {
+      let sid = sessionStorage.getItem("ph_sid");
+      if (!sid) { sid = Math.random().toString(36).slice(2, 12); sessionStorage.setItem("ph_sid", sid); }
+      const r = await fetch("/api/score", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ slug, initials, score, sid }) });
+      const d = await r.json();
+      if (!r.ok) { setErr(d.error ?? "erreur"); return; }
+      setRows(d.scores ?? []);
+      setSent({ rank: d.rank ?? null, initials });
+      ctx.chip.jingle("hiscore");
+    } catch {
+      setErr(fr ? "réseau indisponible" : "network unavailable");
+    }
+  };
+
+  // saisie façon borne : ▲ ▼ change la lettre, ◀ ▶ change de case, Entrée valide ; on peut aussi taper au clavier
+  useEffect(() => {
+    if (!canSubmit || sent || !qualifies) return;
+    const k = (e: KeyboardEvent) => {
+      const key = e.key.toUpperCase();
+      if (key === "ARROWUP" || key === "ARROWDOWN") {
+        e.preventDefault();
+        setLetters((l) => l.map((v, i) => (i === pos ? (v + (key === "ARROWUP" ? 1 : ABC.length - 1)) % ABC.length : v)));
+      } else if (key === "ARROWRIGHT") setPos((p) => Math.min(2, p + 1));
+      else if (key === "ARROWLEFT") setPos((p) => Math.max(0, p - 1));
+      else if (key === "ENTER") void submit();
+      else if (key.length === 1 && ABC.includes(key)) {
+        setLetters((l) => l.map((v, i) => (i === pos ? ABC.indexOf(key) : v)));
+        setPos((p) => Math.min(2, p + 1));
+      }
+    };
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canSubmit, sent, qualifies, pos, letters]);
+
+  if (!canSubmit)
+    return (
+      <section className="g-panel g-hiscore">
+        <h3 className="g-h3">{fr ? "MEILLEURS SCORES" : "HIGH SCORES"}</h3>
+        <p className="g-dim">{fr ? "Le tableau des scores s'ouvre quand le jeu est publié." : "The high-score table opens once the game is published."}</p>
+      </section>
+    );
+
+  const bump = (i: number, d: number) => setLetters((l) => l.map((v, k) => (k === i ? (v + d + ABC.length) % ABC.length : v)));
+  return (
+    <section className="g-panel g-hiscore">
+      <h3 className="g-h3">{fr ? "MEILLEURS SCORES" : "HIGH SCORES"}</h3>
+      {!sent && qualifies && (
+        <div className="g-initials">
+          <p>{fr ? "NOUVEAU RECORD ! ENTRE TES INITIALES" : "NEW HIGH SCORE! ENTER YOUR INITIALS"}</p>
+          <div className="g-initials-row">
+            {letters.map((v, i) => (
+              <div key={i} className={`g-initial${i === pos ? " on" : ""}`} onClick={() => setPos(i)}>
+                <button type="button" onClick={() => bump(i, 1)} aria-label="lettre suivante">▲</button>
+                <b>{ABC[v]}</b>
+                <button type="button" onClick={() => bump(i, -1)} aria-label="lettre précédente">▼</button>
+              </div>
+            ))}
+            <button type="button" className="g-btn primary" onClick={() => void submit()}>OK</button>
+          </div>
+          {err && <p className="g-hint">⚠ {err}</p>}
+        </div>
+      )}
+      {rows === null ? <p className="g-dim">…</p> : rows.length === 0 && !sent ? (
+        <p className="g-dim">{fr ? "Personne encore. Tu peux être le premier." : "Nobody yet. Be the first."}</p>
+      ) : (
+        <ol className="g-hitable">
+          {rows.map((r, i) => (
+            <li key={i} className={sent && i === rows.findIndex((x) => x.initials === sent.initials && x.score === score) ? "me" : ""}>
+              <span>{String(i + 1).padStart(2, "0")}</span><b>{r.initials}</b><span>{String(r.score).padStart(6, "0")}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+      {sent && sent.rank && sent.rank > 10 && <p className="g-dim">{fr ? `Ton rang : ${sent.rank}e` : `Your rank: #${sent.rank}`}</p>}
+    </section>
   );
 }

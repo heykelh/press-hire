@@ -99,3 +99,35 @@ describe("format v0.4", () => {
     expect(rules).toContain("investigation-answer");
   });
 });
+
+describe("mécaniques d'action et joueurs humains (v0.8)", () => {
+  const action = () => load("demo-action.json");
+  const lv = (c: any, id: string) => c.levels.find((l: any) => l.id === id);
+
+  it("la démo d'action (course, tir, rythme) passe sans avertissement", () => {
+    expect(validateCartridge(action()).issues).toEqual([]);
+  });
+
+  it("le tir refuse « tirer sur tout » quand les alliés ne coûtent rien", () => {
+    const c = action();
+    lv(c, "lvl_whack").mechanic.onWrong = [];
+    expect(validateCartridge(c).issues.map((i) => i.rule)).toContain("naive-win");
+  });
+
+  it("le rythme refuse « toujours la même colonne » et signale une colonne inconnue", () => {
+    const c = action();
+    const m = lv(c, "lvl_gauge").mechanic;
+    m.onWrong = []; m.onMiss = []; m.onHit = [{ var: "tuning", op: "add", value: 4 }];
+    expect(validateCartridge(c).issues.map((i) => i.rule)).toContain("naive-win");
+    const c2 = action();
+    lv(c2, "lvl_gauge").mechanic.notes[0].lane = "nope";
+    expect(validateCartridge(c2).issues.map((i) => i.rule)).toContain("rhythm-lane");
+  });
+
+  it("un objectif presque parfait en réflexion est signalé trop dur pour un débutant", () => {
+    const c = action();
+    lv(c, "lvl_access").win[0].value = 16;
+    const issues = validateCartridge(c).issues;
+    expect(issues.some((i) => i.rule === "balance-hard" || i.rule === "balance-unwinnable")).toBe(true);
+  });
+});

@@ -11,6 +11,8 @@ import { ANALYZE_SYSTEM, JobModel, jobSchemaJson, repairJob, requirementsFromJob
 import { chainHead, estimateTokens, parseJsonReply, type Llm } from "./llm";
 import { IDEA_ANALYZE_SYSTEM, analyzeIdeaPrompt, ideaOffer, ideaWriteRules, type IdeaOptions } from "./idea";
 import { fetchOffer, mergeOffer, type Offer } from "./offer";
+import { companyText, researchCompany, type CompanyFacts } from "./company";
+import { coerceToSchema } from "./coerce";
 import { designBrief } from "./design";
 import { PACKS } from "./packs";
 import { PITCH_SYSTEM, Pitch, pitchPrompt, pitchText } from "./pitch";
@@ -44,6 +46,8 @@ export interface GenerateDeps {
   skipCritique?: boolean;
   /** ce qui a servi dans les derniers jeux du compte : formats, mécaniques et boss à ne pas resservir */
   recent?: Recent;
+  /** recherche sur l'entreprise (Wikipédia, site officiel) ; false pour la désactiver */
+  research?: boolean;
 }
 
 export interface Scores { accuracy: number; pedagogy: number; fun: number; wow: number }
@@ -62,11 +66,19 @@ const pick = (o: unknown, ...path: string[]): string | undefined => {
 };
 
 const errorsOf = (issues: Issue[]) => issues.filter((i) => i.severity === "error");
-const onlyBalance = (issues: Issue[]) => errorsOf(issues).every((i) => i.rule.startsWith("balance-"));
+const isBalance = (i: Issue) => i.rule.startsWith("balance-") || i.rule === "naive-win";
+const onlyBalance = (issues: Issue[]) => errorsOf(issues).every(isBalance);
+const anyBalance = (issues: Issue[]) => errorsOf(issues).some(isBalance);
 
 const MECH_FR: Record<string, string> = {
   catch: "attrape-tout", whack: "tape-alerte", gauge: "jauge", sequence: "mémoire", inspection: "inspection", investigation: "enquête",
   triage: "tri", quiz: "quiz", dialogue: "échange", slider: "réglage", wheel: "roue",
+  defense: "défense",
+  pipes: "tuyaux",
+  hunt: "chasse aux risques",
+  runner: "course",
+  shooter: "tir",
+  rhythm: "rythme",
 };
 
 export async function* generate(input: GenerateInput, deps: GenerateDeps): AsyncGenerator<GenerateEvent> {
@@ -104,6 +116,19 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
   let job: Job | undefined;
   let plan: GamePlan | undefined;
   let pitch: Pitch | undefined;
+  /* 1 bis. fiche entreprise : faits publics pour les clins d'œil (jamais en mode idée) */
+  let company: CompanyFacts | null = null;
+  const companyName = input.company || offer.company;
+  if (!idea && deps.research !== false && companyName) {
+    yield { type: "step", message: `Fiche entreprise : recherche de faits publics sur « ${companyName} » (Wikipédia, site officiel)…` };
+    company = await researchCompany(companyName, { companyUrl: offer.companyUrl, fetchImpl: deps.fetchImpl }).catch(() => null);
+    yield company
+      ? { type: "step", message: `Fiche entreprise : ${company.sources.map((s) => (s.kind === "wikipedia" ? "Wikipédia" : "site officiel")).join(" + ")}.` }
+      : { type: "warn", message: `Aucune source fiable sur « ${companyName} » : pas de clin d'œil à l'entreprise (rien n'est inventé).` };
+  }
+  const companyBlock = company ? companyText(company) : undefined;
+  const allowedSources = new Set(company?.sources.map((s) => s.url) ?? []);
+
   yield {
     type: "step",
     message: idea ? "Analyse de l'idée : actions du héros, vrais objets du thème, notions à apprendre, grand méchant…" : "Analyse du poste : missions, documents manipulés, indicateurs, pièges…",
@@ -112,7 +137,7 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
     const raw = idea
       ? await deps.llm.complete(IDEA_ANALYZE_SYSTEM, analyzeIdeaPrompt(idea, jobSchemaJson()), { task: "analyze", temperature: 0.5 })
       : await deps.llm.complete(ANALYZE_SYSTEM, analyzePrompt(offer, input, jobSchemaJson()), { task: "analyze", temperature: 0.3 });
-    const parsed = JobModel.safeParse(repairJob(parseJsonReply(raw)));
+    const parsed = coerceToSchema(JobModel, repairJob(parseJsonReply(raw)));
     if (parsed.success) job = parsed.data;
     else yield { type: "warn", message: `Fiche incomplète (${parsed.error.issues.slice(0, 2).map((i) => i.path.join(".")).join(", ")}) : écriture directe depuis ${idea ? "l'idée" : "l'offre"}.` };
   } catch (e) {
@@ -138,7 +163,7 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
     yield { type: "step", message: `Directeur créatif : choix entre ${variants.map((v) => `« ${v.format} »`).join(", ")} et écriture du concept…` };
     try {
       const raw = await deps.llm.complete(PITCH_SYSTEM, pitchPrompt(job, variants, idea ? offer.text : "", idea ? "idea" : "job"), { task: "pitch", temperature: 0.95 });
-      const parsed = Pitch.safeParse(parseJsonReply(raw));
+      const parsed = coerceToSchema(Pitch, parseJsonReply(raw));
       if (parsed.success) {
         pitch = parsed.data;
         plan = variants[pitch.choice] ?? variants[0]!;
@@ -164,6 +189,7 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
       bossArchetype: plan.boss?.archetype,
     }) : undefined,
     concept: pitch ? pitchText(pitch) : undefined,
+    companyFacts: companyBlock,
   });
   const writeSize = estimateTokens(SYSTEM_PROMPT) + estimateTokens(user);
   yield { type: "step", message: `Écriture du jeu par ${chainHead(deps.llm, "write", writeSize)}… (la plus longue étape)` };
@@ -187,7 +213,8 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
     for (let attempt = 0; attempt <= repairs; attempt++) {
       let brief: Obj = {};
       try {
-        brief = applyPlan(repairBrief(parseJsonReply(briefText)) as Obj, requirements, days, {
+        brief = keepSourcedFacts(repairBrief(parseJsonReply(briefText)) as Obj, allowedSources, company?.name);
+        brief = applyPlan(brief, requirements, days, {
           days: !!plan,
           skin: plan?.forcedSkin ? plan.skin : undefined,
           scene: plan?.forcedScene ? plan.scene : undefined,
@@ -221,8 +248,8 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
           continue;
         }
         if (r.ok) return { cartridge: r.cartridge, issues: [...issues, ...off.map((i) => ({ ...i, severity: "warning" as const }))], brief, attempts: attempt + 1 };
-        // il ne reste que l'équilibrage : on règle les objectifs nous-mêmes
-        if (r.cartridge && onlyBalance(r.issues)) {
+        // l'équilibrage se règle sans le modèle : objectifs recalculés par simulation
+        if (r.cartridge && anyBalance(r.issues)) {
           yield { type: "step", message: "Réglage automatique de la difficulté…" };
           let cur = r.cartridge;
           let balanced: ValidationResult = r;
@@ -236,11 +263,17 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
               .filter((x): x is string => !!x);
             cur = autoBalance(cur, ids, { singleGoal: round > 0 });
             balanced = validateCartridge(cur);
-            if (balanced.ok || !balanced.cartridge || !onlyBalance(balanced.issues)) break;
+            if (balanced.ok || !balanced.cartridge || !anyBalance(balanced.issues)) break;
             cur = balanced.cartridge;
           }
           if (balanced.ok && balanced.cartridge) return { cartridge: balanced.cartridge, issues: balanced.issues, brief, attempts: attempt + 1 };
           issues = balanced.issues;
+          // le modèle corrige le reste à partir de la version déjà rééquilibrée
+          if (balanced.cartridge ?? cur) {
+            const { meta: _meta, ...rest } = (balanced.cartridge ?? cur) as unknown as Obj;
+            void _meta;
+            brief = rest;
+          }
         }
         briefText = JSON.stringify(brief);
       }
@@ -270,7 +303,7 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
     yield { type: "step", message: idea ? "Relecture par un expert du sujet, un débutant complet et un joueur exigeant…" : "Relecture par un praticien du métier, un débutant complet et un joueur exigeant…" };
     let critique: CritiqueT | undefined;
     try {
-      const raw = await deps.llm.complete(CRITIC_SYSTEM, criticPrompt(JSON.stringify(first.brief), job, offer.text, idea ? "idea" : "job"), { task: "critique", temperature: 0.2 });
+      const raw = await deps.llm.complete(CRITIC_SYSTEM, criticPrompt(JSON.stringify(first.brief), job, offer.text, idea ? "idea" : "job", companyBlock), { task: "critique", temperature: 0.2 });
       const parsed = Critique.safeParse(parseJsonReply(raw));
       if (parsed.success) critique = parsed.data;
     } catch (e) {
@@ -333,4 +366,14 @@ export function planIssues(c: Cartridge, plan: GamePlan): Issue[] {
     });
   }
   return out;
+}
+
+/** Ne garde que les faits sur l'entreprise dont la source vient de la recherche (sinon : rien plutôt qu'une invention). */
+export function keepSourcedFacts(brief: Obj, allowed: Set<string>, company?: string): Obj {
+  const about = brief.about as Obj | undefined;
+  if (!about || typeof about !== "object") return brief;
+  const facts = Array.isArray(about.facts) ? (about.facts as Obj[]).filter((f) => typeof f.source === "string" && allowed.has(f.source)) : [];
+  if (!facts.length || !company) delete brief.about;
+  else brief.about = { company: typeof about.company === "string" && about.company ? about.company : company, facts: facts.slice(0, 4) };
+  return brief;
 }

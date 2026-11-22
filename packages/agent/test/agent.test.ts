@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { simulateBestRun, validateCartridge } from "@press-hire/cartridge";
 import {
+  ARCADE,
+  THINKING,
   BOSS_TEMPLATES,
   STAGES,
   VERB_MECHANICS,
@@ -124,9 +126,9 @@ describe("génération", () => {
 
   it("règle lui-même un niveau gagné d'avance", async () => {
     const b = clone(EXAMPLE_BRIEF) as any;
-    // objectif atteint dès le départ : disponibilité ≥ 80 alors qu'elle part de 92
+    // objectif atteint dès le départ : disponibilité ≥ 80 alors qu'elle part de 92 (le coût garde l'arbitrage)
     const lvl = b.levels.find((l: any) => l.mechanic.type === "slider");
-    lvl.win = [{ var: "availability", op: ">=", value: 80 }];
+    lvl.win = [{ var: "availability", op: ">=", value: 80 }, { var: "stock_cost", op: "<=", value: 220 }];
     const llm = scripted(JSON.stringify(b));
     const { last } = await run(llm, { });
     expect(last.type).toBe("done");
@@ -135,6 +137,30 @@ describe("génération", () => {
     const fixed = last.cartridge.levels.find((l) => l.mechanic.type === "slider")!;
     expect(fixed.win[0]!.scope).toBe("level");
     expect(simulateBestRun(last.cartridge).every((r) => r.winnable && !r.wonAtStart)).toBe(true);
+  });
+
+  it("répare seul des objectifs impossibles (variable jamais touchée par la mécanique, boss compris)", async () => {
+    const b = clone(EXAMPLE_BRIEF_ARCADE) as any;
+    const quizLike = b.levels.find((l: any) => l.mechanic.type === "inspection");
+    quizLike.win = [{ var: "playbook", op: ">=", value: 5, scope: "level" }]; // l'inspection ne touche jamais « playbook »
+    for (const ph of b.boss.phases) ph.win = [{ var: "access", op: ">=", value: 30 }]; // ni les phases du boss
+    const llm = scripted(JSON.stringify(b), JSON.stringify(b), JSON.stringify(b));
+    const { last } = await run(llm, {});
+    expect(last.type).toBe("done");
+    if (last.type !== "done") return;
+    expect(simulateBestRun(last.cartridge).every((r) => r.winnable)).toBe(true);
+  });
+
+  it("refuse un niveau qui se gagne sans réfléchir, et fait tourner les bonnes réponses", async () => {
+    const b = clone(EXAMPLE_BRIEF) as any;
+    const quiz = b.levels.find((l: any) => l.mechanic.type === "quiz").mechanic;
+    for (const q of quiz.questions) q.correctIndex = 0; // le biais classique : la bonne réponse toujours en premier
+    const { last } = await run(scripted(JSON.stringify(b)), {});
+    expect(last.type).toBe("done");
+    if (last.type !== "done") return;
+    const qz = last.cartridge.levels.find((l) => l.mechanic.type === "quiz")!.mechanic as { questions: Array<{ correctIndex: number }> };
+    expect(new Set(qz.questions.map((q) => q.correctIndex)).size).toBeGreaterThan(1);
+    expect(last.issues.some((i) => i.rule === "naive-win")).toBe(false);
   });
 
   it("échoue proprement sur une offre trop courte ou un modèle muet", async () => {
@@ -191,10 +217,11 @@ describe("fiche du poste et plan", () => {
       const p = planGame(job, { rand });
       const m = p.levels.map((l) => l.mechanic);
       expect(m.length).toBeGreaterThanOrEqual(4);
-      expect(m.filter((x) => ["catch", "whack", "gauge", "sequence"].includes(x)).length).toBeGreaterThanOrEqual(2);
-      expect(m.some((x) => ["inspection", "investigation", "triage", "quiz", "dialogue", "slider"].includes(x))).toBe(true);
+      expect(m.filter((x) => ARCADE.includes(x)).length).toBeGreaterThanOrEqual(2);
+      expect(m.some((x) => THINKING.includes(x))).toBe(true);
       expect(m.filter((x) => x === "quiz").length).toBeLessThanOrEqual(1);
       for (let i = 1; i < m.length; i++) expect(m[i]).not.toBe(m[i - 1]);
+      expect(m.includes("pipes")).toBe(false);
       expect(STAGES[p.format]).toBeDefined();
       for (const l of p.levels) expect(l.day.fr.length).toBeLessThanOrEqual(18);
       expect(p.levels[0]!.entry).toBe("briefing");
@@ -202,7 +229,7 @@ describe("fiche du poste et plan", () => {
       expect(p.levels[0]!.modifiers).toEqual([]);
       const b = p.boss!;
       expect(b.phases.length).toBeGreaterThanOrEqual(2);
-      expect(b.phases.some((ph) => ["catch", "whack", "gauge", "sequence"].includes(ph.mechanic))).toBe(true);
+      expect(b.phases.some((ph) => ARCADE.includes(ph.mechanic))).toBe(true);
       for (let i = 1; i < b.phases.length; i++) expect(b.phases[i]!.mechanic).not.toBe(b.phases[i - 1]!.mechanic);
     }
   });

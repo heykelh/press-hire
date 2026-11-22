@@ -65,6 +65,24 @@ MÉCANIQUES
 - investigation (Où est Charlie) : 2 à 3 manches ; view = logs (lignes réalistes), table (colonnes + lignes) ou chart (labels + valeurs) ;
   answer = index de l'anomalie (0 = première ligne) ; explain = pourquoi c'est l'anomalie.
 - triage, quiz, slider, wheel, dialogue : comme dans les exemples.
+- NE DOIT PAS SE GAGNER SANS RÉFLÉCHIR (vérifié par simulation) : en tri et en inspection, des bonnes réponses des deux côtés
+  (environ moitié-moitié) ; en quiz, des mauvaises réponses aussi longues et crédibles que la bonne ; en échange, la bonne réplique
+  ne se devine pas à sa politesse ; en attrape-tout et tape-alerte, les pièges coûtent assez pour que « tout prendre » perde ;
+  en réglage, ni le minimum ni le maximum ne gagnent (deux objectifs qui tirent en sens opposé).
+- defense (tower defense) : {"type":"defense","base":{…},"lanes":[{"fr":"Messagerie","en":"Email"},…],
+  "defenders":[{"id":"mfa","label":{…},"icon":"key","cost":2,"counters":["phish"],"why":{…}},…],
+  "enemies":[{"id":"phish","label":{…},"icon":"mail","consequence":{…}},…],
+  "waves":[{"lanes":[["phish"],["ransom"],[]]},…],"budget":6,"income":2,"onBlock":[…],"onLeak":[…]}
+  (waves[i].lanes a autant de listes que de couloirs ; chaque ennemi est bloqué par au moins un défenseur, aucun défenseur ne bloque tout).
+- runner (course façon Canabalt) : {"type":"runner","hero":{…},"durationSec":35,"perSec":1,"items":[…comme catch : good = à ramasser,
+  bad = à éviter…],"onGood":[…],"onBad":[…],"onMiss":[…]} — le moteur place les objets au sol ou en l'air ; il faut sauter au bon moment.
+- shooter (tir façon Space Invaders) : {"type":"shooter","ship":{…},"durationSec":35,"perSec":1,"items":[…good = menace à abattre,
+  bad = allié à épargner…],"onHit":[…],"onWrong":[…],"onMiss":[…]} — tirer sur un allié doit coûter assez pour que « tirer partout » perde.
+- rhythm (Guitar Hero) : {"type":"rhythm","theme":{…},"bpm":90,"lanes":[{"id":"p1","label":{"fr":"Urgent","en":"Urgent"},"color":"#ff4d6d"},…],
+  "notes":[{"label":{"fr":"Serveur paie en panne","en":"Payroll server down"},"lane":"p1","why":{…}},…],"onHit":[…],"onWrong":[…],"onMiss":[…]}
+  — 2 à 4 colonnes = des catégories du métier ; 8 à 16 notes réparties (aucune colonne au-dessus de 60 %) ; étiquettes courtes (24 caractères).
+- hunt (objets cachés) : {"type":"hunt","scene":{…},"rounds":[{"id":"r1","title":{…},"items":[{"id":"x1","label":{…},"icon":"warning","risk":true,"explain":{…}},…]}],
+  "onFound":[…],"onWrong":[…],"onMissed":[…]} — 8 à 14 objets dont 3 à 5 risques ; un clic sur un objet sans risque doit coûter.
 - entry : "briefing" (écran d'explication), "ambush" (pas d'écran : l'intro est une alerte courte qui claque), "call" (un personnage
   appelle : renseigne characterId, l'intro est ce qu'il dit au téléphone).
 - modifiers : ceux du plan, à justifier dans l'intro ou le twist (« La clim du data center lâche : TURBO ! »).
@@ -122,9 +140,11 @@ export interface WriteContext {
   design?: string;
   /** concept du directeur créatif (étape pitch) */
   concept?: string;
+  /** fiche entreprise (sources publiques) */
+  companyFacts?: string;
 }
 
-const extras = (w: WriteContext) => [w.design, w.concept].filter(Boolean).join("\n\n");
+const extras = (w: WriteContext) => [w.design, w.concept, w.companyFacts].filter(Boolean).join("\n\n");
 
 export function userPrompt(w: WriteContext): string {
   const { offer } = w;
@@ -210,6 +230,14 @@ export const CRITIC_SYSTEM = `Tu relis le brief JSON d'un jeu de candidature ré
    expliquées au bon moment, simplement ? Les erreurs lui apprennent-elles quelque chose ?
 3. LE JOUEUR EXIGEANT : il joue à des jeux mobiles tous les jours. Il note le PLAISIR (variété, rythme, rebondissements, humour)
    et le « WAOUH » (ouverture, histoire, personnalisation, fin).
+Cherche activement les DÉFAUTS DE CONCEPTION (relecture adversariale), niveau par niveau :
+- gagnable sans réfléchir : tout accepter, taper partout, toujours la même réponse, la réponse la plus longue est toujours la bonne,
+  la bonne réplique se devine au ton ;
+- choix qui ne changent rien : deux options aux mêmes effets, une variable qui ne sert à aucun objectif, un piège sans conséquence ;
+- règle inutile : un modificateur, un rebondissement ou un objet qui ne change ni la décision ni le risque ;
+- échec inévitable ou objectif flou : on ne peut pas savoir ce qu'il faut faire avant de perdre ;
+- notion non jouée : une carte-notion expliquée mais jamais mise en pratique.
+Sépare ce qui est démontré (règle lue dans le brief) de ce qui est une impression.
 Sois sévère et concret : 7/10 = correct, 9/10 = remarquable. Pour chaque problème, propose une correction précise et faisable dans le brief.
 Réponds uniquement en JSON :
 {"scores":{"accuracy":0-10,"pedagogy":0-10,"fun":0-10,"wow":0-10},
@@ -223,7 +251,7 @@ export const Critique = z.object({
 });
 export type Critique = z.infer<typeof Critique>;
 
-export function criticPrompt(brief: string, job: JobModel | undefined, offerText: string, mode: "job" | "idea" = "job"): string {
+export function criticPrompt(brief: string, job: JobModel | undefined, offerText: string, mode: "job" | "idea" = "job", company?: string): string {
   const idea = mode === "idea"
     ? `MODE IDÉE : ce jeu ne vient pas d'une offre d'emploi mais de l'idée ci-dessous. « Le praticien » est un expert du sujet,
 « justesse » = fidélité au sujet. Vérifie aussi le respect du public, du ton et de la difficulté demandés.
@@ -231,7 +259,8 @@ ${offerText}
 
 `
     : "";
-  return `${idea}${job ? `FICHE DU POSTE :\n${JSON.stringify(job)}\n\n` : `OFFRE :\n"""\n${offerText.slice(0, 6000)}\n"""\n\n`}BRIEF À RELIRE :
+  const comp = company ? `${company}\nVérifie que chaque clin d'œil à l'entreprise (et about.facts) vient bien de cette fiche ; sinon c'est une invention à retirer.\n\n` : "";
+  return `${idea}${comp}${job ? `FICHE DU POSTE :\n${JSON.stringify(job)}\n\n` : `OFFRE :\n"""\n${offerText.slice(0, 6000)}\n"""\n\n`}BRIEF À RELIRE :
 ${brief}
 
 Note et corrige maintenant, en JSON.`;

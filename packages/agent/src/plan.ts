@@ -11,32 +11,34 @@
 import type { JobModel, Verb } from "./job";
 import { PACKS, type DomainPack } from "./packs";
 
-export type MechType = "catch" | "whack" | "gauge" | "sequence" | "inspection" | "investigation" | "triage" | "quiz" | "dialogue" | "slider" | "wheel";
+export type MechType =
+  | "catch" | "whack" | "gauge" | "sequence" | "inspection" | "investigation" | "triage" | "quiz" | "dialogue" | "slider" | "wheel"
+  | "defense" | "pipes" | "hunt" | "runner" | "shooter" | "rhythm";
 export type Entry = "briefing" | "ambush" | "call";
 export type Mod = "turbo" | "fog" | "mirror" | "quake" | "blackout";
 
-export const ARCADE: MechType[] = ["catch", "whack", "gauge", "sequence"];
-export const THINKING: MechType[] = ["inspection", "investigation", "triage", "quiz", "dialogue", "slider"];
+export const ARCADE: MechType[] = ["catch", "whack", "gauge", "sequence", "runner", "shooter", "rhythm"];
+export const THINKING: MechType[] = ["inspection", "investigation", "triage", "quiz", "dialogue", "slider", "defense", "hunt"];
 
 /** Verbe du métier → mécaniques possibles, de la plus fidèle à la moins fidèle. */
 export const VERB_MECHANICS: Record<Verb, MechType[]> = {
-  filter: ["catch", "triage", "inspection", "whack"],
-  react: ["whack", "catch", "triage", "sequence"],
+  filter: ["catch", "runner", "hunt", "triage", "inspection"],
+  react: ["whack", "shooter", "defense", "catch", "rhythm"],
   tune: ["gauge", "slider", "wheel"],
-  follow_procedure: ["sequence", "triage", "inspection", "quiz"],
-  inspect: ["inspection", "catch", "triage", "investigation"],
-  investigate: ["investigation", "inspection", "whack", "quiz"],
-  prioritize: ["triage", "whack", "wheel", "slider"],
-  decide: ["slider", "gauge", "wheel", "dialogue"],
-  know: ["quiz", "investigation", "inspection", "catch"],
+  follow_procedure: ["sequence", "rhythm", "triage", "inspection", "quiz"],
+  inspect: ["inspection", "hunt", "catch", "runner", "investigation"],
+  investigate: ["investigation", "hunt", "inspection", "shooter", "quiz"],
+  prioritize: ["triage", "rhythm", "defense", "whack", "slider"],
+  decide: ["slider", "defense", "gauge", "wheel", "dialogue"],
+  know: ["quiz", "rhythm", "investigation", "inspection", "runner"],
   persuade: ["dialogue", "wheel", "triage"],
-  forecast: ["slider", "gauge", "investigation", "wheel"],
+  forecast: ["slider", "gauge", "investigation", "defense", "wheel"],
 };
 
 /** Variante d'arcade la plus fidèle à chaque verbe (pour garantir 2 niveaux d'action). */
 const ARCADE_OF: Record<Verb, MechType> = {
-  filter: "catch", react: "whack", tune: "gauge", follow_procedure: "sequence", inspect: "catch", investigate: "whack",
-  prioritize: "whack", decide: "gauge", know: "catch", persuade: "sequence", forecast: "gauge",
+  filter: "runner", react: "shooter", tune: "gauge", follow_procedure: "rhythm", inspect: "catch", investigate: "shooter",
+  prioritize: "rhythm", decide: "gauge", know: "runner", persuade: "sequence", forecast: "gauge",
 };
 
 /* ---------------- formats narratifs ---------------- */
@@ -99,13 +101,14 @@ export const FORMAT_KEYS = Object.keys(STAGES);
 type PhaseOpt = { mechanics: MechType[]; mod?: Mod };
 /** Archétypes de boss (voir design/boss.md) : mécaniques possibles de chaque phase. */
 export const BOSS_TEMPLATES: Record<string, { verbs: Verb[]; phases: PhaseOpt[] }> = {
-  hydre: { verbs: ["filter", "react", "prioritize"], phases: [{ mechanics: ["catch", "whack"] }, { mechanics: ["whack", "catch"], mod: "turbo" }, { mechanics: ["gauge", "sequence"] }] },
+  hydre: { verbs: ["filter", "react", "prioritize"], phases: [{ mechanics: ["catch", "runner"] }, { mechanics: ["shooter", "whack"], mod: "turbo" }, { mechanics: ["gauge", "rhythm"] }] },
   negociateur: { verbs: ["persuade", "decide"], phases: [{ mechanics: ["dialogue"] }, { mechanics: ["gauge"] }, { mechanics: ["slider", "wheel"] }] },
-  saboteur: { verbs: ["inspect", "investigate", "follow_procedure"], phases: [{ mechanics: ["inspection"] }, { mechanics: ["sequence"], mod: "blackout" }, { mechanics: ["whack"] }] },
-  avalanche: { verbs: ["filter", "react"], phases: [{ mechanics: ["catch"] }, { mechanics: ["whack"], mod: "turbo" }, { mechanics: ["triage"] }] },
-  "audit-final": { verbs: ["inspect", "know", "investigate"], phases: [{ mechanics: ["inspection"] }, { mechanics: ["investigation"] }, { mechanics: ["triage", "quiz"] }] },
+  saboteur: { verbs: ["inspect", "investigate", "follow_procedure"], phases: [{ mechanics: ["inspection", "hunt"] }, { mechanics: ["sequence", "rhythm"], mod: "blackout" }, { mechanics: ["shooter", "whack"] }] },
+  avalanche: { verbs: ["filter", "react"], phases: [{ mechanics: ["runner", "catch"] }, { mechanics: ["shooter"], mod: "turbo" }, { mechanics: ["defense", "triage"] }] },
+  "audit-final": { verbs: ["inspect", "know", "investigate"], phases: [{ mechanics: ["inspection", "hunt"] }, { mechanics: ["investigation"] }, { mechanics: ["triage", "quiz"] }] },
+  siege: { verbs: ["react", "prioritize", "decide"], phases: [{ mechanics: ["defense"] }, { mechanics: ["shooter", "whack"], mod: "quake" }, { mechanics: ["defense", "gauge"] }] },
   "faux-boss": { verbs: [], phases: [{ mechanics: ["wheel", "quiz"] }, { mechanics: ["whack", "catch"] }, { mechanics: ["gauge", "sequence"], mod: "turbo" }] },
-  horloge: { verbs: ["follow_procedure", "forecast", "tune"], phases: [{ mechanics: ["sequence"], mod: "blackout" }, { mechanics: ["gauge"], mod: "turbo" }, { mechanics: ["catch"] }] },
+  horloge: { verbs: ["follow_procedure", "forecast", "tune"], phases: [{ mechanics: ["rhythm", "sequence"] }, { mechanics: ["gauge"], mod: "turbo" }, { mechanics: ["runner", "catch"] }] },
 };
 
 /* ---------------- plan ---------------- */
@@ -286,7 +289,11 @@ export function planGame(job: JobModel, opts: PlanOptions = {}): GamePlan {
   for (let k = 0; k < nMods && modCands.length; k++) {
     const i = modCands.splice(Math.floor(rand() * modCands.length), 1)[0]!;
     const mech = levels[i]!.mechanic;
-    const options: Mod[] = mech === "catch" ? ["turbo", "fog", "mirror", "quake"] : mech === "whack" ? ["turbo", "fog", "quake"] : ["turbo", "blackout", "quake"];
+    const options: Mod[] =
+      mech === "catch" ? ["turbo", "fog", "mirror", "quake"]
+      : mech === "whack" || mech === "shooter" ? ["turbo", "fog", "quake"]
+      : mech === "runner" ? ["turbo", "quake", "blackout"]
+      : ["turbo", "blackout", "quake"];
     mods[i] = [options[Math.floor(rand() * options.length)]!];
   }
 
@@ -326,7 +333,7 @@ export function planGame(job: JobModel, opts: PlanOptions = {}): GamePlan {
     forcedScene: !!opts.scene,
     forcedSkin: !!opts.skin,
     scene: opts.scene ?? pack.scenes[Math.floor(rand() * pack.scenes.length)] ?? pack.scenes[0]!,
-    skin: opts.skin ?? (job.tone.formality >= 5 ? "corporate" : pack.skin),
+    skin: opts.skin ?? colorfulSkin(job, pack, rand),
   };
 }
 
@@ -395,4 +402,18 @@ ${plan.forcedScene ? `Décor imposé : ${plan.scene}.` : `Décor conseillé : ${
 /** Résumé court d'un plan (pour le choix entre variantes). */
 export function planSummary(plan: GamePlan): string {
   return `format ${plan.format} : ${plan.levels.map((l) => `${l.day.fr} ${l.mechanic}${l.entry !== "briefing" ? `/${l.entry}` : ""}${l.modifiers.length ? `+${l.modifiers.join("+")}` : ""}`).join(" · ")}${plan.boss ? ` · BOSS ${plan.boss.archetype} (${plan.boss.phases.map((p) => p.mechanic + (p.modifiers.length ? `+${p.modifiers.join("+")}` : "")).join(" → ")})` : ""}`;
+}
+
+/**
+ * Habillage : on privilégie les plus colorés, selon le ton de l'offre (très formel : sobre ; détendu : bonbon, BD, néon).
+ * L'habillage de la famille de métiers reste possible, mais n'est plus systématique.
+ */
+export function colorfulSkin(job: JobModel, pack: DomainPack, rand: () => number): string {
+  const f = job.tone.formality;
+  const pool =
+    f >= 5 ? ["corporate", "famicom"]
+    : f === 4 ? ["famicom", "sunset", "corporate", pack.skin]
+    : f === 3 ? ["arcade", "sunset", "synth", "famicom", pack.skin]
+    : ["comic", "candy", "sunset", "arcade", "synth"];
+  return pool[Math.floor(rand() * pool.length)]!;
 }

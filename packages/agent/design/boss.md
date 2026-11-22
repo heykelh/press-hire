@@ -39,6 +39,11 @@ Résumé : le temps lui-même ; mémoire sous coupure, jauge turbo, attrape-tout
 Pour : deadline, mise en production, départ d'un train, clôture de fin d'année.
 Phrase type : « Tic. Tac. Tu as entendu ? Moi oui. »
 
+## siege
+Résumé : un siège en règle ; défense contre une vague, contre-attaque au tape-alerte sous séisme, puis dernière défense ou jauge.
+Pour : cyberattaque, pic de commandes, grève, crise d'approvisionnement, rush de fin de trimestre.
+Phrase type : « Tu as trois couloirs. J'ai trois cents soldats. Fais tes calculs. »
+
 # Règles des phases
 
 - 2 phases si le jeu est court (3 ou 4 niveaux), 3 sinon ; jamais deux fois la même mécanique d'affilée.

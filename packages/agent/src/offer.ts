@@ -9,6 +9,8 @@ export interface Offer {
   url?: string;
   title?: string;
   company?: string;
+  /** site de l'entreprise (données structurées de l'offre), pour la fiche entreprise */
+  companyUrl?: string;
   location?: string;
   contract?: string;
   text: string;
@@ -82,6 +84,7 @@ export function parseOfferHtml(html: string, url?: string): Offer {
       url,
       title: str(posting.title),
       company: str(org?.name),
+      companyUrl: [org?.sameAs, org?.url].flat().map((x) => str(x)).find((x) => !!x && /^https?:\/\//.test(x) && !/linkedin|facebook|twitter|instagram|glassdoor|indeed|welcometothejungle|apec/i.test(x)),
       location: str(addr?.addressLocality) ?? str(addr?.addressRegion),
       contract: Array.isArray(posting.employmentType) ? posting.employmentType.join(", ") : str(posting.employmentType),
       text,

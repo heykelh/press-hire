@@ -1,5 +1,7 @@
 "use client";
 
+import { DefensePlay, HuntPlay, PipesPlay } from "./strategy";
+import { RhythmPlay, RunnerPlay, ShooterPlay } from "./action";
 import { useEffect, useRef, useState } from "react";
 import type { Boss, Character, Effect, Level } from "@press-hire/cartridge";
 import { evalCurve } from "@press-hire/cartridge";
@@ -55,6 +57,12 @@ export function Mechanic({ ctx, m, character, paused = false, onDone }: { ctx: C
     case "triage": return <TriagePlay ctx={ctx} m={m} paused={paused} onDone={onDone} />;
     case "quiz": return <QuizPlay ctx={ctx} m={m} onDone={onDone} />;
     case "dialogue": return <DialoguePlay ctx={ctx} m={m} character={character} onDone={onDone} />;
+    case "defense": return <DefensePlay ctx={ctx} m={m} paused={paused} onDone={onDone} />;
+    case "pipes": return <PipesPlay ctx={ctx} m={m} paused={paused} onDone={onDone} />;
+    case "hunt": return <HuntPlay ctx={ctx} m={m} paused={paused} onDone={onDone} />;
+    case "runner": return <RunnerPlay ctx={ctx} m={m} paused={paused} onDone={onDone} />;
+    case "shooter": return <ShooterPlay ctx={ctx} m={m} paused={paused} onDone={onDone} />;
+    case "rhythm": return <RhythmPlay ctx={ctx} m={m} paused={paused} onDone={onDone} />;
   }
 }
 

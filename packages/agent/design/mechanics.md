@@ -96,6 +96,49 @@ Faire juste : les courbes reproduisent la vraie relation (plus de contrôles = m
 Réglages : 3 à 6 manches, 2 indicateurs qui tirent en sens opposé.
 Troll : le curseur qui va jusqu'à 11.
 
+## defense
+Résumé : DÉFENSE, placer la bonne protection dans chaque couloir avant chaque vague (tower defense) ; le geste de CHOISIR LA PARADE avec un budget.
+Geste du métier : choisir une mesure de sécurité contre une menace, affecter une équipe à un flux, dimensionner des stocks par canal.
+Faire juste : chaque défenseur est une vraie mesure du métier (MFA, WAF, sauvegarde hors ligne ; quai express, cariste de renfort)
+et ne bloque que les menaces qu'il contre vraiment ; la phrase « why » explique pourquoi.
+Réglages : 2 à 4 couloirs, 2 à 5 défenseurs (coûts 1 à 5), 2 à 4 ennemis, 3 à 4 vagues. La première vague apprend
+(une menace par couloir, budget large) ; ensuite le budget oblige à choisir. Aucun défenseur ne doit tout bloquer.
+Rebondissement : une vague qui change de couloir, ou une nouvelle menace que seul un défenseur cher arrête.
+Troll : un défenseur « Réunion de crise » très cher qui ne bloque rien.
+
+## runner
+Résumé : COURSE, le héros court tout seul ; sauter pour ramasser le bon et éviter le reste (Canabalt, dino de Chrome) ; le geste de FILTRER en mouvement.
+Geste du métier : le colis qui file sur le convoyeur, la requête qui traverse le réseau, l'ambulance dans la ville, le dossier qui avance.
+Faire juste : les objets à ramasser et à éviter sont de vraies choses du métier ; les pièges ressemblent aux bons.
+Réglages : 30 à 40 s, 0,8 à 1,3 objet/s, un tiers de pièges ; le moteur met la moitié des objets en l'air : sauter sans arrêt fait perdre.
+Rebondissement : un nouvel obstacle en hauteur, ou la vitesse qui monte (turbo).
+Troll : un bonus qui fait sauter… droit dans un piège.
+
+## shooter
+Résumé : TIR, abattre les menaces qui descendent et épargner les alliés (Space Invaders, Galaga) ; le geste de RÉAGIR et DISCERNER sous pression.
+Geste du métier : les attaques contre le SI, les défauts sur une ligne de production, les fake news à modérer, les fraudes, les bugs en production.
+Faire juste : les alliés ressemblent aux menaces (un vrai mail du PDG au milieu du phishing) ; tirer sur un allié coûte cher.
+Réglages : 30 à 40 s, 0,8 à 1,4 objet/s, un quart à un tiers d'alliés.
+Rebondissement : une menace déguisée en allié arrive en seconde moitié (objet twist).
+Troll : un allié nommé « Stagiaire en panique » qui zigzague.
+
+## rhythm
+Résumé : RYTHME, envoyer chaque note dans la bonne colonne au bon moment (Guitar Hero) ; le geste de CLASSER vite et dans l'ordre, en cadence.
+Geste du métier : trier des urgences (P1/P2/P3), ranger des étapes dans la bonne phase, classer des déchets, des tickets, des transactions.
+Faire juste : 2 à 4 colonnes = de vraies catégories du métier ; chaque note est une vraie situation (« Serveur paie en panne ») avec son « why ».
+Réglages : 80 à 110 BPM, 10 à 16 notes, aucune colonne au-dessus de 60 % des notes ; le tempo accélère tout seul sur la fin.
+Rebondissement : une note piège qui ressemble à une catégorie mais appartient à une autre.
+Troll : une note « Réunion qui aurait pu être un mail ».
+
+## hunt
+Résumé : CHASSE AUX RISQUES, trouver dans une scène les objets qui posent un risque (objets cachés) ; le geste de REPÉRER UN DANGER.
+Geste du métier : visite de sécurité, audit de site, revue de bureau propre (post-it de mot de passe), contrôle d'hygiène, tournée de maintenance.
+Faire juste : 8 à 14 objets par scène, dont 3 à 5 vrais risques et des objets anodins qui leur ressemblent (un extincteur en place
+contre un extincteur périmé) ; chaque objet a une explication courte. Cliquer un objet sans risque coûte un peu, oublier un risque coûte plus.
+Réglages : 1 à 3 scènes, sans limite de temps ou 60 à 120 s.
+Rebondissement : la deuxième scène cache un risque dans un objet qui était sans danger à la première.
+Troll : un objet absurde mais sans risque (« un canard en plastique sur le serveur ») qui appelle le clic.
+
 # Entrées et modificateurs
 
 ## entries

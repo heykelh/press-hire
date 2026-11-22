@@ -1,6 +1,6 @@
 import type { ImageFilter } from "./title/render";
 
-export type SkinId = "arcade" | "famicom" | "gameboy" | "terminal" | "synth" | "corporate" | "comic";
+export type SkinId = "arcade" | "famicom" | "gameboy" | "terminal" | "synth" | "corporate" | "comic" | "candy" | "sunset";
 
 /**
  * Un habillage change tout ce qui n'est pas le décor : police, logo, invite,
@@ -53,5 +53,15 @@ export const SKINS: Record<SkinId, SkinDef> = {
     id: "comic", label: "Bande dessinée", filter: "none", ownPalette: false,
     prompt: { fr: "À TOI DE JOUER !", en: "YOUR TURN!" },
     fits: "logistique, retail, agences, ton très décontracté",
+  },
+  candy: {
+    id: "candy", label: "Bonbon pastel", filter: "none", ownPalette: false,
+    prompt: { fr: "♥ C'EST PARTI ♥", en: "♥ LET'S GO ♥" },
+    fits: "santé, éducation, RH, alimentaire, cosmétique, ton chaleureux",
+  },
+  sunset: {
+    id: "sunset", label: "Coucher de soleil", filter: "none", ownPalette: false,
+    prompt: { fr: "▶ APPUIE SUR START", en: "▶ PRESS START" },
+    fits: "tourisme, transport, énergie, sport, marketing, ton dynamique",
   },
 };

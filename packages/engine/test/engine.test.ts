@@ -14,8 +14,8 @@ describe("moteur d'écran titre", () => {
     for (const ch of "ÉÀÇ0123456789€%") expect(glyph(ch)).toHaveLength(15);
     expect(textWidth("ABC")).toBe(11);
   });
-  it("7 habillages, dont 2 qui imposent leur palette", () => {
-    expect(Object.keys(SKINS)).toHaveLength(7);
+  it("9 habillages, dont 2 qui imposent leur palette", () => {
+    expect(Object.keys(SKINS)).toHaveLength(9);
     expect(Object.values(SKINS).filter((s) => s.ownPalette)).toHaveLength(2);
   });
 });

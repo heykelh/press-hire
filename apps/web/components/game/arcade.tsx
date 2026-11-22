@@ -16,7 +16,7 @@ type Gauge = Extract<M, { type: "gauge" }>;
 type Sequence = Extract<M, { type: "sequence" }>;
 
 const L = (ctx: Ctx, fr: string, en: string) => (ctx.lang === "fr" ? fr : en);
-const pct = (a: number, b: number) => (b > 0 ? `${Math.round((a / b) * 100)} %` : "—");
+export const pct = (a: number, b: number) => (b > 0 ? `${Math.round((a / b) * 100)} %` : "—");
 
 /** Paquet mélangé d'indices d'objets, en proportion des poids. */
 function deck(items: Array<{ weight: number }>, total: number, rand: () => number): number[] {
@@ -34,7 +34,7 @@ function deck(items: Array<{ weight: number }>, total: number, rand: () => numbe
  * n'arrivent qu'en seconde moitié), MAÎTRISER (le rythme accélère, géré à l'affichage).
  * L'aide adaptative retire une partie des pièges, jamais des bons objets (la difficulté vérifiée reste valable).
  */
-function phasedDeck(items: Array<{ weight: number; kind: string; twist?: boolean }>, total: number, rand: () => number, assist = 0): number[] {
+export function phasedDeck(items: Array<{ weight: number; kind: string; twist?: boolean }>, total: number, rand: () => number, assist = 0): number[] {
   let order = deck(items, total, rand);
   if (assist > 0) {
     let drop = Math.round(order.filter((i) => items[i]!.kind === "bad").length * 0.25 * assist);
@@ -51,7 +51,7 @@ function phasedDeck(items: Array<{ weight: number; kind: string; twist?: boolean
 }
 
 /** Applique des effets sans bulle flottante (trop d'événements en arcade). */
-const quiet = (ctx: Ctx, effects: Effect[]) => { if (effects.length) ctx.apply(effects); };
+export const quiet = (ctx: Ctx, effects: Effect[]) => { if (effects.length) ctx.apply(effects); };
 
 export function Icon({ name, size = 28, tint }: { name: string; size?: number; tint?: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -65,7 +65,7 @@ export function Icon({ name, size = 28, tint }: { name: string; size?: number; t
 }
 
 /** Compte à rebours 3-2-1 avant les mécaniques en temps réel. */
-function useCountdown(ctx: Ctx, paused: boolean): number {
+export function useCountdown(ctx: Ctx, paused: boolean): number {
   const [n, setN] = useState(3);
   useEffect(() => {
     if (paused || n <= 0) return;
@@ -75,7 +75,7 @@ function useCountdown(ctx: Ctx, paused: boolean): number {
   return n;
 }
 
-function Legend({ ctx, items, goodLabel, badLabel }: { ctx: Ctx; items: Array<{ id: string; label: { fr: string; en: string }; kind: string; icon: string }>; goodLabel: string; badLabel: string }) {
+export function Legend({ ctx, items, goodLabel, badLabel }: { ctx: Ctx; items: Array<{ id: string; label: { fr: string; en: string }; kind: string; icon: string }>; goodLabel: string; badLabel: string }) {
   const good = items.filter((x) => x.kind === "good"), bad = items.filter((x) => x.kind === "bad");
   return (
     <div className="g-arcade-legend">

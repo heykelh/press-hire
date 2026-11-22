@@ -6,6 +6,9 @@
 import type { GamePlan } from "./plan";
 import {
   arcadeSplit,
+  defenseBest,
+  naiveRuns,
+  playBest,
   Cartridge,
   SCHEMA_VERSION,
   applyEffects,
@@ -150,6 +153,7 @@ export function repairBrief(raw: unknown): unknown {
       while ((ts.actors as Obj[]).length < 2) (ts.actors as Obj[]).push({ type: pad[(ts.actors as Obj[]).length]!, speed: 0.6, lane: 0 });
     }
   }
+  spreadAnswers(b);
   return b;
 }
 
@@ -267,6 +271,20 @@ function bestDelta(c: Cartridge, l: Pick<Level, "mechanic">, varId: string, star
       return run((s) => m.cases.forEach((k) => { applyEffects(c, s, m.onCorrect); if (k.correct === "reject") applyEffects(c, s, m.onSpotted); }));
     case "investigation":
       return run((s) => m.rounds.forEach(() => applyEffects(c, s, m.onFound)));
+    case "defense": {
+      const { blocked, leaked } = defenseBest(m);
+      return run((s) => { for (let i = 0; i < blocked; i++) applyEffects(c, s, m.onBlock); for (let i = 0; i < leaked; i++) applyEffects(c, s, m.onLeak); });
+    }
+    case "pipes":
+      return run((s) => m.rounds.forEach(() => applyEffects(c, s, m.onSolve)));
+    case "runner":
+      return run((s) => { for (let i = 0; i < arcadeSplit(m).good; i++) applyEffects(c, s, m.onGood); });
+    case "shooter":
+      return run((s) => { for (let i = 0; i < arcadeSplit(m).good; i++) applyEffects(c, s, m.onHit); });
+    case "rhythm":
+      return run((s) => m.notes.forEach(() => applyEffects(c, s, m.onHit)));
+    case "hunt":
+      return run((s) => m.rounds.forEach((r) => r.items.forEach((x) => { if (x.risk) applyEffects(c, s, m.onFound); })));
     case "slider": {
       let top = -Infinity;
       for (let x = m.control.min; x <= m.control.max + 1e-9; x += m.control.step)
@@ -297,13 +315,30 @@ export function autoBalance(c: Cartridge, levelIds: string[], opts: { singleGoal
     if (levelIds.includes(l.id)) {
       // plusieurs objectifs contradictoires sur une roue : on garde le principal
       if (opts.singleGoal && l.win.length > 1) l.win = l.win.slice(0, 1);
+      const goal = (varId: string, dir: 1 | -1, best: number): Condition => {
+        // au-dessus de ce que font les stratégies naïves (sinon le niveau se gagne sans réfléchir)
+        const naive = Math.max(0, ...naiveRuns(out, l.mechanic, state).map((r) => ((r.end[varId] ?? 0) - (state[varId] ?? 0)) * dir));
+        let target = Math.max(1, Math.round(best * 0.7));
+        if (naive >= target && naive < best) target = Math.min(best, Math.floor(naive) + 1);
+        return { var: varId, op: dir === 1 ? ">=" : "<=", value: target * dir, scope: "level" };
+      };
       l.win = l.win.map((w): Condition => {
         const dir: 1 | -1 = w.op === "<=" || w.op === "<" ? -1 : 1;
         const best = bestDelta(out, l, w.var, state, dir);
-        if (!(best > 0)) return w;
-        const v = Math.max(1, Math.round(best * 0.7 * 10) / 10) * dir;
-        return { var: w.var, op: dir === 1 ? ">=" : "<=", value: v, scope: "level" };
+        return best > 0 ? goal(w.var, dir, best) : w;
       });
+      // objectifs impossibles (la mécanique ne fait pas bouger leur variable, ou ils se contredisent) :
+      // on vise la variable que ce niveau fait vraiment progresser
+      const ok = playBest(out, l.mechanic, l.win, state) !== null;
+      if (!ok) {
+        let pick: { v: string; dir: 1 | -1; best: number } | undefined;
+        for (const v of out.state.vars)
+          for (const dir of [1, -1] as const) {
+            const b = bestDelta(out, l, v.id, state, dir);
+            if (b > 0 && (!pick || b > pick.best || (b === pick.best && dir === 1))) pick = { v: v.id, dir, best: b };
+          }
+        if (pick) l.win = [goal(pick.v, pick.dir, pick.best)];
+      }
     }
     // avance l'état comme un joueur appliqué, pour le niveau suivant
     for (const w of l.win) {
@@ -315,4 +350,41 @@ export function autoBalance(c: Cartridge, levelIds: string[], opts: { singleGoal
   // retire l'identifiant technique ajouté aux phases
   for (const ph of out.boss?.phases ?? []) delete (ph as { id?: string }).id;
   return out;
+}
+
+/**
+ * Les modèles mettent presque toujours la bonne réponse en premier : on fait tourner l'ordre des réponses de quiz
+ * et des répliques de dialogue pour que « toujours A » ou « toujours la première » ne gagne jamais.
+ * Déterministe (dépend de la position de la question), sans changer le contenu.
+ */
+export function spreadAnswers(b: Obj): void {
+  const mechs: Obj[] = [];
+  for (const l of Array.isArray(b.levels) ? (b.levels as Obj[]) : []) if (isObj(l.mechanic)) mechs.push(l.mechanic);
+  if (isObj(b.boss)) {
+    if (isObj(b.boss.mechanic)) mechs.push(b.boss.mechanic);
+    for (const ph of Array.isArray(b.boss.phases) ? (b.boss.phases as Obj[]) : []) if (isObj(ph.mechanic)) mechs.push(ph.mechanic);
+  }
+  let k = 0;
+  for (const m of mechs) {
+    if (m.type === "quiz" && Array.isArray(m.questions)) {
+      for (const q of m.questions as Obj[]) {
+        const opts = q.options as unknown[];
+        const ci = Number(q.correctIndex);
+        if (!Array.isArray(opts) || opts.length < 2 || !Number.isInteger(ci) || ci < 0 || ci >= opts.length) continue;
+        const target = (k++ * 2 + 1) % opts.length; // 1, 3, 0, 2… : jamais toujours la même position
+        const correct = opts[ci];
+        const others = opts.filter((_, i) => i !== ci);
+        q.options = [...others.slice(0, target), correct, ...others.slice(target)];
+        q.correctIndex = target;
+      }
+    }
+    if (m.type === "dialogue" && Array.isArray(m.nodes)) {
+      (m.nodes as Obj[]).forEach((n, i) => {
+        const ch = n.choices as unknown[];
+        if (!Array.isArray(ch) || ch.length < 2) return;
+        const r = (i + 1) % ch.length; // rotation différente à chaque réplique
+        n.choices = [...ch.slice(r), ...ch.slice(0, r)];
+      });
+    }
+  }
 }

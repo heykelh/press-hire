@@ -64,6 +64,24 @@ export class Chip {
     }
   }
 
+  /**
+   * Petites musiques des moments clés, façon borne d'arcade (une seule voix, quelques notes) :
+   * ready (début), clear (niveau réussi), boss (arrivée du boss), oneup (vie bonus), gameover, hiscore (record).
+   */
+  jingle(kind: "ready" | "clear" | "boss" | "oneup" | "gameover" | "hiscore"): void {
+    if (!this.sfxOn) return;
+    const seq: Record<string, Array<[number, number, OscillatorType?]>> = {
+      ready: [[523, 0.09], [659, 0.09], [784, 0.16]],
+      clear: [[784, 0.08], [988, 0.08], [1175, 0.08], [1568, 0.22]],
+      boss: [[196, 0.18, "sawtooth"], [185, 0.18, "sawtooth"], [175, 0.18, "sawtooth"], [147, 0.4, "sawtooth"]],
+      oneup: [[1319, 0.07], [1568, 0.07], [2637, 0.07], [2093, 0.07], [2349, 0.07], [3136, 0.16]],
+      gameover: [[392, 0.22, "triangle"], [370, 0.22, "triangle"], [349, 0.22, "triangle"], [262, 0.5, "triangle"]],
+      hiscore: [[523, 0.1], [523, 0.1], [784, 0.1], [784, 0.1], [880, 0.1], [880, 0.1], [784, 0.3]],
+    };
+    let at = 0;
+    for (const [f, d, type] of seq[kind] ?? []) { this.tone(f, d, type ?? "square", at, 0.8); at += d * 0.95; }
+  }
+
   /** Note d'une touche de la mécanique « sequence » (gamme pentatonique). */
   pad(index: number, dur = 0.28): void {
     if (!this.sfxOn) return;

@@ -59,10 +59,17 @@ function GameRow({ g }: { g: Row }) {
           <div className="st-levels" title="Réussite par niveau (sessions qui l'ont réussi / qui l'ont tenté)">
             {g.levels.map((l) => {
               const r = l.tries ? l.won / l.tries : 0;
-              return <span key={l.level} className={r < 0.5 ? "hard" : ""}>{l.level.replace(/^lvl_/, "")} {Math.round(r * 100)} %</span>;
+              const hard = l.tries >= 5 && r < 0.4;
+              return <span key={l.level} className={hard ? "hard" : ""}>{l.level.replace(/^lvl_/, "")} {Math.round(r * 100)} %<small> ({l.tries})</small></span>;
             })}
           </div>
         )}
+        {(() => {
+          const hard = (g.levels ?? []).filter((l) => l.tries >= 5 && l.won / l.tries < 0.4);
+          return hard.length > 0 && (
+            <p className="st-warn">⚠ Trop dur pour les vrais joueurs : {hard.map((l) => l.level.replace(/^lvl_/, "")).join(", ")} (moins de 40 % de réussite). Régénère le jeu ou baisse l'objectif de ce niveau.</p>
+          );
+        })()}
         {msg && (msg.url ? <div><PublishedLink url={msg.url} /></div> : <p className={msg.ok ? "st-ok" : "st-err"}>{msg.text}</p>)}
       </td>
       <td><span className={`st-chip ${g.status}`}>{g.status === "live" ? "EN LIGNE" : g.status === "draft" ? "BROUILLON" : "ARCHIVÉ"}</span></td>

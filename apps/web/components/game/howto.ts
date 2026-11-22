@@ -96,5 +96,50 @@ export function howTo(m: M): HowTo {
         controls: T("Clic ou tap sur la ligne, la barre ou la cellule suspecte", "Click or tap the suspicious line, bar or row"),
         retro: T("Façon Où est Charlie ?", "Where's Waldo?-style"),
       };
+    case "defense":
+      return {
+        name: T("DÉFENSE", "DEFENSE"),
+        goal: T("Avant chaque vague, regarde quelles menaces arrivent dans chaque couloir et place le bon défenseur. Un défenseur ne bloque que ce qu'il contre ; ton budget est limité.", "Before each wave, check which threats come down each lane and place the right defender. A defender only blocks what it counters; your budget is limited."),
+        controls: T("Choisis un défenseur, puis clique sur un couloir. LANCER LA VAGUE quand tu es prêt.", "Pick a defender, then click a lane. LAUNCH WAVE when ready."),
+        metric: T("Taux de blocage : part des menaces arrêtées.", "Block rate: share of threats stopped."),
+        retro: T("Façon tower defense (Rampart, 1990)", "Tower-defense style (Rampart, 1990)"),
+      };
+    case "pipes":
+      return {
+        name: T("TUYAUX", "PIPES"),
+        goal: T("Fais pivoter les tuyaux pour relier la source à la sortie en passant par les étapes obligatoires, dans l'ordre, sans toucher aux étapes interdites, avant la fin du chrono.", "Rotate the pipes to connect the source to the exit through the required steps, in order, avoiding forbidden ones, before time runs out."),
+        controls: T("Clic ou tap sur un tuyau pour le faire tourner", "Click or tap a pipe to rotate it"),
+        retro: T("Façon Pipe Mania (1989)", "Pipe Mania-style (1989)"),
+      };
+    case "runner":
+      return {
+        name: T("COURSE", "RUN"),
+        goal: T("Tu cours tout seul. Saute pour attraper ce qui est bon et pour éviter le reste. Attention : les objets arrivent au sol ou en l'air, sauter n'est pas toujours la solution.", "You run on your own. Jump to grab the good stuff and dodge the rest. Careful: things come low or high, jumping isn't always the answer."),
+        controls: T("ESPACE, ↑ ou tap pour sauter", "SPACE, ↑ or tap to jump"),
+        retro: T("Façon Canabalt (2009)", "Canabalt-style (2009)"),
+      };
+    case "shooter":
+      return {
+        name: T("TIR", "SHOOTER"),
+        goal: T("Les menaces descendent : abats-les avant qu'elles passent. Les alliés descendent aussi : ne leur tire pas dessus.", "Threats come down: shoot them before they get through. Allies come down too: don't shoot them."),
+        controls: T("Souris ou ← → pour bouger, tap ou ESPACE pour tirer", "Mouse or ← → to move, tap or SPACE to fire"),
+        metric: T("Menaces abattues et tirs amis.", "Threats down and friendly fire."),
+        retro: T("Façon Space Invaders (1978)", "Space Invaders-style (1978)"),
+      };
+    case "rhythm":
+      return {
+        name: T("RYTHME", "RHYTHM"),
+        goal: T("Des notes tombent en cadence. Quand une note touche la ligne, frappe la colonne de la bonne catégorie. Le tempo accélère sur la fin.", "Notes fall to the beat. When a note hits the line, hit the column of the right category. The tempo speeds up at the end."),
+        controls: T("D F J K, 1 2 3 4, flèches ou tap sur les colonnes", "D F J K, 1 2 3 4, arrows or tap the columns"),
+        retro: T("Façon Guitar Hero (2005)", "Guitar Hero-style (2005)"),
+      };
+    case "hunt":
+      return {
+        name: T("CHASSE AUX RISQUES", "RISK HUNT"),
+        goal: T("Une scène, plein d'objets. Clique sur ceux qui posent un risque. Un clic sur un objet sans risque coûte, un risque oublié coûte plus. Clique sur J'AI FINI quand tu penses tout avoir.", "A scene full of objects. Click the ones that are a risk. Clicking a safe object costs, a missed risk costs more. Press DONE when you think you found them all."),
+        controls: T("Clic ou tap sur un objet ; INDICE si tu bloques", "Click or tap an object; HINT if stuck"),
+        metric: T("Risques trouvés et fausses alertes.", "Risks found and false alarms."),
+        retro: T("Façon objets cachés (Hidden Folks)", "Hidden-object style (Hidden Folks)"),
+      };
   }
 }

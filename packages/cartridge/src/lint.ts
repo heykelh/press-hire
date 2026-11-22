@@ -43,6 +43,11 @@ function mechanicEffects(m: Mechanic): Array<{ path: string; e: Effect }> {
   if (m.type === "inspection") (["onCorrect", "onWrong", "onSpotted"] as const).forEach((k) => m[k].forEach((e, j) => out.push({ path: `${k}[${j}]`, e })));
   if (m.type === "investigation") (["onFound", "onWrong"] as const).forEach((k) => m[k].forEach((e, j) => out.push({ path: `${k}[${j}]`, e })));
   if (m.type === "gauge") m.zones.forEach((z, i) => z.effects.forEach((e, j) => out.push({ path: `zones[${i}].effects[${j}]`, e })));
+  if (m.type === "defense") (["onBlock", "onLeak"] as const).forEach((k) => m[k].forEach((e, j) => out.push({ path: `${k}[${j}]`, e })));
+  if (m.type === "pipes") (["onSolve", "onFail"] as const).forEach((k) => m[k].forEach((e, j) => out.push({ path: `${k}[${j}]`, e })));
+  if (m.type === "hunt") (["onFound", "onWrong", "onMissed"] as const).forEach((k) => m[k].forEach((e, j) => out.push({ path: `${k}[${j}]`, e })));
+  if (m.type === "runner") (["onGood", "onBad", "onMiss"] as const).forEach((k) => m[k].forEach((e, j) => out.push({ path: `${k}[${j}]`, e })));
+  if (m.type === "shooter" || m.type === "rhythm") (["onHit", "onWrong", "onMiss"] as const).forEach((k) => m[k].forEach((e, j) => out.push({ path: `${k}[${j}]`, e })));
   if (m.type === "dialogue")
     m.nodes.forEach((n, i) => n.choices.forEach((ch, k) => ch.effects.forEach((e, j) => out.push({ path: `nodes[${i}].choices[${k}].effects[${j}]`, e }))));
   return out;
@@ -117,6 +122,11 @@ export function lintCartridge(c: Cartridge, opts: { strict?: boolean } = {}): Is
     if (m.type === "whack") m.targets.forEach((x, j) => conceptRef(x.conceptId, `${p}.mechanic.targets[${j}].conceptId`));
     if (m.type === "inspection") m.cases.forEach((x, j) => conceptRef(x.conceptId, `${p}.mechanic.cases[${j}].conceptId`));
     if (m.type === "investigation") m.rounds.forEach((x, j) => conceptRef(x.conceptId, `${p}.mechanic.rounds[${j}].conceptId`));
+    if (m.type === "defense") m.enemies.forEach((x, j) => conceptRef(x.conceptId, `${p}.mechanic.enemies[${j}].conceptId`));
+    if (m.type === "pipes") m.rounds.forEach((x, j) => conceptRef(x.conceptId, `${p}.mechanic.rounds[${j}].conceptId`));
+    if (m.type === "runner" || m.type === "shooter") m.items.forEach((x, j) => conceptRef(x.conceptId, `${p}.mechanic.items[${j}].conceptId`));
+    if (m.type === "rhythm") m.notes.forEach((x, j) => conceptRef(x.conceptId, `${p}.mechanic.notes[${j}].conceptId`));
+    if (m.type === "hunt") m.rounds.forEach((r, j) => r.items.forEach((x, k) => conceptRef(x.conceptId, `${p}.mechanic.rounds[${j}].items[${k}].conceptId`)));
     if (l.outro?.characterId && !charIds.has(l.outro.characterId)) add("character-ref", "error", `${p}.outro.characterId`, `personnage inconnu : ${l.outro.characterId}`);
     if (l.day && l.day.fr.length > 18) add("day-length", "warning", `${p}.day`, "moment de la semaine trop long (18 caractères)");
     const hasTwistItems =
@@ -225,8 +235,12 @@ export function lintCartridge(c: Cartridge, opts: { strict?: boolean } = {}): Is
     for (const r of simulateBestRun(c)) {
       const i = c.levels.findIndex((l) => l.id === r.levelId);
       const at = r.path ?? `levels[${i}]`;
-      if (!r.winnable) add("balance-unwinnable", "error", at, `${r.levelId} : impossible à gagner, même en jouant parfaitement`);
+      if (!r.winnable) add("balance-unwinnable", "error", at, `${r.levelId} : impossible à gagner, même en jouant parfaitement : l’objectif (win) doit porter sur une variable que les effets de CETTE mécanique font bouger, dans le bon sens, d’une valeur atteignable`);
       else if (r.wonAtStart) add("balance-trivial", "error", at, `${r.levelId} : déjà gagné avant de jouer (utiliser une variable propre au niveau ou scope "level")`);
+      else if (r.winnable && r.naive?.length)
+        add("naive-win", "error", at, `${r.levelId} : se gagne sans réfléchir (stratégie « ${r.naive[0]} ») ; le niveau n'apprend rien. Équilibre les bonnes réponses (pas toutes du même côté ni à la même position), pénalise davantage les erreurs ou relève l'objectif.`);
+      else if (r.noviceRate !== undefined && r.noviceRate < 0.25)
+        add("balance-hard", "warning", at, `${r.levelId} : un débutant qui trouve 3 réponses sur 4 ne gagne que ${Math.round(r.noviceRate * 100)} % du temps (viser au moins 25 %) ; baisse un peu l'objectif ou la pénalité`);
       else if (r.winRate !== undefined && r.winRate < 0.3)
         add("balance-luck", "warning", at, `${r.levelId} : trop punitif, un joueur moyen gagne ${Math.round(r.winRate * 100)} % du temps (viser 30 à 80 %)`);
       else if (r.tooHard)
@@ -255,6 +269,56 @@ function checkMechanic(
   checkVar: (id: string, path: string) => void,
 ): void {
   switch (m.type) {
+    case "defense": {
+      const enemyIds = new Set(m.enemies.map((e) => e.id));
+      m.defenders.forEach((d, i) => d.counters.forEach((id, j) => {
+        if (!enemyIds.has(id)) add("defense-ref", "error", `${p}.defenders[${i}].counters[${j}]`, `ennemi inconnu : ${id}`);
+      }));
+      m.enemies.forEach((e, i) => {
+        if (!m.defenders.some((d) => d.counters.includes(e.id)))
+          add("defense-counter", "error", `${p}.enemies[${i}]`, `aucun défenseur ne bloque « ${e.id} » : le joueur ne peut rien faire`);
+      });
+      m.waves.forEach((w, i) => {
+        if (w.lanes.length !== m.lanes.length) add("defense-lanes", "error", `${p}.waves[${i}].lanes`, `${w.lanes.length} couloirs dans la vague, ${m.lanes.length} dans le plateau`);
+        w.lanes.forEach((lane, j) => lane.forEach((id, k) => {
+          if (!enemyIds.has(id)) add("defense-ref", "error", `${p}.waves[${i}].lanes[${j}][${k}]`, `ennemi inconnu : ${id}`);
+        }));
+      });
+      if (m.defenders.every((d) => d.counters.length === m.enemies.length))
+        add("defense-choice", "warning", p, "chaque défenseur bloque tout : aucun choix à faire");
+      break;
+    }
+    case "pipes":
+      m.rounds.forEach((r, i) => {
+        if (r.stations.length + r.forbidden.length > m.size * m.size / 3)
+          add("pipes-size", "warning", `${p}.rounds[${i}]`, "trop d'étapes pour la taille de la grille");
+        for (const t of [...r.stations, ...r.forbidden]) if (t.fr.length > 14) add("pipes-label", "warning", `${p}.rounds[${i}]`, `étiquette trop longue (14 caractères) : ${t.fr}`);
+      });
+      break;
+    case "runner":
+    case "shooter":
+      if (!m.items.some((x) => x.kind === "good") || !m.items.some((x) => x.kind === "bad"))
+        add("arcade-kinds", "error", `${p}.items`, "il faut des objets « good » et des objets « bad »");
+      break;
+    case "rhythm": {
+      const ids = new Set(m.lanes.map((l) => l.id));
+      m.notes.forEach((n, i) => { if (!ids.has(n.lane)) add("rhythm-lane", "error", `${p}.notes[${i}].lane`, `colonne inconnue : ${n.lane}`); });
+      for (const l of m.lanes) {
+        const k = m.notes.filter((n) => n.lane === l.id).length;
+        if (k === 0) add("rhythm-lane", "warning", `${p}.lanes`, `colonne « ${l.id} » jamais utilisée`);
+        if (k > m.notes.length * 0.6) add("rhythm-lane", "warning", `${p}.notes`, `trop de notes dans « ${l.id} » : on gagne sans lire`);
+      }
+      break;
+    }
+    case "hunt":
+      m.rounds.forEach((r, i) => {
+        const risks = r.items.filter((x) => x.risk).length;
+        if (risks < 2) add("hunt-risks", "error", `${p}.rounds[${i}]`, "au moins 2 risques à trouver");
+        if (risks > r.items.length - 3) add("hunt-risks", "error", `${p}.rounds[${i}]`, "au moins 3 objets sans risque (sinon on clique partout)");
+        const ids = new Set<string>();
+        r.items.forEach((x, j) => { if (ids.has(x.id)) add("unique-ids", "error", `${p}.rounds[${i}].items[${j}]`, `objet en double : ${x.id}`); ids.add(x.id); });
+      });
+      break;
     case "wheel": {
       const ids = new Set<string>();
       m.segments.forEach((s, i) => {

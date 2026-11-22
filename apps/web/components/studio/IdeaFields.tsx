@@ -15,11 +15,16 @@ const MECHS: Array<{ id: string; label: string; hint: string; arcade?: boolean }
   { id: "quiz", label: "QUIZ", hint: "questions à choix, avec explications" },
   { id: "dialogue", label: "ÉCHANGE", hint: "choisir ses répliques face à un personnage" },
   { id: "slider", label: "RÉGLAGE", hint: "doser la bonne valeur" },
+  { id: "defense", label: "DÉFENSE", hint: "placer la bonne parade dans chaque couloir (tower defense)" },
+  { id: "runner", label: "COURSE", hint: "courir et sauter pour attraper le bon, éviter le reste", arcade: true },
+  { id: "shooter", label: "TIR", hint: "abattre les menaces, épargner les alliés (Space Invaders)", arcade: true },
+  { id: "rhythm", label: "RYTHME", hint: "envoyer chaque note dans la bonne colonne en cadence (Guitar Hero)", arcade: true },
+  { id: "hunt", label: "CHASSE AUX RISQUES", hint: "repérer les dangers dans une scène (objets cachés)" },
 ];
 
 const SKINS = [
   ["", "au choix de l'agent"], ["arcade", "Arcade (grand public)"], ["famicom", "Famicom (rouge et or)"], ["gameboy", "Game Boy (vert)"],
-  ["terminal", "Terminal (vert sur noir)"], ["synth", "Synthwave (néon)"], ["corporate", "Corporate (sobre)"], ["comic", "Comic (BD)"],
+  ["terminal", "Terminal (vert sur noir)"], ["synth", "Synthwave (néon)"], ["corporate", "Corporate (sobre)"], ["comic", "Comic (BD)"], ["candy", "Bonbon (pastel)"], ["sunset", "Coucher de soleil"],
 ] as const;
 
 const SCENES = [

@@ -22,3 +22,12 @@ Résumé : les boutons de réglage de la difficulté.
 - Normal : objectifs à 60-70 %, un modificateur sur un niveau, une embuscade.
 - Difficile : objectifs à 75-80 %, pièges subtils, deux niveaux avec modificateurs, boss à 3 phases.
 L'aide adaptative du moteur ralentit le jeu après deux échecs : on peut viser juste sans craindre de bloquer.
+
+## pieges
+Résumé : les défauts de conception que les contrôles et la relecture traquent.
+- **Gagner sans réfléchir** : si « tout accepter », « taper partout », « toujours A » ou « toujours le maximum » gagne, le niveau n'apprend rien.
+  Le contrôle automatique simule ces stratégies naïves et refuse le niveau.
+- **Choix sans conséquence** : chaque option doit changer quelque chose (score, risque, information pour la suite).
+- **Règle décorative** : un modificateur ou un rebondissement doit changer la décision du joueur, pas seulement l'habillage.
+- **Rythme** : le premier niveau apprend, il ne teste pas ; jamais plus de deux moments intenses d'affilée ;
+  un moment plus calme juste avant le boss ; la pression idéale reste entre 60 et 95 % de ce que le joueur peut encaisser.

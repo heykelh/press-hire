@@ -73,6 +73,7 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
   const [bossWon, setBossWon] = useState(false);
   const [bossHp, setBossHp] = useState(0);
   const [bossLives, setBossLives] = useState(3);
+  const [extendWon, setExtendWon] = useState(false);
   const [answered, setAnswered] = useState(false); // appel entrant décroché
   const bossStart = useRef<GameState>({ ...st.current });
   const ambushTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -184,6 +185,9 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang]);
 
+  /* ---------- READY / GO façon borne d'arcade au début de chaque partie de jeu ---------- */
+  const readyKey = phase.k === "play" ? `p${phase.i}-${attempt}` : phase.k === "bplay" ? `b${phase.j}-${attempt}` : "";
+
   /* ---------- modificateur « séisme » : l'écran tremble par moments ---------- */
   const quake = (phase.k === "play" && levels[phase.i]?.modifiers?.includes("quake")) ||
     (phase.k === "bplay" && c.boss?.phases?.[phase.j]?.modifiers?.includes("quake"));
@@ -222,6 +226,7 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
     setBanners([]);
     setComboShow(0);
     combo.current.cur = 0;
+    chip.current?.jingle("ready");
     setPhase({ k: "play", i });
   };
   const afterLevel = (i: number) => {
@@ -245,7 +250,17 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
   };
   const goTo = (next: number) => {
     if (next < levels.length) startLevel(next);
-    else if (c.boss) { levelStart.current = { ...st.current }; bossStart.current = { ...st.current }; setBossHp(c.boss.phases?.length ?? c.boss.hp); setBossLives(3); setPhase({ k: "bossIntro" }); }
+    else if (c.boss) {
+      levelStart.current = { ...st.current }; bossStart.current = { ...st.current };
+      setBossHp(c.boss.phases?.length ?? c.boss.hp);
+      // vie bonus façon arcade (« extend ») : 80 % des étoiles avant le boss
+      const extend = !!c.boss.phases && Object.values(stars).reduce((a, b) => a + b, 0) >= levels.length * 3 * 0.8;
+      setBossLives(extend ? 4 : 3);
+      if (extend) { chip.current?.jingle("oneup"); fx.pop("1UP !", true); }
+      setExtendWon(extend);
+      chip.current?.jingle("boss");
+      setPhase({ k: "bossIntro" });
+    }
     else setPhase({ k: "ending" });
   };
   const maxStars = levels.length * 3;
@@ -254,7 +269,7 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
     const won = checkConditions(lv.win, st.current, levelStart.current);
     trackOnce("level", `${lv.id}:${won ? 1 : 0}`);
     if (won) {
-      chip.current?.sfx("win");
+      chip.current?.jingle("clear");
       fx.confetti();
       const n = levelStars(lv, st.current, levelStart.current, levelFails);
       const next = { ...stars, [lv.id]: Math.max(stars[lv.id] ?? 0, n) };
@@ -343,6 +358,9 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
   const playCtx: Ctx = mods.length ? { ...ctx, speed: mods.includes("turbo") ? 1.35 : 1, mirror: mods.includes("mirror") } : ctx;
   const levelNo = inBoss ? "BOSS" : level.day ? `${t(level.day)} · ${level.order}` : String(level.order);
   const totalStars = Object.values(stars).reduce((a, b) => a + b, 0);
+  // score façon borne d'arcade : étoiles, niveaux réussis du premier coup, meilleur combo
+  const firstTries = Object.values(stars).filter((n) => n >= 2).length;
+  const runScore = totalStars * 150 + firstTries * 200 + combo.current.max * 15;
 
   let body: React.ReactNode = null;
 
@@ -415,6 +433,7 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
       const ch = char(level.mechanic.type === "dialogue" ? level.mechanic.characterId ?? level.characterId : level.characterId);
       body = (
         <>
+          <ReadyGo key={readyKey} fr={fr} />
           <ModFrame mods={mods}>
             <Mechanic key={`${phase.i}-${attempt}`} ctx={playCtx} m={level.mechanic} character={ch} paused={help} onDone={() => finishLevel(phase.i)} />
           </ModFrame>
@@ -438,6 +457,13 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
         <div className={`g-result ${phase.won ? "won" : "lost"}`}>
           <p className="g-stamp">{phase.won ? (fr ? "NIVEAU RÉUSSI" : "LEVEL CLEARED") : fr ? "RATÉ !" : "MISSED!"}</p>
           {phase.won && <Stars n={stars[level.id] ?? 1} animate />}
+          {phase.won && (
+            <p className="g-tally">
+              <span>★ ×{stars[level.id] ?? 1} <b>+{(stars[level.id] ?? 1) * 150}</b></span>
+              {(stars[level.id] ?? 1) >= 2 && <span>{fr ? "DU PREMIER COUP" : "FIRST TRY"} <b>+200</b></span>}
+              <span className="g-tally-total">SCORE <Counter to={runScore} /></span>
+            </p>
+          )}
           <p className="g-bubble">{t(phase.won ? level.winLine : joke)}</p>
           {phase.won && level.outro && (() => {
             const oc = char(level.outro.characterId);
@@ -498,7 +524,7 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
           <p className="g-bubble boss">{t(b.taunts[0]!)}</p>
           {pain && <p className="g-req">{fr ? "Le vrai problème" : "The real problem"} : <b>{t(pain.label)}</b></p>}
           <p className="g-rule">{b.phases
-            ? fr ? `Il a ${b.phases.length} formes. Gagne chaque phase pour lui infliger un coup. 3 vies.` : `It has ${b.phases.length} forms. Win each phase to land a hit. 3 lives.`
+            ? fr ? `Il a ${b.phases.length} formes. Gagne chaque phase pour lui infliger un coup. ${bossLives} vies${extendWon ? " (dont une vie bonus pour tes étoiles)" : ""}.` : `It has ${b.phases.length} forms. Win each phase to land a hit. ${bossLives} lives${extendWon ? " (one bonus life for your stars)" : ""}.`
             : b.mechanic?.type === "quiz"
             ? fr ? `Bonne réponse = 1 coup. ${b.hp} coups pour gagner, 3 vies.` : `Right answer = 1 hit. ${b.hp} hits to win, 3 lives.`
             : fr ? `Case favorable = 1 coup. ${b.hp} coups pour gagner, 3 vies.` : `Good slot = 1 hit. ${b.hp} hits to win, 3 lives.`}</p>
@@ -514,7 +540,7 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
       body = (
         <BossFight key={`boss-${attempt}`} ctx={ctx} boss={c.boss!} character={char(c.boss!.characterId)}
           onEnd={(won) => {
-            if (won) { chip.current?.sfx("win"); fx.confetti(); setBossWon(true); } else { chip.current?.sfx("lose"); setFails((f) => f + 1); }
+            if (won) { chip.current?.jingle("clear"); fx.confetti(); setBossWon(true); } else { chip.current?.jingle("gameover"); setFails((f) => f + 1); }
             setPhase({ k: "bossResult", won });
           }} />
       );
@@ -544,6 +570,8 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
       const ch = char(ph.mechanic.type === "dialogue" ? ph.mechanic.characterId ?? b.characterId : b.characterId);
       const j = phase.j;
       body = (
+        <>
+        <ReadyGo key={readyKey} fr={fr} />
         <ModFrame mods={mods}>
           <Mechanic key={`bp-${j}-${attempt}`} ctx={playCtx} m={ph.mechanic} character={ch} paused={help} onDone={() => {
             const won = checkConditions(ph.win, st.current, levelStart.current);
@@ -557,11 +585,12 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
             } else {
               chip.current?.sfx("lose"); fx.shake(); setFails((f) => f + 1);
               const l = bossLives - 1; setBossLives(l);
-              if (l <= 0) setPhase({ k: "bossResult", won: false });
+              if (l <= 0) { chip.current?.jingle("gameover"); setPhase({ k: "bossResult", won: false }); }
               else setPhase({ k: "bphase", j, missed: true });
             }
           }} />
         </ModFrame>
+        </>
       );
       break;
     }
@@ -575,7 +604,7 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
           ) : (
             <button className="g-btn primary big" autoFocus onClick={() => {
               st.current = { ...bossStart.current }; levelStart.current = { ...bossStart.current }; bump(); setAttempt((a) => a + 1);
-              if (c.boss!.phases) { setBossHp(c.boss!.phases.length); setBossLives(3); setPhase({ k: "bphase", j: 0 }); } else setPhase({ k: "boss" });
+              if (c.boss!.phases) { setBossHp(c.boss!.phases.length); setBossLives(extendWon ? 4 : 3); setPhase({ k: "bphase", j: 0 }); } else setPhase({ k: "boss" });
             }}>{fr ? "↺ REVANCHE" : "↺ REMATCH"}</button>
           )}
         </div>
@@ -584,7 +613,8 @@ export default function Game({ c, track = false, badge = true }: { c: Cartridge;
     case "ending": {
       const perfect = fails === 0 ? c.easterEggs.find((e) => e.trigger === "perfect_run") : undefined;
       body = (
-        <Ending ctx={ctx} fails={fails} score={finalScore(c, st.current, fails) + totalStars * 150 + combo.current.max * 15}
+        <Ending ctx={ctx} fails={fails} score={finalScore(c, st.current, fails) + runScore + (bossWon && c.boss?.phases ? bossLives * 250 : 0)}
+          slug={c.meta.id} canSubmit={track}
           perfectEgg={perfect ? t(perfect.content) : undefined}
           badge={badge} levels={levels} stars={stars} learned={learned} reports={reports.current}
           maxCombo={combo.current.max} bossWon={bossWon}
@@ -651,8 +681,36 @@ function BossHead({ ctx, name, hp, max, lives, character, hurt }: {
       <div className="g-boss-info">
         <p className="g-boss-name">{name}</p>
         <div className="g-hp" aria-label={`HP ${hp}/${max}`}>{Array.from({ length: max }, (_, k) => <i key={k} className={k < hp ? "on" : ""} />)}</div>
-        <p className="g-lives">{ctx.lang === "fr" ? "Vies" : "Lives"} {"♥".repeat(Math.max(0, lives))}{"♡".repeat(3 - Math.max(0, lives))}</p>
+        <p className="g-lives">{ctx.lang === "fr" ? "Vies" : "Lives"} {"♥".repeat(Math.max(0, lives))}{"♡".repeat(Math.max(0, 3 - Math.max(0, lives)))}</p>
       </div>
     </div>
   );
+}
+
+/** « PRÊT ? » puis « GO ! » par-dessus la zone de jeu (n'empêche pas de jouer). */
+function ReadyGo({ fr }: { fr: boolean }) {
+  return (
+    <div className="g-readygo" aria-hidden>
+      <span className="r">{fr ? "PRÊT ?" : "READY?"}</span>
+      <span className="g">GO !</span>
+    </div>
+  );
+}
+
+/** Nombre qui défile jusqu'à sa valeur. */
+function Counter({ to }: { to: number }) {
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    let raf = 0;
+    const t0 = performance.now();
+    const from = 0;
+    const tick = (now: number) => {
+      const k = Math.min(1, (now - t0) / 900);
+      setV(Math.round(from + (to - from) * (1 - Math.pow(1 - k, 3))));
+      if (k < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [to]);
+  return <b>{String(v).padStart(6, "0")}</b>;
 }

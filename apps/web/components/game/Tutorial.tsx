@@ -8,6 +8,7 @@ import type { Ctx } from "./ui";
 const ICON_OF: Record<string, string> = {
   wheel: "star", slider: "chart", triage: "file", quiz: "key", dialogue: "heart",
   catch: "box", whack: "warning", gauge: "bolt", sequence: "clock", inspection: "shield", investigation: "chart",
+  defense: "shield", pipes: "drop", hunt: "warning", runner: "bolt", shooter: "fire", rhythm: "star",
 };
 
 /** « Disponibilité ≥ 96 », « Score +15 pendant ce niveau ». */

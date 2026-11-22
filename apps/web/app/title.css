@@ -289,3 +289,15 @@
 .ph-help:hover, .ph-help:focus-visible { background: var(--accent); color: #000; }
 .skin-gameboy .ph-help { background: #0f380f; color: #9bbc0f; border-color: #9bbc0f; }
 .skin-corporate .ph-help { left: auto; right: 2.4cqw; background: #fff; color: #14213d; border-color: #14213d; }
+
+/* ---- habillages colorés (v0.8) ---- */
+.skin-candy, .skin-candy .ph-logo { font-family: "Press Start 2P", monospace; }
+.skin-candy .ph-logo { font-size: clamp(14px, min(7cqw, 13cqh), 84px); filter: drop-shadow(0.06em 0.06em 0 #ffffff) drop-shadow(0.1em 0.12em 0 #ff7ab8); }
+.skin-candy .ph-tagline { color: #fff; text-shadow: 2px 2px 0 #ff4f9a; }
+.skin-candy .ph-prompt { color: #2a1040; background: #8ef0c8; border: 3px solid #fff; box-shadow: 0 4px 0 #3ccfcf; animation: ph-blink 1.2s steps(1) infinite; }
+.skin-candy .ph-fx { background: linear-gradient(180deg, rgba(255, 180, 220, 0.25), transparent 45%, rgba(140, 240, 200, 0.18)); }
+.skin-sunset, .skin-sunset .ph-logo { font-family: "Press Start 2P", monospace; }
+.skin-sunset .ph-logo { font-size: clamp(14px, min(7cqw, 13cqh), 84px); transform: skewX(-6deg); filter: drop-shadow(0.06em 0.07em 0 #c2185b) drop-shadow(0 0 0.2em #ff8c42); }
+.skin-sunset .ph-tagline { color: #ffe8c2; text-shadow: 2px 2px 0 #4a0d2e; }
+.skin-sunset .ph-prompt { color: #2b0a1e; background: linear-gradient(180deg, #ffd166, #ff6b35); border: 2px solid #2b0a1e; animation: ph-blink 1.3s steps(1) infinite; }
+.skin-sunset .ph-fx { background: linear-gradient(180deg, rgba(255, 110, 60, 0.18), transparent 40%, rgba(194, 24, 91, 0.22)); }

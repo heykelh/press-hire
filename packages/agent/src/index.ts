@@ -10,3 +10,4 @@ export * from "./plan";
 export * from "./idea";
 export * from "./design";
 export * from "./pitch";
+export * from "./company";

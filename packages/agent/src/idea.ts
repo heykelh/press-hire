@@ -8,7 +8,7 @@ import type { Offer } from "./offer";
 import { ARCADE, THINKING, type MechType } from "./plan";
 
 export const MECHANICS: MechType[] = [...ARCADE, ...THINKING, "wheel"];
-export const SKINS = ["arcade", "famicom", "gameboy", "terminal", "synth", "corporate", "comic"] as const;
+export const SKINS = ["arcade", "famicom", "gameboy", "terminal", "synth", "corporate", "comic", "candy", "sunset"] as const;
 export const SCENES = [
   "plains", "rooftops", "underground", "jungle", "space", "lab", "paris", "airport", "station", "trading_floor",
   "data_center", "hospital", "factory", "warehouse", "headquarters", "port", "store",

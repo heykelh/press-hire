@@ -48,6 +48,17 @@ create table if not exists play_events (
 create index if not exists play_events_slug_idx on play_events (slug, created_at desc);
 create index if not exists play_events_sid_idx on play_events (sid, kind);
 
+-- Tableau des meilleurs scores de chaque jeu (3 initiales façon borne d'arcade)
+create table if not exists scores (
+  id         bigserial primary key,
+  slug       text        not null,
+  initials   text        not null,
+  score      integer     not null,
+  sid        text        not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists scores_slug_idx on scores (slug, score desc);
+
 -- Préparation SaaS : comptes, propriétaire de chaque jeu, journal des générations (quotas, facturation)
 create table if not exists accounts (
   id         text primary key,
