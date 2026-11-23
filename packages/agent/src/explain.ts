@@ -23,9 +23,10 @@ export function explainIssue(i: Issue): string {
   const at = where(i.path);
   const list = LIST_FR[i.path.split(/[.[\]]/).filter(Boolean).pop() ?? ""] ?? "éléments";
   let m = i.message.match(/expected array to have >=(\d+) items/);
-  if (m) return `${at} : le modèle a écrit trop peu de ${list} (il en faut au moins ${m[1]})`;
+  const de = /^[aeéèêiouy]/i.test(list) ? `d'${list}` : `de ${list}`;
+  if (m) return `${at} : le modèle a écrit trop peu ${de} (il en faut au moins ${m[1]})`;
   m = i.message.match(/expected array to have <=(\d+) items/);
-  if (m) return `${at} : trop de ${list} (${m[1]} au maximum)`;
+  if (m) return `${at} : trop ${de} (${m[1]} au maximum)`;
   m = i.message.match(/expected string to have <=(\d+) characters/);
   if (m) return `${at} : texte trop long (${m[1]} caractères au maximum)`;
   if (/Invalid input: expected (\w+), received undefined/.test(i.message)) return `${at} : un champ obligatoire manque (${i.path})`;

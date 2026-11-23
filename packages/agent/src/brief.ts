@@ -5,6 +5,7 @@
  */
 import type { GamePlan } from "./plan";
 import {
+  Mechanic,
   checkConditions,
   arcadeSplit,
   defenseBest,
@@ -195,6 +196,20 @@ export function applyPlan(
       l.modifiers = pl.modifiers;
     });
   }
+  // mécanique sans type : le plan sait quel mini-jeu était prévu à cette place
+  if (plan && Array.isArray(brief.levels)) {
+    const ordered = [...(brief.levels as Obj[])].sort((a, b) => Number(a.order) - Number(b.order));
+    ordered.forEach((l, i) => {
+      const pl = plan.levels[i];
+      if (isObj(l.mechanic) && typeof l.mechanic.type !== "string") l.mechanic.type = guessMechanic(l.mechanic, pl?.mechanic);
+    });
+  }
+  if (plan?.boss && isObj(brief.boss) && Array.isArray(brief.boss.phases))
+    (brief.boss.phases as Obj[]).forEach((ph, i) => {
+      const pp = plan.boss!.phases[i];
+      if (isObj(ph.mechanic) && typeof ph.mechanic.type !== "string") ph.mechanic.type = guessMechanic(ph.mechanic, pp?.mechanic);
+    });
+  fixRequirements(brief);
   if (plan) brief.design = { ...(isObj(brief.design) ? brief.design : {}), format: plan.format };
   if (plan?.boss && isObj(brief.boss)) {
     brief.boss.archetype = plan.boss.archetype;
@@ -204,6 +219,50 @@ export function applyPlan(
   if (force.skin) brief.design = { ...(isObj(brief.design) ? brief.design : {}), skin: force.skin };
   if (force.scene) brief.titleScreen = { ...(isObj(brief.titleScreen) ? brief.titleScreen : {}), scene: force.scene };
   return brief;
+}
+
+/** Type d'une mécanique dont le modèle a oublié « type » : celui dont le schéma accepte le mieux le contenu. */
+export function guessMechanic(m: Obj, planned?: string): string {
+  let best: { t: string; n: number } | undefined;
+  for (const opt of Mechanic.options) {
+    const t = String((opt.shape.type as unknown as { value: string }).value);
+    const r = opt.safeParse({ ...m, type: t });
+    const n = r.success ? 0 : r.error.issues.length;
+    if (!best || n < best.n || (n === best.n && t === planned)) best = { t, n };
+  }
+  return best?.t ?? planned ?? "quiz";
+}
+
+/**
+ * Les compétences de l'offre citées par le jeu doivent exister, et chaque compétence obligatoire doit être jouée
+ * ou rappelée en fin de partie. Les modèles inventent des identifiants et oublient des compétences : on recâble.
+ */
+export function fixRequirements(brief: Obj): void {
+  const analysis = isObj(brief.analysis) ? brief.analysis : undefined;
+  const reqs = (analysis && Array.isArray(analysis.requirements) ? analysis.requirements : []).filter(isObj) as Obj[];
+  if (!reqs.length) return;
+  const known = new Set(reqs.map((r) => String(r.id)));
+  const levels = (Array.isArray(brief.levels) ? brief.levels : []).filter(isObj) as Obj[];
+  const ending = (isObj(brief.ending) ? brief.ending : (brief.ending = {})) as Obj;
+  let skills = (Array.isArray(ending.skillsUnlocked) ? ending.skillsUnlocked : []).filter(isObj) as Obj[];
+  skills = skills.filter((x) => known.has(String(x.requirementId)));
+  const covered = () => new Set([...levels.map((l) => String(l.requirementId)), ...skills.map((x) => String(x.requirementId))]);
+  // niveau qui cite une compétence inconnue : on lui donne une compétence pas encore jouée (obligatoires d'abord)
+  let k = 0;
+  for (const l of levels) {
+    if (known.has(String(l.requirementId))) continue;
+    const c = covered();
+    const free = [...reqs.filter((r) => r.priority === "must" && !c.has(String(r.id))), ...reqs.filter((r) => !c.has(String(r.id)))];
+    l.requirementId = String((free[0] ?? reqs[k++ % reqs.length]!).id);
+  }
+  // compétence obligatoire jouée nulle part : rappelée en fin de partie
+  const c = covered();
+  for (const r of reqs)
+    if (r.priority === "must" && !c.has(String(r.id))) {
+      const label = isObj(r.label) ? r.label : { fr: String(r.id), en: String(r.id) };
+      skills.push({ requirementId: String(r.id), line: { fr: String(label.fr ?? r.id).slice(0, 140), en: String(label.en ?? label.fr ?? r.id).slice(0, 140) } });
+    }
+  ending.skillsUnlocked = skills;
 }
 
 /* ---------------- assemblage ---------------- */

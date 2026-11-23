@@ -119,12 +119,21 @@ describe("génération", () => {
 
   it("renvoie les erreurs au modèle et accepte sa correction", async () => {
     const bad = clone(EXAMPLE_BRIEF) as any;
-    bad.levels[0].requirementId = "req_inexistante";
+    bad.events[0].effects[0].var = "variable_inexistante"; // seul le modèle sait quelle variable il voulait
     const llm = scripted(JSON.stringify(bad), JSON.stringify(EXAMPLE_BRIEF));
     const { events, last } = await run(llm);
     expect(last.type).toBe("done");
     expect(llm.calls).toBe(2);
     expect(events.some((e) => e.type === "step" && e.message.includes("correction"))).toBe(true);
+  });
+
+  it("recâble seul une compétence inventée par le modèle, sans lui redemander", async () => {
+    const bad = clone(EXAMPLE_BRIEF) as any;
+    bad.levels[0].requirementId = "req_inexistante";
+    const llm = scripted(JSON.stringify(bad));
+    const { last } = await run(llm);
+    expect(last.type).toBe("done");
+    expect(llm.calls).toBe(1);
   });
 
   it("règle lui-même un niveau gagné d'avance", async () => {

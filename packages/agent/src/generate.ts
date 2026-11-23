@@ -6,7 +6,7 @@
  * (les étapes de qualité facultatives sautent si la génération traîne).
  */
 import { makeSlug, validateCartridge, type Cartridge, type Issue, type ValidationResult } from "@press-hire/cartridge";
-import { applyPlan, autoBalance, assemble, repairBrief } from "./brief";
+import { applyPlan, autoBalance, assemble, fixRequirements, repairBrief } from "./brief";
 import { ANALYZE_SYSTEM, JobModel, jobSchemaJson, repairJob, requirementsFromJob, type JobModel as Job } from "./job";
 import { chainHead, estimateTokens, parseJsonReply, type Llm } from "./llm";
 import { IDEA_ANALYZE_SYSTEM, analyzeIdeaPrompt, ideaOffer, ideaWriteRules, type IdeaOptions } from "./idea";
@@ -68,11 +68,15 @@ const pick = (o: unknown, ...path: string[]): string | undefined => {
 
 const errorsOf = (issues: Issue[]) => issues.filter((i) => i.severity === "error");
 
+/** Types de mécanique reconnaissables à leurs champs (quand le modèle oublie « type »). */
+const ARCADE_LIKE = ["catch", "whack", "runner", "shooter", "rhythm", "gauge", "sequence"];
+
 /**
- * Retire les niveaux (au plus 2, il en reste au moins 2) ou la phase de boss (il en reste au moins 2)
- * qui portent toutes les erreurs restantes. Rien si une erreur touche autre chose.
+ * Dernier recours : retire les niveaux qui portent les erreurs restantes (on garde au moins 2 niveaux,
+ * 3 retirés au plus en tout) ; une phase de boss abîmée est retirée s'il en reste 2, sinon remplacée
+ * par le mini-jeu d'un niveau sain. Rien si une erreur touche autre chose.
  */
-export function salvageBrief(brief: Obj, issues: Issue[]): { brief: Obj; dropped: string[]; reasons: string[] } | null {
+export function salvageBrief(brief: Obj, issues: Issue[], alreadyDropped = 0): { brief: Obj; dropped: string[]; reasons: string[] } | null {
   const errs = errorsOf(issues);
   if (!errs.length) return null;
   const lv = new Set<number>();
@@ -87,20 +91,40 @@ export function salvageBrief(brief: Obj, issues: Issue[]): { brief: Obj; dropped
   const levels = Array.isArray(brief.levels) ? (brief.levels as Obj[]) : [];
   const boss = (brief.boss ?? {}) as Obj;
   const phases = Array.isArray(boss.phases) ? (boss.phases as Obj[]) : [];
-  if (lv.size > 2 || levels.length - lv.size < 2) return null;
-  if (ph.size && phases.length - ph.size < 2) return null;
-  const name = (o: Obj | undefined, fb: string) => {
+  if (alreadyDropped + lv.size > 3 || levels.length - lv.size < 2) return null;
+  const name = (o: Obj | undefined) => {
     const t = (o?.title as Obj | undefined)?.fr;
-    return typeof t === "string" && t ? `« ${t} »` : fb;
+    return typeof t === "string" && t ? ` « ${t.slice(0, 60)} »` : "";
   };
-  const dropped = [
-    ...[...lv].map((i) => `le niveau ${i + 1} ${name(levels[i], "")}`.trim()),
-    ...[...ph].map((i) => `la phase ${i + 1} du boss`),
-  ];
-  const out: Obj = { ...brief, levels: levels.filter((_, i) => !lv.has(i)) };
-  if (ph.size) out.boss = { ...boss, phases: phases.filter((_, i) => !ph.has(i)) };
+  const out = structuredClone({ ...brief, levels: levels.filter((_, i) => !lv.has(i)) }) as Obj;
+  const dropped = [...lv].map((i) => `niveau ${i + 1}${name(levels[i])} retiré`);
+  if (ph.size) {
+    const keep = phases.filter((_, i) => !ph.has(i));
+    if (keep.length >= 2) {
+      (out.boss as Obj).phases = structuredClone(keep);
+      dropped.push(...[...ph].map((i) => `phase ${i + 1} du boss retirée`));
+    } else {
+      // pas assez de phases saines : la phase abîmée reprend le mini-jeu d'un niveau sain (d'un autre type)
+      const used = new Set(keep.map((p) => String((p.mechanic as Obj | undefined)?.type)));
+      const healthy = (out.levels as Obj[]).filter((l) => isObjLike(l.mechanic) && !used.has(String((l.mechanic as Obj).type)));
+      healthy.sort((a, b) => Number(ARCADE_LIKE.includes(String((b.mechanic as Obj).type))) - Number(ARCADE_LIKE.includes(String((a.mechanic as Obj).type))));
+      const newPhases = structuredClone(phases);
+      let h = 0;
+      for (const i of [...ph].sort()) {
+        const src = healthy[h++];
+        if (!src) return null;
+        newPhases[i] = { ...newPhases[i], mechanic: structuredClone(src.mechanic), win: structuredClone(src.win) };
+        used.add(String((src.mechanic as Obj).type));
+        dropped.push(`phase ${i + 1} du boss remplacée par le mini-jeu « ${(src.mechanic as Obj).type} »`);
+      }
+      (out.boss as Obj).phases = newPhases;
+    }
+  }
+  // la compétence d'un niveau retiré reste rappelée en fin de partie
+  fixRequirements(out);
   return { brief: out, dropped, reasons: [...new Set(errs.map(explainIssue))].slice(0, 2) };
 }
+const isObjLike = (x: unknown): x is Obj => !!x && typeof x === "object" && !Array.isArray(x);
 const isBalance = (i: Issue) => i.rule.startsWith("balance-") || i.rule === "naive-win";
 const onlyBalance = (issues: Issue[]) => errorsOf(issues).every(isBalance);
 const anyBalance = (issues: Issue[]) => errorsOf(issues).some(isBalance);
@@ -330,18 +354,36 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
       }
     }
     if (lastGood) return lastGood;
-    // dernier recours sans le modèle : si seuls un ou deux niveaux (ou une phase de boss) sont abîmés, on les retire
-    const saved = lastBrief && salvageBrief(lastBrief, lastIssues);
-    if (saved && slug) {
-      let r = validateCartridge(assemble(saved.brief, { slug, offerUrl: input.offerUrl, contact: input.contact, now }));
-      if (!r.ok && r.cartridge && anyBalance(r.issues)) {
-        const c = r.cartridge;
-        r = validateCartridge(autoBalance(c, c.levels.map((l) => l.id).concat((c.boss?.phases ?? []).map((_, k) => `boss-phase-${k + 1}`)), { singleGoal: true }));
-      }
-      if (r.ok && r.cartridge) {
-        yield { type: "warn", message: `Sauvetage : ${saved.dropped.join(", ")} retiré${saved.dropped.length > 1 ? "s" : ""} (${saved.reasons.join(" ; ")}). Le reste du jeu est complet.` };
-        const note: Issue[] = saved.dropped.map((d) => ({ rule: "salvage", severity: "warning", path: "", message: `${d} retiré : ${saved.reasons.join(" ; ")}` }));
-        return { cartridge: r.cartridge, issues: [...r.issues, ...note], brief: saved.brief, attempts: repairs + 1 };
+    // dernier recours sans le modèle : on retire (ou remplace) ce qui reste abîmé, en plusieurs passes,
+    // car retirer un niveau cassé peut révéler d'autres défauts que l'erreur de schéma masquait
+    if (lastBrief && slug) {
+      let cur: Obj = lastBrief;
+      let curIssues = lastIssues;
+      const dropped: string[] = [];
+      const reasons: string[] = [];
+      for (let pass = 0; pass < 4; pass++) {
+        const saved = salvageBrief(cur, curIssues, dropped.length);
+        if (!saved) break;
+        dropped.push(...saved.dropped);
+        reasons.push(...saved.reasons);
+        cur = saved.brief;
+        let r = validateCartridge(assemble(cur, { slug, offerUrl: input.offerUrl, contact: input.contact, now }));
+        if (!r.ok && r.cartridge && anyBalance(r.issues)) {
+          const c = r.cartridge;
+          const all = c.levels.map((l) => l.id).concat((c.boss?.phases ?? []).map((_, k) => `boss-phase-${k + 1}`));
+          const fixed = autoBalance(c, all, { singleGoal: true });
+          r = validateCartridge(fixed);
+          const { meta: _m, ...rest } = fixed as unknown as Obj;
+          void _m;
+          cur = rest;
+        }
+        if (r.ok && r.cartridge) {
+          const why = [...new Set(reasons)].slice(0, 2).join(" ; ");
+          yield { type: "warn", message: `Sauvetage : ${dropped.join(", ")} (${why}). Le reste du jeu est complet.` };
+          const note: Issue[] = dropped.map((d) => ({ rule: "salvage", severity: "warning", path: "", message: `${d} : ${why}` }));
+          return { cartridge: r.cartridge, issues: [...r.issues, ...note], brief: cur, attempts: repairs + 1 };
+        }
+        curIssues = r.issues;
       }
     }
     return { issues, attempts: repairs + 1 };

@@ -18,7 +18,7 @@ export const Pitch = z.object({
   hook: S(400),
   runningGag: S(300),
   levels: z
-    .array(z.object({ order: z.number().int().min(1), angle: S(300), twist: S(300), troll: z.string().max(300).optional() }))
+    .array(z.object({ order: z.coerce.number().int().min(1).optional(), angle: S(300), twist: S(300), troll: z.string().max(300).optional() }))
     .max(6)
     .default([]),
   boss: z.object({ name: S(80), phases: z.array(z.object({ intro: S(300) })).max(3).default([]) }).optional(),
@@ -74,7 +74,7 @@ export function pitchText(p: Pitch): string {
 Titre : ${p.title}
 Accroche : ${p.hook}
 Running gag : ${p.runningGag}
-${p.levels.map((l) => `- Niveau ${l.order} : ${l.angle} Rebondissement : ${l.twist}${l.troll ? ` Troll : ${l.troll}` : ""}`).join("\n")}
+${p.levels.map((l, i) => `- Niveau ${l.order ?? i + 1} : ${l.angle} Rebondissement : ${l.twist}${l.troll ? ` Troll : ${l.troll}` : ""}`).join("\n")}
 ${p.boss ? `Boss « ${p.boss.name} » : ${p.boss.phases.map((ph, i) => `phase ${i + 1} : ${ph.intro}`).join(" / ")}` : ""}
 ${p.ending ? `Fin : ${p.ending}` : ""}`;
 }
