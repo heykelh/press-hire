@@ -10,6 +10,7 @@ import {
   arcadeSplit,
   defenseBest,
   naiveRuns,
+  naiveWins,
   playBest,
   Cartridge,
   SCHEMA_VERSION,
@@ -358,6 +359,17 @@ function bestDelta(c: Cartridge, l: Pick<Level, "mechanic">, varId: string, star
   return 0;
 }
 
+type Effect = { var: string; op: "add" | "set"; value: number };
+/** Où se rangent le gain d'une bonne action et la pénalité d'une mauvaise, selon la mécanique. */
+const REWARD: Partial<Record<string, string>> = {
+  triage: "onCorrect", quiz: "onCorrect", inspection: "onCorrect", investigation: "onFound", hunt: "onFound",
+  catch: "onGood", runner: "onGood", whack: "onHit", shooter: "onHit", rhythm: "onHit", sequence: "onSuccess", defense: "onBlock", pipes: "onSolve",
+};
+const PENALTY: Partial<Record<string, string[]>> = {
+  triage: ["onWrong"], quiz: ["onWrong"], inspection: ["onWrong"], investigation: ["onWrong"], hunt: ["onWrong"],
+  catch: ["onBad"], runner: ["onBad"], whack: ["onWrong"], shooter: ["onWrong"], rhythm: ["onWrong", "onMiss"], sequence: ["onFail"], defense: ["onLeak"], pipes: ["onFail"],
+};
+
 /**
  * Dernier recours quand le modèle n'arrive pas à équilibrer : chaque objectif devient
  * « gagner pendant ce niveau » environ 70 % du maximum atteignable.
@@ -415,6 +427,28 @@ export function autoBalance(c: Cartridge, levelIds: string[], opts: { singleGoal
             if (b > 0 && (!pick || b > pick.best || (b === pick.best && dir === 1))) pick = { v: v.id, dir, best: b };
           }
         if (pick) l.win = [goal(pick.v, pick.dir, pick.best)];
+      }
+      const m = l.mechanic as unknown as Record<string, unknown>;
+      const slot = REWARD[l.mechanic.type];
+      // rien à viser : les bonnes actions du modèle ne font bouger aucune variable → on leur donne un gain
+      if (slot && (playBest(out, l.mechanic, l.win, state) === null || checkConditions(l.win, state, state))) {
+        const room = (v: { id: string; max: number }) => v.max - (state[v.id] ?? 0);
+        const pref = l.win[0]?.var;
+        const v = out.state.vars.find((x) => x.id === pref && room(x) > 0) ?? [...out.state.vars].sort((a, b) => room(b) - room(a))[0]!;
+        m[slot] = [...((m[slot] as Effect[] | undefined) ?? []), { var: v.id, op: "add", value: 1 }];
+        const best = bestDelta(out, l, v.id, state, 1);
+        if (best > 0) l.win = [goal(v.id, 1, best)];
+      }
+      // « cliquer sur tout » / « taper partout » gagne : les mauvaises actions doivent coûter sur la variable visée
+      const pen = PENALTY[l.mechanic.type];
+      for (let k = 0; pen && k < 3 && l.win.length; k++) {
+        if (!naiveWins(out, l.mechanic, l.win, state).length) break;
+        const w = l.win[0]!;
+        const dir: 1 | -1 = w.op === "<=" || w.op === "<" ? -1 : 1;
+        const per = Math.max(1, Math.abs(((m[slot!] as Effect[] | undefined) ?? []).filter((e) => e.var === w.var && e.op === "add").reduce((t, e) => t + e.value, 0)));
+        for (const p of pen) m[p] = [...((m[p] as Effect[] | undefined) ?? []), { var: w.var, op: "add", value: -dir * per * (k + 1) }];
+        const best = bestDelta(out, l, w.var, state, dir);
+        if (best > 0) l.win = [goal(w.var, dir, best)];
       }
     }
     // avance l'état comme un joueur appliqué, pour le niveau suivant

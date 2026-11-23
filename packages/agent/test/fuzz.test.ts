@@ -1,7 +1,20 @@
 import { it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { generate, EXAMPLE_BRIEF, EXAMPLE_BRIEF_ARCADE, EXAMPLE_JOB, type GenerateEvent } from "../src";
 
 const clone = (x: any) => JSON.parse(JSON.stringify(x));
+const fixture = (f: string) => { const { meta: _m, ...rest } = JSON.parse(readFileSync(join(__dirname, "../../../fixtures/cartridges", f), "utf8")); void _m; return rest; };
+/** jeux de départ : couvrent toutes les mécaniques (chasse, tir, course, rythme, défense, inspection…) */
+const BASES = [EXAMPLE_BRIEF_ARCADE, EXAMPLE_BRIEF, fixture("demo-strategie.json"), fixture("demo-action.json")];
+const REWARD: Record<string, string> = { triage: "onCorrect", quiz: "onCorrect", inspection: "onCorrect", investigation: "onFound", hunt: "onFound", catch: "onGood", runner: "onGood", whack: "onHit", shooter: "onHit", rhythm: "onHit", sequence: "onSuccess", defense: "onBlock" };
+const PENALTY: Record<string, string[]> = { triage: ["onWrong"], quiz: ["onWrong"], inspection: ["onWrong"], investigation: ["onWrong"], hunt: ["onWrong", "onMissed"], catch: ["onBad", "onMiss"], runner: ["onBad", "onMiss"], whack: ["onWrong", "onMiss"], shooter: ["onWrong", "onMiss"], rhythm: ["onWrong", "onMiss"], sequence: ["onFail"], defense: ["onLeak"] };
+/** les effets que les modèles bâclent : bonne action qui ne rapporte rien, mauvaise action gratuite */
+function breakEffects(m: any, r: () => number): string | undefined {
+  if (r() < 0.5 && REWARD[m.type]) { m[REWARD[m.type]!] = []; if (m.type === "inspection") m.onSpotted = []; return "gains vides"; }
+  if (PENALTY[m.type]) { for (const p of PENALTY[m.type]!) m[p] = []; return "pénalités vides"; }
+  return undefined;
+}
 function rng(seed: number) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 2 ** 32); }
 
 /** Abîme une réponse de modèle comme le font vraiment les modèles. */
@@ -11,7 +24,7 @@ function corrupt(b: any, r: () => number): string[] {
   for (let k = 0; k < n; k++) {
     const i = Math.floor(r() * b.levels.length);
     const l = b.levels[i]; const m = l.mechanic;
-    const kind = Math.floor(r() * 6);
+    const kind = Math.floor(r() * 8);
     if (kind === 0) {
       // liste trop courte, y compris imbriquée (rounds[0].items…)
       const lists: Array<[any, string, string]> = [];
@@ -33,6 +46,8 @@ function corrupt(b: any, r: () => number): string[] {
       delete m.type; done.push(`L${i + 1} sans type`);
     } else if (kind === 4) {
       l.title = { fr: "x".repeat(300), en: "x" }; done.push(`L${i + 1} titre long`);
+    } else if (kind >= 6) {
+      const what = breakEffects(m, r); if (what) done.push(`L${i + 1} ${what}`);
     } else if (m.type === "dialogue" || m.type === "quiz") {
       if (m.type === "quiz") m.questions.forEach((q: any) => { const c = q.options[q.correctIndex]; q.options.splice(q.correctIndex, 1); q.options.unshift(c); q.correctIndex = 0; });
       done.push(`L${i + 1} bonne réponse toujours en premier`);
@@ -42,6 +57,9 @@ function corrupt(b: any, r: () => number): string[] {
     const ph = b.boss.phases[Math.floor(r() * b.boss.phases.length)];
     const lists = Object.keys(ph.mechanic).filter((x) => Array.isArray(ph.mechanic[x]) && ph.mechanic[x].length > 1);
     if (lists.length) { ph.mechanic[lists[0]!] = ph.mechanic[lists[0]!].slice(0, 1); done.push(`boss phase ${lists[0]} trop court`); }
+  }
+  if (b.boss?.phases && r() < 0.5) {
+    for (const ph of b.boss.phases) if (r() < 0.6) { const what = breakEffects(ph.mechanic, r); if (what) done.push(`boss ${ph.mechanic.type} ${what}`); }
   }
   if (b.boss?.phases && r() < 0.5) {
     for (const ph of b.boss.phases) ph.win = [{ var: b.state.vars[0].id, op: ">=", value: -5 }];
@@ -55,7 +73,7 @@ it("l'agent livre un jeu même quand le modèle rend une réponse abîmée et ne
   const N = Number(process.env.FUZZ_N ?? 400);
   for (let seed = Number(process.env.FUZZ_FROM ?? 1); seed <= N; seed++) {
     const r = rng(seed);
-    const b = clone(seed % 2 ? EXAMPLE_BRIEF_ARCADE : EXAMPLE_BRIEF);
+    const b = clone(BASES[seed % BASES.length]);
     const what = corrupt(b, r);
     const text = JSON.stringify(b);
     const llm = { name: "m", async complete(_s: string, _u: string, o?: any) {

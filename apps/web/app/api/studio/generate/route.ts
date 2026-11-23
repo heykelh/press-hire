@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { chain, EXAMPLE_BRIEF, EXAMPLE_BRIEF_ARCADE, EXAMPLE_JOB, generate, IdeaOptions, llmsFromEnv, type GenerateEvent, type Llm } from "@press-hire/agent";
+import { AGENT_VERSION, chain, EXAMPLE_BRIEF, EXAMPLE_BRIEF_ARCADE, EXAMPLE_JOB, generate, IdeaOptions, llmsFromEnv, type GenerateEvent, type Llm } from "@press-hire/agent";
 import { recentDesign, saveCartridge } from "@/lib/cartridges";
 import { ntfy } from "@/lib/notify";
 import { dbConfigured } from "@/lib/db";
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
     if (!session.plan.notifications) return;
     await ntfy({
       title: ok ? "✅ Jeu généré, prêt à relire" : "❌ Génération échouée",
-      message: [what, ...lines, `Durée : ${minutes.toFixed(1)} min`].join("\n"),
+      message: [what, ...lines, `Durée : ${minutes.toFixed(1)} min · moteur v${AGENT_VERSION}`].join("\n"),
       click: `${base}/studio`,
       tags: [ok ? "white_check_mark" : "x"],
       priority: ok ? 3 : 4,
@@ -79,6 +79,8 @@ export async function POST(req: Request) {
       const send = (e: GenerateEvent | Record<string, unknown>) => ctrl.enqueue(enc.encode(JSON.stringify(e) + "\n"));
       const t0 = Date.now();
       let provider = "";
+      const commit = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7);
+      send({ type: "step", message: `Moteur PRESS HIRE v${AGENT_VERSION}${commit ? ` (commit ${commit})` : ""}` });
       try {
         const llm =
           process.env.PRESS_HIRE_MOCK_LLM === "1" && process.env.VERCEL !== "1"
