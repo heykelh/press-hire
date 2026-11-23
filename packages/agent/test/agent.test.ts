@@ -18,6 +18,9 @@ import {
   generate,
   parseJsonReply,
   parseOfferHtml,
+  chain,
+  LlmError,
+  withRetry,
   type GenerateEvent,
   type Llm,
 } from "../src";
@@ -371,5 +374,35 @@ describe("pipeline complet", () => {
     const { events, last } = await runFull(llm);
     expect(last.type).toBe("done");
     expect(events.some((e) => e.type === "warn" && /Analyse impossible|incomplète/.test(e.message))).toBe(true);
+  });
+});
+
+describe("heure limite (jamais de coupure silencieuse)", () => {
+  it("un modèle qui ne répond jamais n'empêche pas un message de fin avant l'heure limite", async () => {
+    const slow = { name: "lent", async complete(_s: string, _u: string, o?: any) {
+      if (o?.task === "analyze") return JSON.stringify(EXAMPLE_JOB);
+      if (o?.task === "pitch") return "{}";
+      // l'écriture : le modèle traîne jusqu'à ce que l'heure limite tombe
+      const left = (o?.deadline ?? Date.now() + 5000) - Date.now();
+      await new Promise((r) => setTimeout(r, Math.max(0, left - 9000)));
+      const { expiredError } = await import("../src/llm");
+      throw expiredError();
+    } };
+    const t = Date.now();
+    const events: GenerateEvent[] = [];
+    for await (const e of generate({ offerText: "Consultant digital. ".repeat(40) }, { llm: chain([slow]), now: new Date(), skipCritique: true, budgetMs: 12_000 })) events.push(e);
+    const last = events.at(-1)!;
+    expect(last.type).toBe("fail");
+    if (last.type === "fail") expect(last.message).toMatch(/Temps maximal/);
+    expect(Date.now() - t).toBeLessThan(12_000);
+  }, 20_000);
+
+  it("pas de nouvel essai ni d'attente qui dépasse l'heure limite", async () => {
+    let calls = 0;
+    const flaky = withRetry({ name: "503", async complete() { calls++; throw Object.assign(new LlmError("503", true, 503), {}); } }, { baseMs: 4000 });
+    const t = Date.now();
+    await expect(flaky.complete("s", "u", { deadline: Date.now() + 9000 })).rejects.toBeTruthy();
+    expect(Date.now() - t).toBeLessThan(3000);
+    expect(calls).toBe(1);
   });
 });

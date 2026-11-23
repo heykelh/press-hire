@@ -8,7 +8,7 @@
 import { makeSlug, validateCartridge, type Cartridge, type Issue, type ValidationResult } from "@press-hire/cartridge";
 import { applyPlan, autoBalance, assemble, fixRequirements, repairBrief } from "./brief";
 import { ANALYZE_SYSTEM, JobModel, jobSchemaJson, repairJob, requirementsFromJob, type JobModel as Job } from "./job";
-import { chainHead, estimateTokens, parseJsonReply, type Llm } from "./llm";
+import { chainHead, estimateTokens, parseJsonReply, type CallOpts, type Llm, type LlmError } from "./llm";
 import { IDEA_ANALYZE_SYSTEM, analyzeIdeaPrompt, ideaOffer, ideaWriteRules, type IdeaOptions } from "./idea";
 import { fetchOffer, mergeOffer, type Offer } from "./offer";
 import { companyText, researchCompany, type CompanyFacts } from "./company";
@@ -146,6 +146,12 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
   const budget = deps.budgetMs ?? 250_000;
   const t0 = Date.now();
   const elapsed = () => Date.now() - t0;
+  // tous les appels aux modèles respectent la même heure limite : la fonction n'est jamais coupée en silence
+  const deadline = t0 + budget;
+  const base = deps.llm;
+  deps = { ...deps, llm: { ...base, name: base.name, complete: (s: string, u: string, o?: CallOpts) => base.complete(s, u, { ...o, deadline }) } as typeof base };
+  const timeUp = (e: unknown) => (e as LlmError)?.expired === true;
+  const minutes = Math.round(budget / 6000) / 10;
 
   const idea = input.idea;
   /* 1. l'offre (ou l'idée) */
@@ -259,7 +265,12 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
   try {
     reply = await deps.llm.complete(SYSTEM_PROMPT, user, { task: "write" });
   } catch (e) {
-    yield { type: "fail", message: (e as Error).message };
+    yield {
+      type: "fail",
+      message: timeUp(e)
+        ? `Temps maximal atteint (${minutes} min) avant la fin de l'écriture : les modèles gratuits étaient surchargés ou trop lents. Relance dans quelques minutes.`
+        : (e as Error).message,
+    };
     return;
   }
 
@@ -349,7 +360,7 @@ export async function* generate(input: GenerateInput, deps: GenerateDeps): Async
       try {
         briefText = await deps.llm.complete(SYSTEM_PROMPT, `${user}\n\n${repairPrompt(briefText, errorsOf(issues))}`, { task: "repair" });
       } catch (e) {
-        yield { type: "warn", message: (e as Error).message };
+        yield { type: "warn", message: timeUp(e) ? "Temps presque écoulé : on arrête les corrections du modèle et on répare nous-mêmes." : (e as Error).message };
         break;
       }
     }

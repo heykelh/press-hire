@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { publishGame } from "@/app/studio/actions";
 import IdeaFields, { ideaBody } from "./IdeaFields";
 
-type Line = { kind: "s" | "w" | "f" | "d"; text: string };
+type Line = { kind: "s" | "w" | "f" | "d" | "t"; text: string };
 type Done = { slug: string; title: string; warnings: string[]; mechanics: string[] };
 
 export default function NewGame() {
@@ -50,8 +50,14 @@ export default function NewGame() {
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let buf = "";
+      let ended = false; // un message de fin (réussite ou échec) est arrivé
+      // plus aucune nouvelle du serveur pendant 90 s (il envoie un signe de vie toutes les 20 s) : connexion morte
+      let quiet: ReturnType<typeof setTimeout> | undefined;
+      const arm = () => { clearTimeout(quiet); quiet = setTimeout(() => reader.cancel("silence").catch(() => {}), 90_000); };
+      arm();
       for (;;) {
         const { value, done: end } = await reader.read();
+        arm();
         if (end) break;
         buf += dec.decode(value, { stream: true });
         let nl: number;
@@ -59,12 +65,19 @@ export default function NewGame() {
           const raw = buf.slice(0, nl); buf = buf.slice(nl + 1);
           if (!raw.trim()) continue;
           const ev = JSON.parse(raw);
+          if (ev.type === "wait") {
+            // une seule ligne « toujours en cours », mise à jour sur place
+            setLines((x) => (x.at(-1)?.kind === "t" ? [...x.slice(0, -1), { kind: "t", text: `  ${ev.message}` }] : [...x, { kind: "t", text: `  ${ev.message}` }]));
+            continue;
+          }
           if (ev.type === "step") push({ kind: "s", text: `> ${ev.message}` });
           else if (ev.type === "warn") push({ kind: "w", text: `! ${String(ev.message).slice(0, 220)}` });
           else if (ev.type === "fail") {
+            ended = true;
             push({ kind: "f", text: `✗ ${ev.message}` });
             for (const i of ev.issues ?? []) push({ kind: "f", text: `   [${i.rule}] ${i.path} : ${i.message}` });
           } else if (ev.type === "done") {
+            ended = true;
             push({ kind: "d", text: `★ « ${ev.title} » est prêt (brouillon) : ${(ev.mechanics ?? []).join(", ")}. ${ev.attempts > 1 ? `${ev.attempts} passes.` : ""}` });
             if (ev.scores) push({ kind: "d", text: `  Notes des relecteurs : justesse ${ev.scores.accuracy}/10 · pédagogie ${ev.scores.pedagogy}/10 · plaisir ${ev.scores.fun}/10 · waouh ${ev.scores.wow}/10` });
             for (const w of ev.warnings ?? []) push({ kind: "w", text: `! ${w}` });
@@ -73,6 +86,8 @@ export default function NewGame() {
           }
         }
       }
+      clearTimeout(quiet);
+      if (!ended) push({ kind: "f", text: "✗ Le serveur a coupé la génération sans répondre (délai dépassé ou connexion perdue). Relance-la ; si ça se répète, envoie-moi le journal." });
     } catch (err) {
       push({ kind: "f", text: `✗ connexion coupée : ${(err as Error).message}` });
     } finally {

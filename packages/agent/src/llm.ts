@@ -12,6 +12,8 @@ export interface CallOpts {
   /** étape du pipeline (analyze, write, critique, revise, repair) : utile aux modèles simulés et aux journaux */
   task?: string;
   temperature?: number;
+  /** heure limite (ms epoch) : aucun appel, nouvel essai ni attente ne la dépasse */
+  deadline?: number;
 }
 
 export interface Llm {
@@ -27,6 +29,8 @@ export interface Llm {
 export class LlmError extends Error {
   /** vrai quand l'appel a été sauté (trop gros pour ce fournisseur) : le fournisseur n'est pas en panne */
   skipped = false;
+  /** vrai quand le temps de la génération est écoulé : inutile d'essayer un autre fournisseur */
+  expired = false;
   constructor(message: string, readonly retryable: boolean, readonly status?: number, readonly retryAfterMs?: number) {
     super(message);
   }
@@ -41,6 +45,14 @@ const SMALL_TASKS = new Set(["analyze", "pitch", "critique", "check"]);
 
 const TIMEOUT = 150_000;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** marge gardée avant l'heure limite pour finir proprement (sauvetage, enregistrement, message de fin) */
+const MIN_CALL_MS = 8_000;
+
+export function expiredError(): LlmError {
+  const e = new LlmError("temps maximal de la génération atteint", false);
+  e.expired = true;
+  return e;
+}
 
 /** Message court et lisible à partir d'une réponse d'erreur. */
 function reason(status: number): string {
@@ -56,17 +68,21 @@ let fetchImpl: typeof fetch = (...a) => fetch(...a);
 /** Pour les tests : remplace fetch. */
 export function setFetch(f: typeof fetch) { fetchImpl = f; }
 
-async function post(url: string, headers: Record<string, string>, body: unknown, who: string): Promise<unknown> {
+async function post(url: string, headers: Record<string, string>, body: unknown, who: string, deadline?: number): Promise<unknown> {
   let res: Response;
+  const left = deadline ? deadline - Date.now() : TIMEOUT;
+  if (left < MIN_CALL_MS) throw expiredError();
+  const limit = Math.min(TIMEOUT, left);
   try {
     res = await fetchImpl(url, {
       method: "POST",
       headers: { "content-type": "application/json", ...headers },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(TIMEOUT),
+      signal: AbortSignal.timeout(limit),
     });
   } catch (e) {
     const timeout = (e as Error).name === "TimeoutError";
+    if (timeout && limit < TIMEOUT) throw expiredError();
     throw new LlmError(`${who} : ${timeout ? "trop lent (délai dépassé)" : "injoignable"}`, true);
   }
   if (!res.ok) {
@@ -103,6 +119,8 @@ export function withRetry(llm: Llm, opts: { retries?: number; baseMs?: number; m
           const passing = err instanceof LlmError && err.retryable && !err.skipped && err.status !== 404;
           if (!passing || attempt >= retries) throw e;
           const wait = Math.min(maxWait, err.retryAfterMs ?? base * 2 ** attempt * (0.75 + Math.random() * 0.5));
+          // pas d'attente qui mangerait le temps restant : on passe plutôt au fournisseur suivant
+          if (o?.deadline && Date.now() + wait + MIN_CALL_MS * 3 > o.deadline) throw e;
           await sleep(wait);
         }
       }
@@ -125,6 +143,7 @@ export function gemini(apiKey: string, model = "gemini-flash-latest"): Llm {
           generationConfig: { responseMimeType: "application/json", temperature: opts?.temperature ?? 0.9, maxOutputTokens: 32768 },
         },
         `Gemini ${model}`,
+        opts?.deadline,
       )) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> }; finishReason?: string }> };
       const cand = data.candidates?.[0];
       const text = cand?.content?.parts?.filter((p) => !p.thought).map((p) => p.text ?? "").join("") ?? "";
@@ -168,6 +187,7 @@ export function openaiCompatible(o: {
           ...(o.extraBody ?? {}),
         },
         name,
+        opts?.deadline,
       )) as { choices?: Array<{ message?: { content?: string }; finish_reason?: string }> };
       const text = data.choices?.[0]?.message?.content ?? "";
       if (!text) throw new LlmError(`${name} : réponse vide (${data.choices?.[0]?.finish_reason ?? "?"})`, true);
@@ -251,6 +271,7 @@ export function chain(llms: Llm[], onFallback?: (from: string, err: string) => v
       const order = [...llms].sort((a, b) => down(a) - down(b) || (small ? Number(!!b.fast) - Number(!!a.fast) : 0));
       let last: unknown;
       for (const l of order) {
+        if (opts?.deadline && opts.deadline - Date.now() < MIN_CALL_MS) throw expiredError();
         try {
           const out = await l.complete(system, user, opts);
           tripped.delete(l.name);
@@ -258,6 +279,7 @@ export function chain(llms: Llm[], onFallback?: (from: string, err: string) => v
         } catch (e) {
           // un appel sauté (trop gros) n'est ni une panne ni un repli à signaler
           if ((e as LlmError).skipped) { last ??= e; continue; }
+          if ((e as LlmError).expired) throw e;
           last = e;
           tripped.set(l.name, Date.now() + TRIP_MS);
           onFallback?.(l.name, (e as Error).message);

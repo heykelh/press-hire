@@ -76,9 +76,29 @@ export async function POST(req: Request) {
   const enc = new TextEncoder();
   const stream = new ReadableStream({
     async start(ctrl) {
-      const send = (e: GenerateEvent | Record<string, unknown>) => ctrl.enqueue(enc.encode(JSON.stringify(e) + "\n"));
+      let closed = false;
+      /** vrai dès qu'un message de fin (réussite ou échec) est parti : rien d'autre ne doit suivre */
+      let finished = false;
+      const send = (e: GenerateEvent | Record<string, unknown>) => {
+        if (closed) return;
+        try { ctrl.enqueue(enc.encode(JSON.stringify(e) + "\n")); } catch { closed = true; }
+      };
+      const close = () => { if (!closed) { closed = true; try { ctrl.close(); } catch { /* déjà fermé */ } } };
       const t0 = Date.now();
       let provider = "";
+      const since = () => { const s = Math.round((Date.now() - t0) / 1000); return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, "0")}`; };
+      // signe de vie pendant les longues étapes (le studio met à jour une seule ligne)
+      const beat = setInterval(() => { if (!finished) send({ type: "wait", message: `… toujours en cours (${since()})` }); }, 20_000);
+      // filet de sécurité : Vercel coupe à maxDuration sans prévenir ; on termine proprement juste avant
+      const watchdog = setTimeout(async () => {
+        if (finished) return;
+        finished = true;
+        const msg = `Temps maximal atteint (${since()}) : les modèles gratuits étaient surchargés ou trop lents. Relance dans quelques minutes.`;
+        send({ type: "fail", message: msg });
+        await logGeneration({ accountId: session.accountId, ok: false, provider, durationMs: Date.now() - t0, error: msg }).catch(() => {});
+        await notifyEnd(false, [`Pourquoi : ${msg}`], (Date.now() - t0) / 60000).catch(() => {});
+        close();
+      }, (maxDuration - 18) * 1000);
       const commit = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7);
       send({ type: "step", message: `Moteur PRESS HIRE v${AGENT_VERSION}${commit ? ` (commit ${commit})` : ""}` });
       try {
@@ -93,8 +113,10 @@ export async function POST(req: Request) {
           : { offerUrl: input.offerUrl, offerText: input.offerText, company: input.company, jobTitle: input.jobTitle, notes: input.notes, contact };
         // anti-répétition : ce qui a servi dans les derniers jeux du compte
         const recent = await recentDesign(session.accountId).catch(() => undefined);
-        for await (const e of generate(genInput, { llm, recent })) {
+        for await (const e of generate(genInput, { llm, recent, budgetMs: (maxDuration - 60) * 1000 })) {
+          if (finished) break; // le filet de sécurité a déjà répondu
           if (e.type === "done") {
+            finished = true;
             await saveCartridge(e.cartridge, "draft", session.accountId, input.offerUrl);
             await logGeneration({ accountId: session.accountId, slug: e.slug, ok: true, provider, durationMs: Date.now() - t0 });
             send({
@@ -115,6 +137,7 @@ export async function POST(req: Request) {
             ], (Date.now() - t0) / 60000);
           } else {
             if (e.type === "fail") {
+              finished = true;
               await logGeneration({ accountId: session.accountId, ok: false, provider, durationMs: Date.now() - t0, error: e.message });
               await notifyEnd(false, [`Pourquoi : ${e.message}`, "Relance la génération : le modèle écrit un jeu différent à chaque fois."], (Date.now() - t0) / 60000);
             }
@@ -122,11 +145,16 @@ export async function POST(req: Request) {
           }
         }
       } catch (e) {
+        if (finished) return;
+        finished = true;
         send({ type: "fail", message: (e as Error).message });
         await logGeneration({ accountId: session.accountId, ok: false, provider, durationMs: Date.now() - t0, error: (e as Error).message }).catch(() => {});
         await notifyEnd(false, [`Pourquoi : erreur inattendue (${(e as Error).message.slice(0, 200)})`], (Date.now() - t0) / 60000).catch(() => {});
       } finally {
-        ctrl.close();
+        clearInterval(beat);
+        clearTimeout(watchdog);
+        if (!finished) send({ type: "fail", message: "La génération s'est arrêtée sans résultat. Relance-la." });
+        close();
       }
     },
   });

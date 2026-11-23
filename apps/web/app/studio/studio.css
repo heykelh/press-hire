@@ -38,6 +38,7 @@
 .st-log { margin: 16px 0 0; background: #020a04; color: #9effb0; border: 2px solid #33d65a; padding: 12px; font-family: "VT323", monospace; font-size: 20px; line-height: 1.25; min-height: 120px; max-height: 340px; overflow: auto; }
 .st-log p { margin: 0; }
 .st-log .w { color: #ffd479; }
+.st-log .t { color: #8fa0c0; font-style: italic; }
 .st-log .f { color: #ff8a8a; }
 .st-log .d { color: #fff; }
 .st-log .cur::after { content: "█"; animation: blink 1s steps(2, start) infinite; }
