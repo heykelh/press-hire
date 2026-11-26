@@ -406,3 +406,33 @@ describe("heure limite (jamais de coupure silencieuse)", () => {
     expect(calls).toBe(1);
   });
 });
+
+describe("chaîne de modèles quand Gemini est surchargé", () => {
+  const overloaded = (name: string, calls: string[]): Llm => ({ name, async complete() { calls.push(name); throw new LlmError(`${name} : surchargé (503)`, true, 503); } });
+  const ok = (name: string, calls: string[]): Llm => ({ name, async complete() { calls.push(name); return "{}"; } });
+
+  it("saute l'autre Gemini (même serveur) et passe tout de suite au fournisseur suivant", async () => {
+    const calls: string[] = [];
+    const c = chain([overloaded("Gemini flash", calls), overloaded("Gemini lite", calls), ok("SambaNova DeepSeek-V3.1", calls)]);
+    await c.complete("s", "u", { task: "write", deadline: Date.now() + 200_000 });
+    expect(calls).toEqual(["Gemini flash", "SambaNova DeepSeek-V3.1"]);
+  });
+
+  it("un fournisseur qui traîne ne mange que sa part du temps, le suivant a encore sa chance", async () => {
+    const calls: string[] = [];
+    const slow: Llm = { name: "Lent x", async complete(_s, _u, o) {
+      calls.push("lent");
+      // respecte sa propre heure limite comme le fait post()
+      await new Promise((r) => setTimeout(r, Math.max(0, (o!.deadline! - Date.now()) - 7_000)));
+      const { expiredError } = await import("../src/llm");
+      throw expiredError();
+    } };
+    const c = chain([slow, ok("Rapide y", calls)]);
+    const t = Date.now();
+    // heure limite à 3 s pour garder le test court : la part du lent est réduite au minimum
+    const out = await c.complete("s", "u", { task: "write", deadline: Date.now() + 20_000 });
+    expect(out).toBe("{}");
+    expect(calls).toEqual(["lent", "Rapide y"]);
+    expect(Date.now() - t).toBeLessThan(20_000);
+  }, 30_000);
+});

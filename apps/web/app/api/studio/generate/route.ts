@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AGENT_VERSION, chain, EXAMPLE_BRIEF, EXAMPLE_BRIEF_ARCADE, EXAMPLE_JOB, generate, IdeaOptions, llmsFromEnv, type GenerateEvent, type Llm } from "@press-hire/agent";
+import { AGENT_VERSION, describeLlms, chain, EXAMPLE_BRIEF, EXAMPLE_BRIEF_ARCADE, EXAMPLE_JOB, generate, IdeaOptions, llmsFromEnv, type GenerateEvent, type Llm } from "@press-hire/agent";
 import { recentDesign, saveCartridge } from "@/lib/cartridges";
 import { ntfy } from "@/lib/notify";
 import { dbConfigured } from "@/lib/db";
@@ -105,7 +105,11 @@ export async function POST(req: Request) {
         const llm =
           process.env.PRESS_HIRE_MOCK_LLM === "1" && process.env.VERCEL !== "1"
             ? mockLlm(input.idea?.title ?? input.company, input.idea?.hero ?? input.jobTitle)
-            : chain(llmsFromEnv(), (from, err) => send({ type: "warn", message: `${err.slice(0, 160)} → modèle suivant…` }));
+            : (() => {
+                const all = llmsFromEnv();
+                send({ type: "step", message: `Modèles configurés : ${describeLlms(all) || "aucun"}` });
+                return chain(all, (from, err) => send({ type: "warn", message: `${err.slice(0, 160)} → modèle suivant…` }));
+              })();
         provider = llm.name;
         const contact = input.contactName ? { name: input.contactName, ...(input.contactRole ? { role: input.contactRole } : {}) } : undefined;
         const genInput = input.mode === "idea"

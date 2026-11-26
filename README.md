@@ -156,7 +156,8 @@ et quand il le termine. Tes propres parties (connecté au studio) et les robots 
 | `ZAI_API_KEY` | 3e choix, gratuit : Z.ai `glm-4.7-flash`, une requête à la fois (`ZAI_MODEL`) |
 | `QWEN_API_KEY` | facultatif : Alibaba Cloud Model Studio (Singapour), quota gratuit d'environ 1M de jetons par modèle pendant 90 jours, puis payant : régler une alerte de dépense — `qwen-plus` puis `qwen-flash` (`QWEN_MODEL`, `QWEN_BASE_URL`) |
 | `GROQ_API_KEY` | conseillé, gratuit sans carte : https://console.groq.com — très rapide, sert à l'analyse et à la relecture (quota gratuit trop petit pour l'écriture) ; `GROQ_TPM` si plan payant |
-| `OPENROUTER_API_KEY` + `OPENROUTER_MODEL` | facultatif : un modèle `…:free` d'OpenRouter |
+| `SAMBANOVA_API_KEY` | conseillé, gratuit sans carte : https://cloud.sambanova.ai — DeepSeek-V3.1, gpt-oss-120b, Llama 3.3 70B ; 20 requêtes et 200 000 jetons par jour et par modèle (`SAMBANOVA_MODEL`) |
+| `OPENROUTER_API_KEY` | conseillé, gratuit sans carte : https://openrouter.ai/keys — modèles `…:free` (Nemotron 3 Ultra, Gemma 4 par défaut), 50 requêtes/jour au total (`OPENROUTER_MODEL`) |
 | `MISTRAL_API_KEY`, `NVIDIA_API_KEY` | facultatifs, en fin de file |
 | `LLM_ORDER` | facultatif : ordre des fournisseurs, ex. `gemini,zai,cloudflare,groq` |
 

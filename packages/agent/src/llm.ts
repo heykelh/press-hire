@@ -42,6 +42,9 @@ export const estimateTokens = (s: string) => Math.ceil(s.length / 3.2);
 const MIN_OUT: Record<string, number> = { write: 7000, revise: 7000, repair: 7000, analyze: 1800, pitch: 1500, critique: 1200, check: 800 };
 /** Étapes courtes où l'on préfère le fournisseur le plus rapide. */
 const SMALL_TASKS = new Set(["analyze", "pitch", "critique", "check"]);
+const BIG_TASKS = new Set(["write", "repair", "revise"]);
+/** famille d'un fournisseur (« Gemini gemini-flash-latest » → « Gemini ») : même serveur, mêmes surcharges */
+const family = (name: string) => name.split(" ")[0]!;
 
 const TIMEOUT = 150_000;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -118,6 +121,8 @@ export function withRetry(llm: Llm, opts: { retries?: number; baseMs?: number; m
           const err = e as LlmError;
           const passing = err instanceof LlmError && err.retryable && !err.skipped && err.status !== 404;
           if (!passing || attempt >= retries) throw e;
+          // gros appel sur un modèle surchargé : réessayer le même fait perdre des minutes, on passe au suivant
+          if ((err.status === 503 || err.status === 529) && BIG_TASKS.has(o?.task ?? "")) throw e;
           const wait = Math.min(maxWait, err.retryAfterMs ?? base * 2 ** attempt * (0.75 + Math.random() * 0.5));
           // pas d'attente qui mangerait le temps restant : on passe plutôt au fournisseur suivant
           if (o?.deadline && Date.now() + wait + MIN_CALL_MS * 3 > o.deadline) throw e;
@@ -246,6 +251,10 @@ export const openrouter = (apiKey: string, model: string) =>
   });
 
 /** Facultatifs (payant pour Mistral) : gardés pour qui a déjà une clé. */
+/** SambaNova Cloud : gratuit sans carte (20 requêtes/jour et 200 000 jetons/jour par modèle), très rapide. */
+export const sambanova = (apiKey: string, model = "DeepSeek-V3.1") =>
+  openaiCompatible({ label: "SambaNova", baseUrl: "https://api.sambanova.ai/v1", apiKey, model, maxTokens: 16000, jsonMode: false });
+
 export const mistral = (apiKey: string, model = "mistral-medium-latest") =>
   openaiCompatible({ label: "Mistral", baseUrl: "https://api.mistral.ai/v1", apiKey, model, maxTokens: 24000 });
 export const nvidia = (apiKey: string, model = "meta/llama-3.3-70b-instruct") =>
@@ -270,16 +279,38 @@ export function chain(llms: Llm[], onFallback?: (from: string, err: string) => v
       const down = (l: Llm) => Number((tripped.get(l.name) ?? 0) > now);
       const order = [...llms].sort((a, b) => down(a) - down(b) || (small ? Number(!!b.fast) - Number(!!a.fast) : 0));
       let last: unknown;
-      for (const l of order) {
+      const overloaded = new Set<string>();
+      for (const [k, l] of order.entries()) {
         if (opts?.deadline && opts.deadline - Date.now() < MIN_CALL_MS) throw expiredError();
+        // un modèle Gemini surchargé : l'autre Gemini l'est aussi (même serveur), inutile d'attendre
+        if (overloaded.has(family(l.name)) && order.slice(k + 1).some((x) => !overloaded.has(family(x.name)))) continue;
+        // s'il reste d'autres fournisseurs, celui-ci n'a droit qu'à une part du temps restant
+        const others = order.slice(k + 1).filter((x) => !overloaded.has(family(x.name))).length;
+        const callOpts = opts?.deadline && others > 0
+          ? (() => {
+              const left = opts.deadline - Date.now();
+              // la moitié du temps restant, ou 75 s si ça laisse au moins 30 s au suivant
+              const share = Math.max(Math.min(75_000, left - 30_000), left / 2);
+              return { ...opts, deadline: Date.now() + share };
+            })()
+          : opts;
         try {
-          const out = await l.complete(system, user, opts);
+          const out = await l.complete(system, user, callOpts);
           tripped.delete(l.name);
           return out;
         } catch (e) {
           // un appel sauté (trop gros) n'est ni une panne ni un repli à signaler
           if ((e as LlmError).skipped) { last ??= e; continue; }
-          if ((e as LlmError).expired) throw e;
+          if ((e as LlmError).expired) {
+            // part de temps épuisée mais heure limite globale pas atteinte : on essaie le suivant
+            if (opts?.deadline && opts.deadline - Date.now() >= MIN_CALL_MS && callOpts !== opts) {
+              last = new LlmError(`${l.name} : trop lent (part de temps épuisée)`, true);
+              onFallback?.(l.name, (last as Error).message);
+              continue;
+            }
+            throw e;
+          }
+          if ([503, 529].includes((e as LlmError).status ?? 0)) overloaded.add(family(l.name));
           last = e;
           tripped.set(l.name, Date.now() + TRIP_MS);
           onFallback?.(l.name, (e as Error).message);
@@ -289,6 +320,17 @@ export function chain(llms: Llm[], onFallback?: (from: string, err: string) => v
       throw new LlmError(`Tous les modèles ont échoué (dernier : ${msg}). Réessaie dans quelques minutes.`, true);
     },
   };
+}
+
+/** Résumé lisible des modèles configurés : « Gemini ×2 · SambaNova ×3 · Groq ×2 (petites étapes) ». */
+export function describeLlms(llms: Llm[]): string {
+  const by = new Map<string, { n: number; small: boolean }>();
+  for (const l of llms) {
+    const f = family(l.name);
+    const cur = by.get(f) ?? { n: 0, small: true };
+    by.set(f, { n: cur.n + 1, small: cur.small && !!l.tpm && l.tpm < 30_000 });
+  }
+  return [...by].map(([f, v]) => `${f}${v.n > 1 ? ` ×${v.n}` : ""}${v.small ? " (petites étapes)" : ""}`).join(" · ");
 }
 
 /** Nom affiché du premier fournisseur qui sera essayé. */
@@ -304,7 +346,7 @@ export const chainHead = (l: Llm & { members?: Llm[] }, task?: string, size = 0)
  *   → OpenRouter (OPENROUTER_API_KEY + OPENROUTER_MODEL) → Mistral, NVIDIA (facultatifs).
  * LLM_ORDER change l'ordre (ex. « qwen,gemini,groq ») ; chaque *_MODEL accepte plusieurs modèles séparés par des virgules.
  */
-export const DEFAULT_ORDER = ["gemini", "cloudflare", "zai", "qwen", "groq", "openrouter", "mistral", "nvidia"];
+export const DEFAULT_ORDER = ["gemini", "sambanova", "openrouter", "cloudflare", "zai", "qwen", "groq", "mistral", "nvidia"];
 export function llmsFromEnv(env: Record<string, string | undefined> = process.env, opts: { retry?: boolean } = {}): Llm[] {
   const list = (v: string | undefined, def: string[]) => (v ? v.split(",").map((x) => x.trim()).filter(Boolean) : def);
   const qwenKey = env.QWEN_API_KEY || env.DASHSCOPE_API_KEY;
@@ -317,7 +359,10 @@ export function llmsFromEnv(env: Record<string, string | undefined> = process.en
     zai: env.ZAI_API_KEY ? list(env.ZAI_MODEL, ["glm-4.7-flash"]).map((m) => zai(env.ZAI_API_KEY!, m)) : [],
     qwen: qwenKey ? list(env.QWEN_MODEL, ["qwen-plus", "qwen-flash"]).map((m) => qwen(qwenKey, m, env.QWEN_BASE_URL || undefined)) : [],
     groq: env.GROQ_API_KEY ? list(env.GROQ_MODEL, ["openai/gpt-oss-120b", "llama-3.3-70b-versatile"]).map((m) => groq(env.GROQ_API_KEY!, m, groqTpm)) : [],
-    openrouter: env.OPENROUTER_API_KEY && env.OPENROUTER_MODEL ? list(env.OPENROUTER_MODEL, []).map((m) => openrouter(env.OPENROUTER_API_KEY!, m)) : [],
+    sambanova: env.SAMBANOVA_API_KEY ? list(env.SAMBANOVA_MODEL, ["DeepSeek-V3.1", "gpt-oss-120b", "Meta-Llama-3.3-70B-Instruct"]).map((m) => sambanova(env.SAMBANOVA_API_KEY!, m)) : [],
+    openrouter: env.OPENROUTER_API_KEY
+      ? list(env.OPENROUTER_MODEL, ["nvidia/nemotron-3-ultra-550b-a55b:free", "google/gemma-4-26b-a4b-it:free"]).map((m) => openrouter(env.OPENROUTER_API_KEY!, m))
+      : [],
     mistral: env.MISTRAL_API_KEY ? list(env.MISTRAL_MODEL, ["mistral-small-latest"]).map((m) => mistral(env.MISTRAL_API_KEY!, m)) : [],
     nvidia: env.NVIDIA_API_KEY ? list(env.NVIDIA_MODEL, ["meta/llama-3.3-70b-instruct"]).map((m) => nvidia(env.NVIDIA_API_KEY!, m)) : [],
   };
